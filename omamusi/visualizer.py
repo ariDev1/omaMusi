@@ -12,11 +12,13 @@ from PySide6.QtWidgets import QWidget
 
 from .audio import SAMPLE_RATE
 from .theme import DEFAULTS
+from .visual.analysis import MusicAnalyzer
+from .visual.director import VisualDirector
 
 
 class Visualizer(QWidget):
     PARTICLE_COUNT = 384  # Conservative fallback; GPU draws 4,096 streaks.
-    modes = ("Warp", "Spectrum", "Waveform", "Spectrogram")
+    modes = ("Warp", "Spectrum", "Waveform", "Spectrogram", "Phi Cathedral")
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -30,6 +32,13 @@ class Visualizer(QWidget):
         self.energy = 0.0
         self.bass = 0.0
         self.treble = 0.0
+        self.phi_pulse = 0.0
+        self.phi_bloom = 0.0
+        self.phi_tension = 0.0
+        self.phi_event = 0.0
+        self.phi_event_cooldown = 0.0
+        self.phi_velocity = 0.0
+        self.phi_impulse = 0.0
         self.previous_bass = 0.0
         self.beat_cooldown = 0.0
         self.bursts = []
@@ -42,6 +51,16 @@ class Visualizer(QWidget):
         self.history_elapsed = 0.0
         self.history_revision = 0
         self.analysis_rate = None
+        self.music_analyzer = MusicAnalyzer()
+        self.visual_director = VisualDirector()
+        self.aether_onset = 0.0
+        self.aether_beat_phase = 0.0
+        self.aether_beat_confidence = 0.0
+        self.aether_density = 0.0
+        self.aether_scene_morph = 0.0
+        self.aether_world_turn = 0.0
+        self.aether_beat_pulse = 0.0
+        self.aether_phrase_progress = 0.0
         # Fixed star seeds preserve the tunnel when cycling away and back.
         rng = np.random.default_rng(21)
         angles = rng.uniform(0, math.tau, self.PARTICLE_COUNT)
@@ -83,12 +102,25 @@ class Visualizer(QWidget):
     def reset(self):
         self.buffer.fill(0)
         self.energy = self.bass = self.treble = self.previous_bass = 0
+        self.phi_pulse = self.phi_bloom = self.phi_tension = self.phi_event = 0
+        self.phi_event_cooldown = 0
+        self.phi_velocity = self.phi_impulse = 0
         self.bursts.clear()
         self.bands.fill(0)
         self.peaks.fill(0)
         self.history.fill(0)
         self.history_elapsed = 0
         self.history_revision += 1
+        self.music_analyzer.reset()
+        self.visual_director.reset()
+        self.aether_onset = 0.0
+        self.aether_beat_phase = 0.0
+        self.aether_beat_confidence = 0.0
+        self.aether_density = 0.0
+        self.aether_scene_morph = 0.0
+        self.aether_world_turn = 0.0
+        self.aether_beat_pulse = 0.0
+        self.aether_phrase_progress = 0.0
 
     def cycle(self, step=1):
         self.mode = (self.mode + step) % len(self.modes)
@@ -135,10 +167,51 @@ class Visualizer(QWidget):
         self.energy += (target_energy - self.energy) * smooth
         self.bass += (target_bass - self.bass) * smooth
         self.treble += (target_treble - self.treble) * smooth
+
+        # Phi Cathedral has its own slowly evolving musical state. These values
+        # remain downstream of audio playback and never alter decoded samples.
+        pulse_target = min(1.0, target_bass * 1.25 + target_energy * 0.35)
+        bloom_target = min(1.0, target_energy * 0.75 + target_bass * 0.45)
+        tension_target = min(1.0, target_treble * 0.55 + target_energy * 0.35
+                             + float(levels[24:72].mean()) * 0.65)
+        pulse_rate = 28 if pulse_target > self.phi_pulse else 7
+        self.phi_pulse += (pulse_target - self.phi_pulse) * (1 - math.exp(-dt * pulse_rate))
+        self.phi_bloom += (bloom_target - self.phi_bloom) * (1 - math.exp(-dt * 2.4))
+        self.phi_tension += (tension_target - self.phi_tension) * (1 - math.exp(-dt * 4.0))
+        self.phi_event_cooldown = max(0.0, self.phi_event_cooldown - dt)
+        fresh_burst = bool(self.bursts and self.bursts[-1][0] < 0.06)
+        if (self.active and fresh_burst and self.phi_event_cooldown <= 0
+                and target_bass > 0.42 and target_energy > 0.12):
+            self.phi_event = 1.0
+            self.phi_event_cooldown = 3.2 + (1.0 - target_energy) * 2.8
+        self.phi_event *= math.exp(-dt * 1.45)
+
+        transient = max(0.0, target_bass - self.previous_bass)
+        self.phi_impulse += transient * 2.8
+        self.phi_impulse *= math.exp(-dt * 7.5)
+        self.phi_impulse = min(1.0, max(0.0, self.phi_impulse))
+        drive_target = 0.18 + target_energy * 1.25 + target_bass * 0.65 + self.phi_impulse
+        self.phi_velocity += (drive_target - self.phi_velocity) * (1 - math.exp(-dt * 4.2))
+        self.phi_velocity = min(2.6, max(0.08, self.phi_velocity))
+
         self.time += dt * (0.16 + (0.50 if self.active else 0) + self.energy * 2.6 + self.bass * 0.90 + self.treble * 0.40)
         self.bursts = [[age + dt, strength] for age, strength in self.bursts if age + dt < 1.8]
         self.bands = np.maximum(levels, self.bands * math.exp(-dt * 11))
         self.peaks = np.maximum(self.bands, self.peaks - dt * 0.4)
+
+        metrics = self.music_analyzer.update(
+            dt, self.bands, self.energy, self.bass, self.treble
+        )
+        directed = self.visual_director.update(metrics, dt)
+        self.aether_onset = metrics.onset
+        self.aether_beat_phase = metrics.beat_phase
+        self.aether_beat_confidence = metrics.beat_confidence
+        self.aether_density = metrics.density
+        self.aether_scene_morph = directed.scene_morph
+        self.aether_world_turn = directed.world_turn
+        self.aether_beat_pulse = directed.beat_pulse
+        self.aether_phrase_progress = directed.phrase_progress
+
         # Keep history warm so switching to the spectrogram isn't a blank view.
         if self.active:
             self.history_elapsed += dt
@@ -219,8 +292,10 @@ class Visualizer(QWidget):
             self.paint_spectrum(p, w, h)
         elif self.mode == 2:
             self.paint_waveform(p, w, h)
-        else:
+        elif self.mode == 3:
             self.paint_spectrogram(p, w, h)
+        else:
+            self.paint_phi(p, w, h)
 
     def color(self, key, alpha=255):
         color = QColor(self.colors[key])
@@ -267,6 +342,64 @@ class Visualizer(QWidget):
         p.setOpacity(0.85)
         p.drawImage(QRectF(0, 0, w, h), image)
         p.setOpacity(1)
+
+    def paint_phi(self, p, w, h):
+        """CPU fallback: Fibonacci phyllotaxis, logarithmic spirals and pulse rings."""
+        phi = (1 + math.sqrt(5)) / 2
+        golden_angle = math.tau * (1 - 1 / phi)
+        center = QPointF(
+            w * (0.5 + 0.025 * math.sin(self.time / phi)),
+            h * (0.5 + 0.025 * math.cos(self.time / (phi * phi))),
+        )
+        scale = min(w, h) * (0.43 + self.phi_bloom * 0.08)
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
+
+        # Fibonacci symmetry families breathe through 5, 8 and 13-fold structure.
+        symmetry = 5 + 3 * (0.5 + 0.5 * math.sin(self.time / phi))
+        symmetry += 5 * self.phi_tension
+        for arm in range(13):
+            phase = arm * math.tau / max(5.0, symmetry)
+            path = QPainterPath()
+            for step in range(96):
+                theta = step * 0.12 + phase + self.time * 0.18
+                radius = 2.0 * math.exp(step * 0.018 * phi)
+                radius *= 1 + self.phi_pulse * 0.08 * math.sin(theta * 8 - self.time * phi)
+                x = center.x() + math.cos(theta) * radius
+                y = center.y() + math.sin(theta) * radius
+                if step:
+                    path.lineTo(x, y)
+                else:
+                    path.moveTo(x, y)
+            key = ("cyan", "accent", "green", "magenta")[arm % 4]
+            p.setPen(QPen(self.color(key, int(16 + 36*self.energy + 22*self.phi_event)), 1.0))
+            p.drawPath(path)
+
+        count = 377
+        wave = self.waveform()
+        for i in range(1, count + 1):
+            n = i / count
+            angle = i * golden_angle + self.time * 0.12
+            band = float(self.bands[(i * 13) % 96])
+            wav = float(wave[(i * 21) % 1024])
+            radius = math.sqrt(n) * scale
+            radius *= 1 + self.phi_bloom * 0.16 + band * 0.09
+            angle += wav * 0.22 + band * 0.18
+            x = center.x() + math.cos(angle) * radius
+            y = center.y() + math.sin(angle) * radius
+            key = ("cyan", "accent", "green", "magenta")[i % 4]
+            size = 1.1 + band * 3.0 + self.treble * 1.4 + self.phi_event * 1.8
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(self.color(key, int(45 + 125*band + 55*self.energy)))
+            p.drawEllipse(QPointF(x, y), size, size)
+
+        for fib in (5, 8, 13, 21):
+            radius = scale * (fib / 21) * (0.65 + self.phi_pulse * 0.18)
+            alpha = int(8 + self.phi_event * 45 + self.bass * 18)
+            p.setPen(QPen(self.color("accent", alpha), 1.0))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(center, radius, radius)
+
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
     def paint_warp(self, p, w, h):
         t = self.time

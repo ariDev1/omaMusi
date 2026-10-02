@@ -59,6 +59,7 @@ class PlayerWindow(QWidget):
         self.player.finished.connect(self.on_finished)
         self.player.failed.connect(self.on_error)
         self.build_ui()
+        self._setup_navigation_idle()
         self.volume_notice_timer = QTimer(self)
         self.volume_notice_timer.setSingleShot(True)
         self.volume_notice_timer.timeout.connect(self.settings_label.hide)
@@ -77,6 +78,7 @@ class PlayerWindow(QWidget):
         self.theme_timer.start()
         if tracks:
             QTimer.singleShot(0, lambda: self.play_track(0))
+        self.navigation_idle_timer.start()
 
     def label(self, text="", role="", wrap=False):
         label = QLabel(text)
@@ -90,7 +92,8 @@ class PlayerWindow(QWidget):
         root.setContentsMargins(30, 26, 30, 24)
         root.setSpacing(8)
         header = QHBoxLayout()
-        header.addWidget(self.label("omaMusi", "accent"))
+        self.logo = self.label("omaMusi", "accent")
+        header.addWidget(self.logo)
         header.addStretch()
         self.visual_notice = self.label("", "hint")
         self.visual_notice.hide()
@@ -166,6 +169,79 @@ class PlayerWindow(QWidget):
         root.addLayout(transport)
         self.hint = self.label("space pause · ↑↓ select · enter play · c folders · v visuals · +/− volume", "hint", True)
         root.addWidget(self.hint)
+
+    def _setup_navigation_idle(self):
+        """Fade navigation chrome while leaving playing-song information visible."""
+        from PySide6.QtCore import QEasingCurve, QPropertyAnimation
+        from PySide6.QtWidgets import QGraphicsOpacityEffect
+
+        self.navigation_idle_timer = QTimer(self)
+        self.navigation_idle_timer.setSingleShot(True)
+        self.navigation_idle_timer.setInterval(4000)
+        self.navigation_idle_timer.timeout.connect(self._fade_navigation)
+
+        self._navigation_effects = []
+        self._navigation_animations = []
+
+        for widget in (
+            self.logo,
+            self.folder_label,
+            self.folder_prompt,
+            self.panel,
+            self.status,
+            self.hint,
+        ):
+            effect = QGraphicsOpacityEffect(widget)
+            effect.setOpacity(1.0)
+            widget.setGraphicsEffect(effect)
+            animation = QPropertyAnimation(effect, b"opacity", self)
+            animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
+            self._navigation_effects.append((widget, effect))
+            self._navigation_animations.append(animation)
+
+        application = QApplication.instance()
+        if application is not None:
+            application.installEventFilter(self)
+
+    def _animate_navigation(self, opacity, duration):
+        for animation, (_widget, effect) in zip(
+                self._navigation_animations, self._navigation_effects):
+            animation.stop()
+            animation.setDuration(duration)
+            animation.setStartValue(effect.opacity())
+            animation.setEndValue(opacity)
+            animation.start()
+
+    def _fade_navigation(self):
+        if self.current < 0:
+            return
+        self.panel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self._animate_navigation(0.0, 900)
+
+    def _show_navigation(self, restart_timer=True):
+        if not hasattr(self, "_navigation_animations"):
+            return
+        self.panel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+        self._animate_navigation(1.0, 140)
+        if restart_timer:
+            self.navigation_idle_timer.start()
+
+    def eventFilter(self, watched, event):
+        if hasattr(self, "navigation_idle_timer"):
+            interaction_events = (
+                QEvent.Type.KeyPress,
+                QEvent.Type.MouseButtonPress,
+                QEvent.Type.MouseButtonDblClick,
+                QEvent.Type.MouseMove,
+                QEvent.Type.Wheel,
+                QEvent.Type.Enter,
+                QEvent.Type.HoverMove,
+                QEvent.Type.TouchBegin,
+                QEvent.Type.WindowActivate,
+            )
+            if event.type() in interaction_events:
+                self._show_navigation()
+        return super().eventFilter(watched, event)
 
     def refresh_theme(self):
         colors, family = load_theme()
@@ -245,6 +321,7 @@ class PlayerWindow(QWidget):
         self.player.play(path, sample_rate=data["sample_rate"])
         self.visualizer.sample_rate = self.player.sample_rate
         self.update_state()
+        self._show_navigation()
 
     def update_state(self):
         playing = self.player.sink is not None and not self.player.paused
@@ -394,6 +471,7 @@ class PlayerWindow(QWidget):
             self.update_state()
 
     def begin_folder_browse(self):
+        self._show_navigation()
         self.folder_prompt.hide()
         self.search.clearFocus()
         self.panel.show()
@@ -494,6 +572,7 @@ class PlayerWindow(QWidget):
         self.playlist.setCurrentRow(visible[(index + delta) % len(visible)])
 
     def begin_search(self):
+        self._show_navigation()
         self.end_folder_browse()
         self.panel.show()
         self.search.show()
@@ -640,6 +719,9 @@ class PlayerWindow(QWidget):
         super().resizeEvent(event)
 
     def closeEvent(self, event):
+        application = QApplication.instance()
+        if application is not None:
+            application.removeEventFilter(self)
         self.player.shutdown()
         event.accept()
 
@@ -652,7 +734,10 @@ def parser():
     result.add_argument("paths", nargs="*", help="Audio files or directories (default: current folder)")
     result.add_argument("-all", "--all", action="store_true", help="Play all audio files in the current folder")
     result.add_argument("-r", "--recursive", action="store_true", help="Include subfolders when scanning directories")
-    result.add_argument("--view", choices=[mode.lower() for mode in Visualizer.modes] + ["sprites"], default="warp",
+    view_choices = [mode.lower() for mode in Visualizer.modes] + [
+        "sprites", "phi", "cathedral", "phi-cathedral",
+    ]
+    result.add_argument("--view", choices=view_choices, default="warp",
                         help="Initial visualization (change with V while playing)")
     result.add_argument("--version", action="version", version="omaMusi 0.3.6")
     return result
@@ -674,7 +759,13 @@ def main():
     app = QApplication(sys.argv[:1])
     app.setApplicationName("omaMusi")
     app.setStyle("Fusion")
-    view = "warp" if args.view == "sprites" else args.view
+    aliases = {
+        "sprites": "warp",
+        "phi": "phi cathedral",
+        "cathedral": "phi cathedral",
+        "phi-cathedral": "phi cathedral",
+    }
+    view = aliases.get(args.view, args.view)
     window = PlayerWindow(tracks, [mode.lower() for mode in Visualizer.modes].index(view))
     window.show()
     return app.exec()

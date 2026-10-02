@@ -33,9 +33,9 @@ def main():
             QTest.qWait(300)
             sink = window.player.sink
             assert sink is not None
-            programs = (visual._gpu.quad, visual._gpu.particles, visual._gpu.vao)
+            programs = (visual._gpu.quad, visual._gpu.particles, visual._gpu.phi, visual._gpu.phi_particles, visual._gpu.vao)
             geometry = visual.particle_vertices.copy()
-            for _ in range(32):
+            for _ in range(len(Visualizer.modes) * 8):
                 window.cycle_view()
                 QTest.qWait(25)
                 assert visual.renderer == "gpu", visual.renderer_detail
@@ -48,7 +48,7 @@ def main():
             assert after["written"] > before["written"]
             assert after["underruns"] == 0, after
             np.testing.assert_array_equal(geometry, visual.particle_vertices)
-            assert programs == (visual._gpu.quad, visual._gpu.particles, visual._gpu.vao)
+            assert programs == (visual._gpu.quad, visual._gpu.particles, visual._gpu.phi, visual._gpu.phi_particles, visual._gpu.vao)
             window.player.toggle_pause()
             QTest.qWait(100)
             visual.timer.stop()
@@ -62,13 +62,13 @@ def main():
                 frames.append(bytes(image.bits()))
                 window.cycle_view()
                 QTest.qWait(30)
-            assert len(set(frames)) == 4
+            assert len(set(frames)) == len(Visualizer.modes)
             # Freeze the clock: cycling out and back must reproduce the exact tunnel.
             image = visual._gpu.grabFramebuffer()
             returned = bytes(image.bits())
             assert returned == frames[0], "Warp star seeds changed when cycling views"
             print(f"GPU: {visual.renderer_detail}")
-            print("PASS: all four GPU views, persistent warp tunnel, 32 switches, 650 ms UI stall, zero audio underruns")
+            print(f"PASS: all GPU views including Phi Cathedral, persistent resources, {len(Visualizer.modes) * 8} switches, 650 ms UI stall, zero audio underruns")
         finally:
             window.close()
     return 0

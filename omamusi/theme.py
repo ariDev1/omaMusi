@@ -45,6 +45,7 @@ def stylesheet(colors, family):
         QLineEdit {{ border: none; padding: 0; color: {colors['foreground']}; selection-background-color: {colors['accent']}; selection-color: {colors['background']}; }}
         QListWidget {{ border: none; outline: none; background: transparent; }}
         QListWidget::item {{ padding: 5px 0; color: {colors['light_foreground']}; background: transparent; }}
-        QListWidget::item:selected {{ color: {colors['accent']}; background: transparent; }}
+        QListWidget::item:selected {{ color: #000000; background: {colors['accent']}; }}
+        QListWidget::item:hover {{ color: #000000; background: {colors['accent']}; }}
         QToolTip {{ color: {colors['foreground']}; background: {colors['background']}; border: none; }}
     """

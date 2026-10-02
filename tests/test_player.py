@@ -505,11 +505,11 @@ class PlayerTests(unittest.TestCase):
                 self.assertFalse(image.isNull())
                 frames.append(bytes(image.bits()))
                 QTest.keyClick(window, Qt.Key.Key_V)
-                self.assertEqual(window.visual_notice.text(), Visualizer.modes[(expected + 1) % 4])
+                self.assertEqual(window.visual_notice.text(), Visualizer.modes[(expected + 1) % len(Visualizer.modes)])
                 self.assertTrue(window.visual_notice.isVisible())
                 self.assertIs(window.player.sink, sink)
                 self.assertTrue(window.player.paused)
-            self.assertEqual(len(set(frames)), 4)
+            self.assertEqual(len(set(frames)), len(Visualizer.modes))
             self.assertEqual(visual.mode, 0)
             np.testing.assert_array_equal(visual.particle_vertices, geometry)
             self.assertFalse(visual.particle_vertices.flags.writeable)
@@ -517,11 +517,11 @@ class PlayerTests(unittest.TestCase):
             self.assertGreater(visual.history.max(), 0)
             self.assertAlmostEqual(window.player.position, position, delta=0.04)
             QTest.keyClick(window, Qt.Key.Key_V, Qt.KeyboardModifier.ShiftModifier)
-            self.assertEqual(visual.mode, 3)
+            self.assertEqual(visual.mode, len(Visualizer.modes) - 1)
             window.begin_search()
             QTest.keyClicks(window.search, "vV")
             self.assertEqual(window.search.text(), "vV")
-            self.assertEqual(visual.mode, 3)
+            self.assertEqual(visual.mode, len(Visualizer.modes) - 1)
         finally:
             window.close()
 
@@ -573,6 +573,42 @@ class PlayerTests(unittest.TestCase):
             self.assertEqual(window.player.path, selected)
             self.assertEqual(window.playlist.currentRow(), 1)
             self.wait_until(lambda: window.player.position > 0.1)
+        finally:
+            window.close()
+
+
+    def test_phi_cathedral_state_is_audio_reactive_and_bounded(self):
+        window = PlayerWindow([], mode=4)
+        window.show()
+        QTest.qWait(50)
+        try:
+            visual = window.visualizer
+            visual.timer.stop()
+            window.state_timer.stop()
+            window.player.timer.stop()
+            phase = np.arange(4096) / visual.sample_rate
+            signal = (0.38*np.sin(phase*75*2*np.pi)
+                      + 0.16*np.sin(phase*997*2*np.pi)).astype(np.float32)
+            visual.feed(signal)
+            visual.active = True
+            for _ in range(20):
+                visual.clock.restart()
+                QTest.qWait(12)
+                visual.tick()
+            self.assertGreater(visual.phi_pulse, 0.05)
+            self.assertGreater(visual.phi_bloom, 0.03)
+            self.assertGreaterEqual(visual.phi_tension, 0.0)
+            self.assertGreater(visual.phi_velocity, 0.08)
+            for value in (visual.phi_pulse, visual.phi_bloom, visual.phi_tension,
+                          visual.phi_event, visual.phi_impulse):
+                self.assertTrue(np.isfinite(value))
+                self.assertGreaterEqual(value, 0.0)
+                self.assertLessEqual(value, 1.05)
+
+            self.assertTrue(np.isfinite(visual.phi_velocity))
+            self.assertGreaterEqual(visual.phi_velocity, 0.08)
+            self.assertLessEqual(visual.phi_velocity, 2.6)
+            self.assertFalse(window.grab().isNull())
         finally:
             window.close()
 
