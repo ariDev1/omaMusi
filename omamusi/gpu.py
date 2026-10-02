@@ -657,226 +657,274 @@ float starLayer(vec2 p, float scale, float threshold) {
 
 void main() {
     float musicDrive = clamp(
-        energy * 0.34
-        + bass * 0.22
-        + treble * 0.10
-        + aetherDensity * 0.22
-        + aetherBeatPulse * 0.18,
+        energy * 0.36 + bass * 0.24 + treble * 0.10 + aetherDensity * 0.20 + aetherBeatPulse * 0.20,
         0.0, 1.0
     );
 
+    float phraseSurge = smoothstep(0.56, 0.94, aetherSceneMorph)
+                      * (0.35 + 0.65 * (0.5 + 0.5 * sin(phase * 0.032 + aetherWorldTurn)));
+    float beatSurge = clamp(aetherBeatPulse * 0.90 + aetherOnset * 0.72 + phiEvent * 0.28, 0.0, 1.6);
+    float gravityPull = 0.028 * phraseSurge + 0.020 * beatSurge;
+    float edgeFeeling = clamp(0.55 + phraseSurge * 0.25 + beatSurge * 0.18 + bass * 0.12, 0.0, 1.2);
+
     float fly = phase * 0.029 + aetherWorldTurn * 0.060;
     float approach = 0.5 + 0.5 * sin(fly * 0.73 - 0.6 + aetherSceneMorph * 0.8);
+    float perspectiveDrift = 0.5 + 0.5 * sin(fly * 0.57 + 1.4);
     vec2 cameraLoop = vec2(
-        0.095 * sin(fly) + 0.030 * sin(phase * 0.090 + aetherSceneMorph * 1.6),
-        0.070 * sin(fly * 0.68 + 0.95)
+        0.090 * sin(fly) + 0.040 * sin(phase * 0.090 + aetherSceneMorph * 1.6),
+        0.058 * sin(fly * 0.68 + 0.95) + 0.032 * phraseSurge * sin(phase * 0.19)
     );
     vec2 cameraKick = vec2(
-        0.010 * sin(phase * 0.88 + phiEvent * 4.0),
-        0.008 * cos(phase * 0.74 + phiImpulse * 6.0)
-    ) * (0.18 + aetherOnset * 0.75 + aetherBeatPulse * 0.40);
-    float cameraRoll = 0.070 * sin(fly * 0.59)
-                     + 0.024 * sin(phase * 0.10 + aetherSceneMorph * 1.4);
-    float cameraZoom = mix(0.84, 1.18, approach);
-    float inclination = mix(
-        0.18, 0.94,
-        0.5 + 0.5 * sin(fly * 0.84 + 0.55 + aetherSceneMorph * 0.95)
-    );
-    float foreshorten = mix(0.20, 0.96, inclination);
+        0.020 * sin(phase * 0.88 + phiEvent * 4.0),
+        0.018 * cos(phase * 0.74 + phiImpulse * 6.0)
+    ) * (0.20 + aetherOnset * 0.85 + aetherBeatPulse * 0.48);
+    float cameraRoll = 0.082 * sin(fly * 0.59)
+                     + 0.028 * sin(phase * 0.10 + aetherSceneMorph * 1.4)
+                     + 0.022 * phraseSurge * sin(phase * 0.06);
+    float edgeZoom = mix(1.10, 1.48, edgeFeeling);
+    float cameraZoom = (mix(0.92, 1.34, approach) + edgeZoom * 0.16) - gravityPull * 0.20;
+    float inclination = mix(0.16, 0.995, 0.5 + 0.5 * sin(fly * 0.84 + 0.55 + aetherSceneMorph * 0.95));
+    float foreshorten = mix(0.11, 0.995, inclination);
 
     vec2 screen = uv - (vec2(0.5) + cameraLoop + cameraKick);
     screen.x *= resolution.x / resolution.y;
     screen = rot(cameraRoll) * screen;
     screen /= cameraZoom;
+    screen.x *= mix(0.89, 1.12, perspectiveDrift);
+    screen.y += gravityPull * (0.10 + 0.18 * (0.5 + 0.5 * cos(aetherBeatPhase * TAU)));
 
-    float shadowRadius = 0.148 + bass * 0.038 + phiPulse * 0.017;
-    float r = max(length(screen), 0.0005);
-    vec2 radialDir = screen / r;
-    float a = atan(screen.y, screen.x);
+    // Strong off-axis placement keeps the object cinematic instead of symbolic.
+    vec2 horizonCenter = vec2(
+        0.16 + 0.050 * sin(fly * 0.40 + 0.4),
+       -0.016 + 0.026 * cos(fly * 0.58 - 0.2)
+    );
+    vec2 p = screen - horizonCenter;
+    p = rot(0.065 * sin(fly * 0.32) + 0.035 * phraseSurge) * p;
 
-    float starBendMask = smoothstep(shadowRadius * 0.76, shadowRadius * 3.10, r);
-    float lensWarp = (0.054 + 0.024 * musicDrive) / (r * r + 0.024);
+    float antiEyeBias = clamp(0.74 + 0.40 * cos(atan(p.y, p.x) - 0.08) + 0.18 * sin(p.x * 2.8 - phase * 0.15), 0.0, 1.6);
+
+    float shadowRadius = 0.170 + bass * 0.046 + phiPulse * 0.020 + phraseSurge * 0.010;
+    float r = max(length(p), 0.0005);
+    vec2 radialDir = p / r;
+    float a = atan(p.y, p.x);
+
+    float starBendMask = smoothstep(shadowRadius * 0.70, shadowRadius * 3.40, r);
+    float lensWarp = (0.074 + 0.045 * musicDrive + 0.024 * phraseSurge) / (r * r + 0.018);
     lensWarp *= starBendMask;
-    vec2 lensedBackground = screen + radialDir * lensWarp;
+    vec2 lensedBackground = p + radialDir * lensWarp;
 
     float starsFine = starLayer(lensedBackground + vec2(phase * 0.0015, 0.0), 88.0, 0.987);
     float starsCoarse = starLayer(lensedBackground * 0.60 - vec2(0.0, phase * 0.0011), 52.0, 0.981);
-    float starsHalo = ring(r, shadowRadius * 1.64, 0.18) * (starsFine * 0.60 + starsCoarse * 0.40);
-    float stars = (starsFine * 0.70 + starsCoarse * 0.32 + starsHalo * 0.55)
+    float starsHalo = ring(r, shadowRadius * 1.56, 0.20) * (starsFine * 0.60 + starsCoarse * 0.40);
+    float stars = (starsFine * 0.66 + starsCoarse * 0.30 + starsHalo * 0.60)
                 * (0.72 + 0.28 * sin(phase * 0.22 + hash2(floor(lensedBackground * 64.0)) * TAU));
 
-    vec2 discP = screen;
+    vec2 discP = p;
     discP.y /= foreshorten;
-    discP.x *= clamp(1.0 + discP.y * 0.12 * cos(fly), 0.80, 1.22);
+    discP.x *= clamp(1.0 + discP.y * 0.15 * cos(fly), 0.74, 1.30);
 
     float discR = length(discP);
     float discA = atan(discP.y, discP.x);
 
-    float discInner = shadowRadius * 1.58;
-    float discOuter = 1.06;
-    float directDisc = annulus(discR, discInner, discOuter, 0.028);
+    float discInner = shadowRadius * 1.46;
+    float discOuter = 1.38;
+    float directDisc = annulus(discR, discInner, discOuter, 0.040);
 
-    float discHalfThickness = 0.013 + 0.038 * foreshorten + bass * 0.005;
-    float verticalProfile = exp(-abs(screen.y) / discHalfThickness);
-    float discPlane = mix(0.24, 1.0, verticalProfile);
-
-    // Tangential belt suppresses the old radial-curtain look.
-    float tangentialBelt = exp(-abs(screen.y) / (discHalfThickness * 1.85));
+    float discHalfThickness = 0.022 + 0.060 * foreshorten + bass * 0.010 + phraseSurge * 0.010;
+    float discPlane = mix(0.14, 1.0, exp(-abs(p.y) / discHalfThickness));
+    float tangentialBelt = exp(-abs(p.y) / (discHalfThickness * 2.80));
     directDisc *= discPlane * tangentialBelt;
 
-    float centerOcclusion = 1.0 - smoothstep(shadowRadius - 0.010, shadowRadius + 0.026, abs(discP.x));
-    directDisc *= max(0.0, 1.0 - centerOcclusion * smoothstep(shadowRadius * 0.82, shadowRadius * 1.06, discR));
+    float centerOcclusion = 1.0 - smoothstep(shadowRadius - 0.014, shadowRadius + 0.040, abs(discP.x));
+    directDisc *= max(0.0, 1.0 - centerOcclusion * smoothstep(shadowRadius * 0.80, shadowRadius * 1.05, discR));
 
-    float rotation = phase * (0.48 + phiVelocity * 0.18) + aetherWorldTurn * 0.24;
-    vec2 plasmaCoord = vec2(
-        discA * 2.8 + rotation,
-        log(max(discR, discInner)) * 6.8 - phase * 0.16
-    );
+    float rotation = phase * (0.58 + phiVelocity * 0.22) + aetherWorldTurn * 0.32;
+    vec2 plasmaCoord = vec2(discA * 4.0 + rotation, log(max(discR, discInner)) * 6.6 - phase * 0.22);
 
-    float turbulence = fbm(plasmaCoord * vec2(1.0, 1.10));
-    float turbulenceFine = fbm(plasmaCoord * vec2(2.8, 2.4) + 9.4);
-    float tangentialFlow = 0.5 + 0.5 * sin(
-        discA * 22.0
-        - phase * (1.45 + musicDrive * 0.80)
-        + turbulence * 4.0
-        + log(max(discR, discInner)) * 4.0
-    );
-    float shearFlow = 0.5 + 0.5 * sin(
-        discA * 36.0
-        - phase * (2.30 + musicDrive * 1.10)
-        + turbulenceFine * 5.0
-    );
-    float radialBands = 0.5 + 0.5 * sin(
-        log(max(discR, discInner)) * 18.0
-        - phase * 0.50
-        + turbulence * 2.0
-    );
+    float turbulence = fbm(plasmaCoord * vec2(1.0, 1.18));
+    float turbulenceFine = fbm(plasmaCoord * vec2(3.1, 3.0) + 9.4);
+    float magmaFlow = fbm(plasmaCoord * vec2(0.54, 0.38) - vec2(phase * 0.024, 0.0));
+    float tangentialFlow = 0.5 + 0.5 * sin(discA * 34.0 - phase * (2.05 + musicDrive * 1.14) + turbulence * 5.2 + log(max(discR, discInner)) * 5.4);
+    float shearFlow = 0.5 + 0.5 * sin(discA * 52.0 - phase * (3.30 + musicDrive * 1.30) + turbulenceFine * 6.4);
+    float radialBands = 0.5 + 0.5 * sin(log(max(discR, discInner)) * 21.5 - phase * 0.68 + turbulence * 2.5);
+    float stressLines = pow(max(0.0, sin(discA * 72.0 - phase * 4.0 + turbulenceFine * 8.8)), 14.0) * (0.24 + 1.02 * beatSurge);
+    float streamShear = pow(max(0.0, sin(discA * 18.0 - phase * 1.56 + turbulence * 3.2)), 4.8);
+    float wrapFlow = pow(max(0.0, sin(discA * 8.6 - phase * 0.98 + turbulence * 1.9)), 3.2);
+    float discLaneCoherence = smoothstep(0.40, 0.86, 0.58 * tangentialFlow + 0.42 * shearFlow);
+    float discLaneContrast = 0.5 + 0.5 * sin(discA * 12.0 - phase * 1.10 + turbulence * 2.2);
 
     float discCore = directDisc;
-    float plasmaBands = mix(tangentialFlow, radialBands, 0.18);
-    float fineFilaments = smoothstep(0.56, 0.90, 0.72 * shearFlow + 0.28 * turbulenceFine);
-    float hotKnots = pow(max(0.0, sin(discA * 18.0 - rotation * 2.1 + turbulenceFine * 4.0)), 9.0);
-
+    float plasmaBands = mix(tangentialFlow, radialBands, 0.10);
+    float fineFilaments = smoothstep(0.50, 0.93, 0.66 * shearFlow + 0.34 * turbulenceFine);
+    float hotKnots = pow(max(0.0, sin(discA * 18.0 - rotation * 2.2 + turbulenceFine * 4.4)), 10.0);
     float radialHeat = 1.0 - smoothstep(discInner, discOuter, discR);
-    radialHeat = pow(clamp(radialHeat, 0.0, 1.0), 0.70);
+    radialHeat = pow(clamp(radialHeat, 0.0, 1.0), 0.62);
 
-    float observerSide = 0.5 + 0.5 * cos(discA - 0.26 - cameraRoll);
-    float asymmetry = pow(observerSide, 1.55);
-    float doppler = mix(0.42, 2.12, asymmetry);
-
+    float observerSide = 0.5 + 0.5 * cos(discA - 0.35 - cameraRoll);
+    float asymmetry = pow(observerSide, 1.82);
+    float doppler = mix(0.22, 3.05, asymmetry);
     float heat = discCore
-               * (0.36 + 0.48 * plasmaBands + 0.24 * fineFilaments + 0.20 * hotKnots)
-               * (0.42 + 1.06 * radialHeat)
+               * (0.22 + 0.34 * plasmaBands + 0.24 * fineFilaments + 0.22 * hotKnots + 0.18 * magmaFlow + 0.18 * streamShear + 0.18 * wrapFlow + 0.16 * discLaneCoherence + 0.12 * discLaneContrast)
+               * (0.42 + 1.42 * radialHeat)
                * doppler;
 
-    float photonRadius = shadowRadius * 1.50;
+    float photonRadius = shadowRadius * 1.42;
+    float upperWarp = 0.012 * sin(a * 2.8 + phase * 0.05) + 0.013 * fbm(vec2(a * 2.7, phase * 0.05 + r * 7.2));
+    float lowerWarp = 0.010 * sin(a * 3.8 - phase * 0.04) + 0.011 * fbm(vec2(a * 2.3 + 5.0, phase * 0.04 + r * 6.2));
 
-    // Bent far-side disc images should feel like extensions of the disc, not circular rings.
-    float upperWarp = 0.010 * sin(a * 2.8 + phase * 0.05)
-                    + 0.010 * fbm(vec2(a * 2.6, phase * 0.05 + r * 7.0));
-    float lowerWarp = 0.008 * sin(a * 3.8 - phase * 0.04)
-                    + 0.008 * fbm(vec2(a * 2.2 + 5.0, phase * 0.04 + r * 6.0));
+    float topArcRadius = photonRadius + 0.070 + 0.120 * (1.0 - foreshorten) + upperWarp;
+    float bottomArcRadius = photonRadius + 0.038 + 0.074 * (1.0 - foreshorten) + lowerWarp;
 
-    float topArcRadius = photonRadius + 0.050 + 0.074 * (1.0 - foreshorten) + upperWarp;
-    float bottomArcRadius = photonRadius + 0.024 + 0.036 * (1.0 - foreshorten) + lowerWarp;
+    float topAngular = smoothstep(-0.04, 0.38, sin(a)) * (0.18 + 0.82 * smoothstep(-0.90, 0.66, cos(a)));
+    float bottomAngular = smoothstep(-0.12, 0.30, -sin(a)) * (0.08 + 0.92 * smoothstep(-0.995, 0.34, cos(a)));
 
-    float topAngular = smoothstep(-0.16, 0.18, sin(a))
-                     * (0.36 + 0.64 * smoothstep(-0.98, 0.24, cos(a)));
-    float bottomAngular = smoothstep(-0.16, 0.18, -sin(a))
-                        * (0.24 + 0.76 * smoothstep(-0.99, 0.04, cos(a)));
+    float upperLens = ring(r, topArcRadius, 0.021 + 0.018 * (1.0 - foreshorten)) * topAngular;
+    float upperInner = ring(r, photonRadius + 0.020 + upperWarp * 0.35, 0.0092) * smoothstep(-0.02, 0.92, sin(a));
+    float lowerLens = ring(r, bottomArcRadius, 0.018) * bottomAngular * 0.78;
 
-    float upperLens = ring(r, topArcRadius, 0.015 + 0.010 * (1.0 - foreshorten)) * topAngular;
-    float upperInner = ring(r, photonRadius + 0.014 + upperWarp * 0.35, 0.007)
-                     * smoothstep(-0.10, 0.76, sin(a));
-    float lowerLens = ring(r, bottomArcRadius, 0.013) * bottomAngular * 0.60;
+    float lensFlow = 0.58 + 0.42 * sin(a * 24.0 - phase * (1.92 + musicDrive * 0.92) + fbm(vec2(a * 3.8, r * 18.0 + phase * 0.12)) * 4.4);
+    float bentContinuity = 0.52 + 0.48 * tangentialFlow;
+    upperLens *= (0.70 + 0.62 * lensFlow) * bentContinuity;
+    upperInner *= (0.74 + 0.52 * lensFlow) * bentContinuity;
+    lowerLens *= (0.68 + 0.50 * (1.0 - lensFlow)) * bentContinuity;
 
-    float lensFlow = 0.58 + 0.42 * sin(
-        a * 21.0
-        - phase * (1.55 + musicDrive * 0.70)
-        + fbm(vec2(a * 3.4, r * 18.0 + phase * 0.12)) * 3.5
-    );
-    float bentContinuity = 0.55 + 0.45 * tangentialFlow;
-    upperLens *= (0.56 + 0.50 * lensFlow) * bentContinuity;
-    upperInner *= (0.62 + 0.44 * lensFlow) * bentContinuity;
-    lowerLens *= (0.54 + 0.42 * (1.0 - lensFlow)) * bentContinuity;
+    float heroBandTop = ring(r, photonRadius + 0.096 + upperWarp * 0.9, 0.036 + 0.024 * (1.0 - foreshorten))
+                      * smoothstep(0.06, 0.998, sin(a))
+                      * smoothstep(-0.84, 0.70, cos(a));
+    float heroBandBottom = ring(r, photonRadius + 0.050 + lowerWarp * 0.8, 0.027)
+                         * smoothstep(0.00, 0.998, -sin(a))
+                         * smoothstep(-0.995, 0.36, cos(a));
+    float heroFlow = 0.52 + 0.48 * sin(a * 26.0 - phase * 2.02 + turbulenceFine * 5.2);
+    heroBandTop *= (0.78 + 0.70 * heroFlow) * bentContinuity;
+    heroBandBottom *= (0.68 + 0.58 * (1.0 - heroFlow)) * bentContinuity;
 
-    // Softer, broken photon ring instead of a perfect UI outline.
-    float ringBreak = 0.55 + 0.45 * fbm(vec2(a * 5.2, phase * 0.04 + r * 9.0));
-    float photonRing = ring(r, photonRadius + upperWarp * 0.12, 0.0035 + 0.0018 * treble)
-                     * ringBreak * (0.30 + 0.70 * lensFlow);
+    float ringBreak = 0.24 + 0.76 * fbm(vec2(a * 5.5, phase * 0.05 + r * 10.0));
+    float ringSide = smoothstep(-0.06, 0.92, cos(a - 0.05));
+    float photonRing = ring(r, photonRadius + upperWarp * 0.12, 0.0032 + 0.0026 * treble) * ringBreak * ringSide * (0.14 + 0.86 * lensFlow);
+
+    // Tidal shear sheets replace the eye-like spoke reading.
+    float tidalShear = exp(-abs(p.y - (0.14 * sin(p.x * 1.9 + phase * 0.38) - 0.01)) * (9.4 + phraseSurge * 2.6));
+    float tidalShearB = exp(-abs(p.y - (-0.19 * sin(p.x * 1.55 - phase * 0.36) + 0.14)) * (6.8 + beatSurge * 2.1));
+    float tidalShearC = exp(-abs(p.y - (0.28 * sin(p.x * 0.92 + phase * 0.20) + 0.34)) * (4.4 + edgeFeeling * 1.1));
+    float leftSurge = exp(-abs(p.y - (-0.12 * sin((p.x + 0.95) * 2.4 - phase * 0.42) - 0.02)) * (6.0 + aetherOnset * 3.0))
+                    * smoothstep(0.55, -0.82, p.x);
+    float leftWake = exp(-abs(p.y - (0.08 * sin((p.x + 0.60) * 3.1 + phase * 0.56) + 0.10)) * (7.0 + treble * 2.4))
+                   * smoothstep(0.42, -0.90, p.x);
+    float streamA = tidalShear;
+    float streamB = tidalShearB;
+    float streamC = tidalShearC;
+    float energyStream = max(streamA * 1.00, max(streamB * 0.92, streamC * 0.74));
+    float streamAsymmetry = 0.34 + 0.66 * smoothstep(-0.04, 0.96, p.x + 0.26);
+    energyStream *= streamAsymmetry;
+    energyStream += leftSurge * 0.52 + leftWake * 0.42;
+
+    // Add layered foreground plasma sheets for depth.
+    float foregroundSheet = exp(-abs(screen.y - (0.06 * sin(screen.x * 2.2 - phase * 0.25) - 0.22)) * 6.5)
+                          * exp(-abs(screen.x + 0.20) * 0.75);
+    float foregroundSheetB = exp(-abs(screen.y - (-0.08 * sin(screen.x * 1.7 + phase * 0.18) + 0.28)) * 5.4)
+                           * exp(-abs(screen.x - 0.48) * 0.90);
+    float foregroundDustVeil = exp(-abs(screen.y - (0.04 * sin(screen.x * 2.9 + phase * 0.48) - 0.02)) * 4.2)
+                             * exp(-abs(screen.x + 0.05) * 0.45);
+    float foregroundDustStreak = exp(-abs(screen.y - (-0.16 * sin(screen.x * 1.2 - phase * 0.22) + 0.18)) * 3.8)
+                               * exp(-abs(screen.x - 0.62) * 0.82);
+
+    float shockRadius = shadowRadius + 0.12 + fract(aetherBeatPhase + phase * 0.024 + aetherOnset * 0.14) * 0.64;
+    float shock = ring(r, shockRadius, 0.010 + aetherOnset * 0.010) * (aetherBeatPulse * 0.24 + aetherOnset * 0.22 + phiEvent * 0.10);
 
     float shadowMask = smoothstep(shadowRadius + 0.010, shadowRadius - 0.008, r);
-    float innerGlow = exp(-max(r - shadowRadius, 0.0) * 10.5)
-                    * smoothstep(shadowRadius, shadowRadius + 0.11, r);
+    // Give the silhouette a subtle not-perfect edge.
+    float edgeFray = 0.010 * fbm(vec2(a * 6.4 + phase * 0.02, r * 24.0));
+    float shadowFray = smoothstep(shadowRadius + 0.014 + edgeFray, shadowRadius - 0.010 + edgeFray, r);
+    float lensEdgeComplexity = ring(r, shadowRadius + 0.020 + edgeFray * 0.45, 0.012)
+                             * (0.44 + 0.56 * sin(a * 10.0 + phase * 0.26 + turbulence * 1.8));
+    float innerGlow = exp(-max(r - shadowRadius, 0.0) * 10.2) * smoothstep(shadowRadius, shadowRadius + 0.15, r);
 
-    float shockRadius = shadowRadius + 0.08
-                      + fract(aetherBeatPhase + phase * 0.024 + aetherOnset * 0.12) * 0.54;
-    float shock = ring(r, shockRadius, 0.006 + aetherOnset * 0.008)
-                * (aetherBeatPulse * 0.22 + aetherOnset * 0.18 + phiEvent * 0.08);
-
-    float glimpseGate = smoothstep(
-        0.78, 0.98,
-        aetherSceneMorph * 0.58 + phiEvent * 0.22 + (0.5 + 0.5 * sin(phase * 0.07)) * 0.28
-    );
-    float glimpse = glimpseGate * shadowMask
-                  * exp(-abs(sin(a * 7.0 + phase * 0.18) - sin(r * 54.0 - aetherWorldTurn)) * 9.0);
+    float glimpseGate = smoothstep(0.76, 0.98, aetherSceneMorph * 0.60 + phiEvent * 0.24 + (0.5 + 0.5 * sin(phase * 0.07)) * 0.30);
+    float glimpse = glimpseGate * shadowMask * exp(-abs(sin(a * 8.0 + phase * 0.20) - sin(r * 58.0 - aetherWorldTurn)) * 8.2);
 
     vec3 dustColor = vec3(0.0);
     float dust = 0.0;
-    for (int i = 0; i < 18; ++i) {
+    float dustFront = 0.0;
+    for (int i = 0; i < 34; ++i) {
         float fi = float(i);
         float seed = fi * PHI;
-        float depth = mix(0.18, 1.0, hash1(seed + 13.0));
+        float depth = mix(0.08, 1.0, hash1(seed + 13.0));
         float lane = hash1(seed + 4.0);
-        float orbit = phase * (0.017 + lane * 0.026) / depth + TAU * hash1(seed + 7.0);
-        float rr = mix(photonRadius + 0.14, 1.22, fract(1.0 - phase * (0.018 + lane * 0.028) / depth + lane));
-        vec2 pos = vec2(cos(orbit), sin(orbit)) * rr;
-        pos.y *= 0.56 + 0.18 * sin(seed);
-        float spark = exp(-length(screen - pos) * mix(20.0, 44.0, depth));
-        dust += spark * mix(0.10, 0.030, depth);
-        dustColor += mix(vec3(0.88, 0.15, 0.016), vec3(1.00, 0.68, 0.11), lane) * spark;
+        float orbit = phase * (0.018 + lane * 0.032) / depth + TAU * hash1(seed + 7.0);
+        float rr = mix(photonRadius + 0.15, 1.52, fract(1.0 - phase * (0.018 + lane * 0.030) / depth + lane));
+        vec2 pos = horizonCenter + vec2(cos(orbit), sin(orbit)) * rr;
+        pos.y *= 0.56 + 0.26 * sin(seed);
+        vec2 delta = screen - pos;
+        float streak = exp(-(abs(delta.x) * mix(4.0, 10.0, depth) + abs(delta.y) * mix(14.0, 38.0, depth)));
+        float spark = exp(-length(delta) * mix(14.0, 42.0, depth));
+        dust += (spark + streak * 0.65) * mix(0.14, 0.032, depth);
+        if (depth < 0.34) {
+            dustFront += spark + streak * 0.5;
+        }
+        dustColor += mix(vec3(0.88, 0.15, 0.016), vec3(1.00, 0.72, 0.12), lane) * (spark + streak * 0.4);
     }
 
-    vec3 voidBlack = vec3(0.0010, 0.0005, 0.00025);
-    vec3 smoke = vec3(0.015, 0.0035, 0.0012);
-    vec3 ember = vec3(0.30, 0.032, 0.0030);
-    vec3 orange = vec3(0.98, 0.25, 0.018);
-    vec3 hot = vec3(1.00, 0.61, 0.10);
-    vec3 whiteHot = vec3(1.00, 0.95, 0.82);
+    vec3 voidBlack = vec3(0.0010, 0.0005, 0.0002);
+    vec3 smoke = vec3(0.014, 0.0032, 0.0010);
+    vec3 ember = vec3(0.34, 0.034, 0.0030);
+    vec3 orange = vec3(1.00, 0.28, 0.020);
+    vec3 hot = vec3(1.00, 0.66, 0.12);
+    vec3 whiteHot = vec3(1.00, 0.96, 0.86);
 
-    float backgroundHalo = exp(-abs(r - photonRadius * 1.34) * 4.0);
-    vec3 color = mix(voidBlack, smoke, 0.04 + backgroundHalo * 0.04);
-    color += vec3(0.66, 0.76, 0.90) * stars * (0.24 + 0.10 * treble);
+    float backgroundHalo = exp(-abs(r - photonRadius * 1.26) * 3.5);
+    vec3 color = mix(voidBlack, smoke, 0.034 + backgroundHalo * 0.024);
+    color += vec3(0.68, 0.78, 0.92) * stars * (0.24 + 0.12 * treble);
 
-    color += ember * discCore * (0.07 + 0.06 * bass);
-    color += orange * heat * (0.46 + energy * 0.14);
-    color += hot * heat * radialHeat * (0.20 + treble * 0.09 + aetherDensity * 0.08);
-    color += whiteHot * heat * hotKnots * (0.10 + aetherOnset * 0.16);
+    color += ember * discCore * (0.10 + 0.08 * bass);
+    color += orange * heat * (0.82 + energy * 0.26) * antiEyeBias;
+    color += hot * heat * radialHeat * (0.42 + treble * 0.16 + aetherDensity * 0.12) * antiEyeBias;
+    color += whiteHot * heat * hotKnots * (0.18 + aetherOnset * 0.24) * antiEyeBias;
 
-    color += orange * upperLens * (0.36 + bass * 0.08);
-    color += hot * upperLens * lensFlow * (0.13 + aetherDensity * 0.08);
-    color += whiteHot * upperInner * (0.18 + aetherBeatPulse * 0.14);
-    color += hot * lowerLens * (0.14 + bass * 0.06);
-    color += whiteHot * photonRing * (0.10 + treble * 0.05 + aetherOnset * 0.08);
+    color += hot * stressLines * discCore * (0.18 + 0.38 * beatSurge);
+    color += orange * phraseSurge * discCore * (0.14 + 0.20 * magmaFlow);
+    color += hot * wrapFlow * discCore * (0.12 + 0.20 * phraseSurge);
+    color += hot * discLaneCoherence * discCore * (0.10 + 0.16 * treble);
 
-    color += orange * innerGlow * (0.028 + energy * 0.018);
+    color += orange * upperLens * (0.48 + bass * 0.12) * antiEyeBias;
+    color += hot * upperLens * lensFlow * (0.24 + aetherDensity * 0.10) * antiEyeBias;
+    color += whiteHot * upperInner * (0.26 + aetherBeatPulse * 0.16) * antiEyeBias;
+    color += hot * lowerLens * (0.26 + bass * 0.10);
+    color += whiteHot * lensEdgeComplexity * (0.05 + beatSurge * 0.05);
+
+    color += orange * heroBandTop * (0.96 + bass * 0.22 + phraseSurge * 0.40) * antiEyeBias;
+    color += hot * heroBandTop * (0.46 + heroFlow * 0.22) * antiEyeBias;
+    color += hot * heroBandBottom * (0.40 + bass * 0.15 + beatSurge * 0.22);
+    color += whiteHot * heroBandTop * (0.20 + aetherOnset * 0.18) * antiEyeBias;
+    color += whiteHot * photonRing * (0.04 + treble * 0.04 + aetherOnset * 0.06);
+
+    color += mix(orange, hot, 0.55) * energyStream * (0.34 + beatSurge * 0.38 + phraseSurge * 0.24);
+    color += whiteHot * energyStream * stressLines * 0.08;
+    color += hot * leftSurge * (0.18 + 0.22 * aetherOnset);
+    color += orange * leftWake * (0.12 + 0.18 * treble);
+
+    color += orange * foregroundSheet * (0.20 + 0.26 * phraseSurge + 0.18 * beatSurge);
+    color += hot * foregroundSheetB * (0.16 + 0.20 * aetherOnset);
+    color += hot * foregroundDustVeil * (0.08 + 0.14 * beatSurge);
+    color += whiteHot * foregroundDustStreak * (0.04 + 0.10 * treble);
+    color += whiteHot * dustFront * 0.08;
+
+    color += orange * innerGlow * (0.048 + energy * 0.030);
     color += hot * shock;
-    color += whiteHot * glimpse * (0.028 + phiEvent * 0.050);
+    color += whiteHot * glimpse * (0.040 + phiEvent * 0.060);
+    color += dustColor * (0.048 + treble * 0.040);
+    color += hot * dust * (0.026 + aetherOnset * 0.036);
 
-    color += dustColor * (0.035 + treble * 0.030);
-    color += hot * dust * (0.018 + aetherOnset * 0.028);
+    color *= 1.0 - shadowFray * 0.992;
 
-    color *= 1.0 - shadowMask * 0.994;
-
-    float vignette = smoothstep(1.66, 0.18, length(screen));
+    float vignette = smoothstep(1.76, 0.16, length(screen));
     color *= vignette;
 
-    float exposure = 0.94 + musicDrive * 0.15 + aetherOnset * 0.08;
+    float exposure = 1.22 + musicDrive * 0.28 + phraseSurge * 0.16 + aetherOnset * 0.14;
     color = vec3(1.0) - exp(-color * exposure);
-    color = pow(max(color, vec3(0.0)), vec3(0.97));
+    color = pow(max(color, vec3(0.0)), vec3(0.93));
 
     float grain = hash2(gl_FragCoord.xy + vec2(floor(phase * 8.0), 23.0)) - 0.5;
-    color += grain * (0.0040 + treble * 0.0014);
+    color += grain * (0.0046 + treble * 0.0016);
 
     frag = vec4(max(color, vec3(0.0)), 1.0);
 }
