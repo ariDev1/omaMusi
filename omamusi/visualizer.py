@@ -1,0 +1,334 @@
+"""Audio-reactive warp tunnel, spectrum, waveform, and spectrogram."""
+
+import math
+import sys
+
+import numpy as np
+from PySide6.QtCore import QElapsedTimer, QPointF, QRectF, Qt, QTimer
+from PySide6.QtGui import (
+    QColor, QImage, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap, QRadialGradient,
+)
+from PySide6.QtWidgets import QWidget
+
+from .audio import SAMPLE_RATE
+from .theme import DEFAULTS
+
+
+class Visualizer(QWidget):
+    PARTICLE_COUNT = 384  # Conservative fallback; GPU draws 4,096 streaks.
+    modes = ("Warp", "Spectrum", "Waveform", "Spectrogram")
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.colors = dict(DEFAULTS)
+        self.active = False
+        self.mode = 0
+        self.sample_rate = SAMPLE_RATE
+        self.buffer = np.zeros(4096, dtype=np.float32)
+        self.fft_window = np.hanning(4096)
+        self.energy = 0.0
+        self.bass = 0.0
+        self.treble = 0.0
+        self.previous_bass = 0.0
+        self.beat_cooldown = 0.0
+        self.bursts = []
+        self.time = 0.0
+        self.sprites = []
+        self.sprite_palette = None
+        self.bands = np.zeros(96)
+        self.peaks = np.zeros(96)
+        self.history = np.zeros((96, 360, 3), dtype=np.uint8)
+        self.history_elapsed = 0.0
+        self.history_revision = 0
+        self.analysis_rate = None
+        # Fixed star seeds preserve the tunnel when cycling away and back.
+        rng = np.random.default_rng(21)
+        angles = rng.uniform(0, math.tau, self.PARTICLE_COUNT)
+        radii = rng.uniform(1.6, 8.6, self.PARTICLE_COUNT)
+        self.particle_vertices = np.column_stack((np.cos(angles)*radii, np.sin(angles)*radii,
+                                                 rng.uniform(0, 28, self.PARTICLE_COUNT)))
+        self.particle_vertices.flags.writeable = False
+        self.radius = radii
+        self.tint = rng.integers(0, 4, self.PARTICLE_COUNT)
+        self._gpu = None
+        self.renderer = "cpu"
+        self.renderer_detail = ""
+        try:
+            from .gpu import GpuCanvas, hardware_available
+            available, detail = hardware_available()
+            self.renderer_detail = detail
+            if available:
+                self._gpu = GpuCanvas(self)
+                self._gpu.failed.connect(self.use_cpu, Qt.ConnectionType.QueuedConnection)
+                self.renderer = "gpu"
+        except Exception as error:
+            self.renderer_detail = str(error)
+        if self.renderer == "cpu" and self.renderer_detail != "headless platform":
+            print(f"omaMusi: CPU visual fallback ({self.renderer_detail})", file=sys.stderr)
+        self.clock = QElapsedTimer()
+        self.clock.start()
+        self.timer = QTimer(self)
+        self.timer.setTimerType(Qt.TimerType.PreciseTimer)
+        self.timer.setInterval(16 if self._gpu else 33)
+        self.timer.timeout.connect(self.tick)
+        self.timer.start()
+
+    def feed(self, samples):
+        n = min(len(samples), len(self.buffer))
+        if n:
+            self.buffer = np.roll(self.buffer, -n)
+            self.buffer[-n:] = samples[-n:]
+
+    def reset(self):
+        self.buffer.fill(0)
+        self.energy = self.bass = self.treble = self.previous_bass = 0
+        self.bursts.clear()
+        self.bands.fill(0)
+        self.peaks.fill(0)
+        self.history.fill(0)
+        self.history_elapsed = 0
+        self.history_revision += 1
+
+    def cycle(self, step=1):
+        self.mode = (self.mode + step) % len(self.modes)
+        if self._gpu:
+            self._gpu.update()
+        else:
+            self.update()
+        return self.modes[self.mode]
+
+    def tick(self):
+        dt = min(0.05, max(0.001, self.clock.nsecsElapsed() / 1e9))
+        self.clock.restart()
+        if self.analysis_rate != self.sample_rate:
+            self.analysis_rate = self.sample_rate
+            self.frequencies = np.fft.rfftfreq(len(self.buffer), 1 / self.sample_rate)
+            edges = np.geomspace(30, min(18000, self.sample_rate / 2), len(self.bands) + 1)
+            self.band_bins = [np.flatnonzero((self.frequencies >= low) & (self.frequencies < high))
+                              for low, high in zip(edges[:-1], edges[1:])]
+            self.band_centers = np.sqrt(edges[:-1] * edges[1:])
+        levels = np.zeros_like(self.bands)
+        if self.active:
+            rms = float(np.sqrt(np.mean(self.buffer ** 2)))
+            spectrum = np.abs(np.fft.rfft(self.buffer * self.fft_window)) / 1024
+            frequencies = self.frequencies
+            bass = float(np.sqrt(np.mean(spectrum[(frequencies >= 30) & (frequencies < 220)] ** 2)))
+            treble = float(np.mean(spectrum[(frequencies > 2500) & (frequencies < 14000)]))
+            target_energy = min(1, rms * 5)
+            target_bass = min(1, bass * 8)
+            target_treble = min(1, treble * 70)
+            magnitudes = np.array([spectrum[bins].max() if len(bins)
+                                   else np.interp(center, frequencies, spectrum)
+                                   for bins, center in zip(self.band_bins, self.band_centers)])
+            levels = np.clip((20 * np.log10(magnitudes + 1e-7) + 66) / 66, 0, 1)
+            self.beat_cooldown -= dt
+            if target_bass > self.previous_bass + 0.12 and self.beat_cooldown <= 0:
+                self.bursts.append([0.0, target_bass])
+                self.bursts = self.bursts[-5:]
+                self.beat_cooldown = 0.24
+            self.previous_bass += (target_bass - self.previous_bass) * min(1, dt * 5)
+        else:
+            target_energy = target_bass = target_treble = 0
+        # Fast attack, softer decay: transients should feel immediate.
+        smooth = 1 - math.exp(-dt * (22 if target_energy > self.energy else 8))
+        self.energy += (target_energy - self.energy) * smooth
+        self.bass += (target_bass - self.bass) * smooth
+        self.treble += (target_treble - self.treble) * smooth
+        self.time += dt * (0.16 + (0.50 if self.active else 0) + self.energy * 2.6 + self.bass * 0.90 + self.treble * 0.40)
+        self.bursts = [[age + dt, strength] for age, strength in self.bursts if age + dt < 1.8]
+        self.bands = np.maximum(levels, self.bands * math.exp(-dt * 11))
+        self.peaks = np.maximum(self.bands, self.peaks - dt * 0.4)
+        # Keep history warm so switching to the spectrogram isn't a blank view.
+        if self.active:
+            self.history_elapsed += dt
+            if self.history_elapsed >= 1 / 30:
+                self.history_elapsed %= 1 / 30
+                self.history = np.roll(self.history, -1, axis=1)
+                v = self.bands[::-1, None]
+                low = np.array(QColor(self.colors["cyan"]).getRgb()[:3])
+                high = np.array(QColor(self.colors["accent"]).getRgb()[:3])
+                self.history[:, -1] = ((low * (1 - v) + high * v) * v).astype(np.uint8)
+                self.history_revision += 1
+        if self._gpu:
+            self._gpu.update()
+        else:
+            self.update()
+
+    def use_cpu(self, reason):
+        if self._gpu:
+            self._gpu.hide()
+            self._gpu.cleanup()
+            self._gpu.deleteLater()
+            self._gpu = None
+        self.renderer = "cpu"
+        self.renderer_detail = reason
+        self.timer.setInterval(33)
+        print(f"omaMusi: CPU visual fallback ({reason})", file=sys.stderr)
+        self.update()
+
+    def resizeEvent(self, event):
+        if self._gpu:
+            self._gpu.setGeometry(self.rect())
+        super().resizeEvent(event)
+
+    def waveform(self):
+        data = self.buffer[-2048:]
+        crossings = np.flatnonzero((data[:-1] <= 0) & (data[1:] > 0))
+        start = int(crossings[0]) if len(crossings) else 0
+        data = data[start:start + 1024]
+        gain = min(4, 0.45 / (float(np.sqrt(np.mean(data ** 2))) + 0.04))
+        return np.interp(np.linspace(0, len(data)-1, 1024), np.arange(len(data)), data*gain).astype(np.float32)
+
+    def ensure_sprites(self):
+        palette = tuple(self.colors.get(key, "#ffffff") for key in ("accent", "cyan", "green", "magenta"))
+        if self.sprite_palette == palette:
+            return
+        self.sprite_palette = palette
+        self.sprites = []
+        for value in palette:
+            image = QPixmap(64, 64)
+            image.fill(Qt.GlobalColor.transparent)
+            painter = QPainter(image)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            gradient = QRadialGradient(32, 32, 31)
+            tint = QColor(value)
+            for stop, alpha in ((0, 245), (0.08, 230), (0.22, 100), (0.52, 23), (1, 0)):
+                color = QColor(tint)
+                color.setAlpha(alpha)
+                gradient.setColorAt(stop, color)
+            painter.fillRect(image.rect(), gradient)
+            painter.setPen(QPen(QColor(value), 0.65))
+            painter.drawLine(QPointF(32, 23), QPointF(32, 41))
+            painter.drawLine(QPointF(23, 32), QPointF(41, 32))
+            painter.end()
+            self.sprites.append(image)
+
+    def paintEvent(self, event):
+        if self._gpu:
+            return
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        w, h = self.width(), self.height()
+        p.fillRect(self.rect(), QColor(self.colors["background"]))
+        if self.mode == 0:
+            self.ensure_sprites()
+            self.paint_warp(p, w, h)
+        elif self.mode == 1:
+            self.paint_spectrum(p, w, h)
+        elif self.mode == 2:
+            self.paint_waveform(p, w, h)
+        else:
+            self.paint_spectrogram(p, w, h)
+
+    def color(self, key, alpha=255):
+        color = QColor(self.colors[key])
+        color.setAlpha(alpha)
+        return color
+
+    def paint_spectrum(self, p, w, h):
+        baseline = h * 0.76
+        step = w / len(self.bands)
+        gradient = QLinearGradient(0, baseline, 0, h * 0.2)
+        gradient.setColorAt(0, self.color("cyan", 80))
+        gradient.setColorAt(0.5, self.color("accent", 190))
+        gradient.setColorAt(1, self.color("bright_foreground", 210))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(gradient)
+        for i, level in enumerate(self.bands):
+            height = max(2, float(level) * h * 0.52)
+            p.drawRoundedRect(QRectF(i * step + 2, baseline - height,
+                                     max(2, step - 4), height), 2, 2)
+        p.setPen(QPen(self.color("accent", 185), 1.5))
+        for i, peak in enumerate(self.peaks):
+            y = baseline - float(peak) * h * 0.52 - 3
+            p.drawLine(QPointF(i * step + 2, y), QPointF((i + 1) * step - 2, y))
+
+    def paint_waveform(self, p, w, h):
+        data = self.waveform()
+        stride = max(1, len(data) // max(1, w))
+        data = data[::stride]
+        path = QPainterPath()
+        for i, value in enumerate(data):
+            x = i * w / max(1, len(data) - 1)
+            y = h * 0.47 - float(value) * h * 0.28
+            if i:
+                path.lineTo(x, y)
+            else:
+                path.moveTo(x, y)
+        for width, alpha in ((16, 14), (7, 45), (1.8, 235)):
+            p.setPen(QPen(self.color("accent", alpha), width))
+            p.drawPath(path)
+
+    def paint_spectrogram(self, p, w, h):
+        pixels = np.ascontiguousarray(self.history)
+        image = QImage(pixels.data, 360, 96, 360 * 3, QImage.Format.Format_RGB888)
+        p.setOpacity(0.85)
+        p.drawImage(QRectF(0, 0, w, h), image)
+        p.setOpacity(1)
+
+    def paint_warp(self, p, w, h):
+        t = self.time
+        flight_amp = 0.7 + self.energy*0.9
+        fx = (math.sin(t*0.45)*0.16 + math.sin(t*1.10+1.7)*0.07) * flight_amp
+        fy = (math.cos(t*0.33)*0.13 + math.sin(t*0.80+0.6)*0.05) * flight_amp
+        center = QPointF(w * (0.57 + fx), h * (0.47 + fy))
+        curve_x = math.sin(t*0.65)*h*0.22*(0.5+self.energy*1.0)
+        curve_y = math.cos(t*0.52)*h*0.22*(0.5+self.energy*1.0)
+        bank = math.sin(t*0.31)*0.65 + self.bass*0.18 + self.energy*0.10
+        zoom = 1.0 + 0.12*math.sin(t*0.9) + self.energy*0.15 + self.bass*0.08
+        scale = h * 0.72 * zoom
+        glow = QRadialGradient(center, h * 0.65)
+        tint = QColor(self.colors["accent"])
+        tint.setAlpha(int(16 + self.energy * 22))
+        glow.setColorAt(0, tint)
+        tint.setAlpha(0)
+        glow.setColorAt(1, tint)
+        p.fillRect(self.rect(), glow)
+
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        for i in range(18):
+            z = (i*28/18-self.time*8) % 28 + 0.7
+            radius = scale*1.6/z
+            p.setPen(QPen(self.color("cyan" if i % 2 else "accent", int(12+self.energy*18)), 1.2))
+            p.drawEllipse(center, radius, radius)
+        wave = self.waveform()
+        angle = self.time*0.12 + bank
+        ca, sa = math.cos(angle), math.sin(angle)
+        seeds = self.particle_vertices
+        x = seeds[:, 0]*ca-seeds[:, 1]*sa
+        y = seeds[:, 0]*sa+seeds[:, 1]*ca
+        for i in range(self.PARTICLE_COUNT):
+            band = float(self.bands[i % 96])
+            wv = float(wave[(i*7) % 1024])
+            # Audio waves bend each stream; louder bands run faster and wider.
+            # Dive surges stretch the whole field with the music.
+            surge = 1.0 + 0.35*math.sin(self.time*0.9) + self.energy*0.6
+            perp = wv*0.45*scale/max(1.0, seeds[i, 2])
+            speed = (8.0 + band*10.0 + self.energy*3.5 + self.bass*2.0) * surge
+            z = (seeds[i, 2]-self.time*speed) % 28 + 0.7
+            tail_z = z+0.7+self.energy*2.1+self.bass*0.8+band*1.6
+            bend_head = 1.0-z/28.0
+            bend_tail = 1.0-tail_z/28.0
+            head = QPointF(center.x()+(x[i]+perp)*scale/z+curve_x*bend_head,
+                           center.y()-(y[i]+perp*0.6)*scale/z+curve_y*bend_head)
+            tail = QPointF(center.x()+x[i]*scale/tail_z+curve_x*bend_tail,
+                           center.y()-y[i]*scale/tail_z+curve_y*bend_tail)
+            if not self.rect().adjusted(-100, -100, 100, 100).contains(head.toPoint()):
+                continue
+            color = self.color(("accent", "cyan", "green", "magenta")[int(self.tint[i] % 4)],
+                               int((0.30+self.energy*0.40+band*0.30)*255))
+            p.setPen(QPen(color, 1.0+self.energy+band*1.7))
+            p.drawLine(tail, head)
+            size = 4+self.energy*6+band*4
+            p.drawPixmap(QRectF(head.x()-size/2, head.y()-size/2, size, size),
+                         self.sprites[int(self.tint[i])], QRectF(0, 0, 64, 64))
+        p.setOpacity(1)
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+        # Subtle breathing core that drifts with the music instead of a hard disc.
+        core = h*(0.038+self.bass*0.012+self.energy*0.006+math.sin(self.time*2.3)*0.003)
+        p.setPen(QPen(self.color("cyan", int(28+self.energy*20+self.bass*10)), 1.0))
+        p.setBrush(QColor(self.colors["background"]).darker(180))
+        p.drawEllipse(center, core, core)
