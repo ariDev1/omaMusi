@@ -575,6 +575,178 @@ void main() {
 
 """
 
+EVENT_HORIZON_FRAGMENT = """#version 330 core
+in vec2 uv;
+out vec4 frag;
+
+uniform vec2 resolution;
+uniform float phase;
+uniform float energy;
+uniform float bass;
+uniform float treble;
+uniform float phiPulse;
+uniform float phiBloom;
+uniform float phiTension;
+uniform float phiEvent;
+uniform float phiVelocity;
+uniform float phiImpulse;
+
+const float TAU = 6.283185307179586;
+const float PHI = 1.618033988749895;
+
+float hash1(float n) {
+    return fract(sin(n * 127.1 + 311.7) * 43758.5453123);
+}
+
+mat2 rot(float a) {
+    float c = cos(a);
+    float s = sin(a);
+    return mat2(c, -s, s, c);
+}
+
+float ring(float r, float center, float width) {
+    return exp(-abs(r - center) / max(width, 1e-4));
+}
+
+void main() {
+    // Cinematic flyby around an accretion lens.
+    float fly = phase * 0.038;
+    vec2 cameraLoop = vec2(
+        0.14 * sin(fly) + 0.045 * sin(phase * 0.11 + phiBloom * 1.2),
+        0.060 * sin(fly * 0.73 + 0.8)
+    );
+    vec2 cameraKick = vec2(
+        0.012 * sin(phase * 0.90 + phiEvent * 4.0),
+        0.008 * cos(phase * 0.74 + phiImpulse * 6.4)
+    ) * (0.25 + phiEvent * 0.90 + phiImpulse * 0.45);
+    float cameraRoll = 0.12 * sin(fly * 0.67) + 0.025 * sin(phase * 0.10 + phiEvent * 1.8);
+    float cameraZoom = 0.88 + 0.24 * (0.5 + 0.5 * cos(fly - 0.55));
+    float viewTilt = 0.18 + 0.70 * (0.5 + 0.5 * sin(fly * 0.78 + 0.85));
+    float foreshorten = mix(0.36, 0.97, viewTilt);
+
+    vec2 p = uv - (vec2(0.5) + cameraLoop + cameraKick);
+    p.x *= resolution.x / resolution.y;
+    p = rot(cameraRoll) * p;
+    p.y /= foreshorten;
+    p /= cameraZoom;
+    p.x *= clamp(1.0 + p.y * 0.24 * cos(fly), 0.70, 1.34);
+
+    float r = length(p);
+    float a = atan(p.y, p.x);
+
+    float shadowRadius = 0.185 + bass * 0.055 + phiPulse * 0.030;
+    float shadowMask = smoothstep(shadowRadius + 0.018, shadowRadius - 0.012, r);
+
+    // Disc geometry.
+    float discHalfThickness = 0.020 + bass * 0.010 + phiPulse * 0.009;
+    float discWindow = smoothstep(1.25, 0.14, abs(p.x));
+    float discVertical = exp(-abs(p.y) / discHalfThickness);
+    float discCore = discVertical * discWindow;
+
+    // Carve the center so the black-hole shadow interrupts the disc.
+    float centerOcclusion = 1.0 - smoothstep(shadowRadius - 0.014, shadowRadius + 0.028, abs(p.x));
+    discCore *= max(0.0, 1.0 - centerOcclusion * shadowMask);
+
+    // Hot layered plasma texture.
+    float flow = p.x * (12.0 + bass * 4.0) - phase * (0.95 + phiVelocity * 0.70);
+    float plasmaBands = 0.55 + 0.45 * sin(flow + 1.6 * sin(p.x * 2.6 + phase * 0.12));
+    plasmaBands *= 0.60 + 0.40 * sin(p.x * 28.0 - phase * 1.30 + treble * 4.0);
+    float fineFilaments = 0.58 + 0.42 * sin(p.x * 74.0 - phase * 2.15 + sin(p.x * 11.0) * 1.4);
+    float hotKnots = exp(-abs(sin(p.x * 16.0 - phase * 0.80 + phiEvent * 2.1)) * 3.8);
+    float heat = discCore * (0.30 + 0.32 * plasmaBands + 0.24 * fineFilaments + 0.22 * hotKnots);
+
+    // Gravitational lensing arcs.
+    float upperLens = ring(r, shadowRadius + 0.235 + 0.10 * (1.0 - foreshorten), 0.026)
+                    * smoothstep(-0.30, 1.15, p.y + 0.03);
+    float upperInner = ring(r, shadowRadius + 0.165 + 0.06 * (1.0 - foreshorten), 0.018)
+                     * smoothstep(-0.08, 1.08, p.y);
+    float lowerLens = ring(r, shadowRadius + 0.135 + 0.03 * (1.0 - foreshorten), 0.022)
+                    * smoothstep(-1.10, 0.38, -p.y + 0.26);
+
+    // Relativistic brightness fake.
+    float spinBias = 0.50 + 0.50 * sin(a - cameraRoll + 1.57079632679);
+    float doppler = mix(0.72, 1.55, spinBias);
+
+    // Volumetric glow around the disc.
+    float innerGlow = exp(-max(r - shadowRadius, 0.0) * 5.6) * (1.0 - shadowMask);
+    float warmFog = exp(-r * 2.6) * (0.45 + 0.55 * sin(a * 4.0 - phase * 0.13));
+    float ambientField = 0.5 + 0.5 * sin(p.x * 5.2 + phase * 0.07 + sin(p.y * 4.0 - phase * 0.06));
+    ambientField *= 0.5 + 0.5 * cos(p.y * 7.1 - phase * 0.10 + sin(p.x * 3.4));
+    ambientField = pow(ambientField, 2.0);
+
+    // Sparse dust and sparks.
+    vec3 fieldColor = vec3(0.0);
+    float field = 0.0;
+    for (int i = 0; i < 26; ++i) {
+        float fi = float(i);
+        float seed = fi * PHI;
+        float lane = hash1(seed + 1.0);
+        float depth = mix(0.25, 1.0, hash1(seed + 11.0));
+        float orbit = phase * (0.016 + lane * 0.030) / depth + TAU * hash1(seed + 7.0);
+        float radius = mix(shadowRadius + 0.12, 1.12, fract(1.0 - phase * (0.022 + lane * 0.040) / depth + lane));
+        vec2 pos = vec2(cos(orbit), sin(orbit)) * radius;
+        pos *= vec2(1.0, 0.62 + 0.16 * sin(seed));
+        vec2 delta = p - pos;
+        float spark = exp(-length(delta) * mix(16.0, 34.0, depth));
+        field += spark * mix(0.04, 0.10, 1.0 - depth);
+        fieldColor += mix(vec3(0.82, 0.16, 0.02), vec3(1.0, 0.72, 0.16), lane) * spark;
+    }
+
+    // Audio-reactive shock and hidden geometry glimpse.
+    float shockPhase = fract(phase * (0.11 + phiVelocity * 0.11) + phiEvent * 0.20);
+    float shockRadius = shadowRadius + shockPhase * (0.75 - shadowRadius);
+    float shock = ring(r, shockRadius, 0.010 + phiImpulse * 0.014)
+                * (0.06 + phiEvent * 0.24);
+
+    float glimpseGate = smoothstep(
+        0.74, 0.98,
+        0.5 + 0.5 * sin(phase * 0.10 + phiEvent * 4.7 + phiBloom * 2.0)
+    );
+    float glimpse = glimpseGate * shadowMask
+                  * exp(-abs(sin(a * 6.0 + phase * 0.20) - sin(r * 44.0)) * 8.0);
+
+    // Warm cinematic palette.
+    vec3 voidBlack = vec3(0.002, 0.001, 0.000);
+    vec3 smoke = vec3(0.040, 0.010, 0.004);
+    vec3 ember = vec3(0.46, 0.06, 0.01);
+    vec3 orange = vec3(0.96, 0.34, 0.05);
+    vec3 hot = vec3(1.00, 0.70, 0.17);
+    vec3 whiteHot = vec3(1.00, 0.94, 0.74);
+
+    vec3 color = mix(voidBlack, smoke, 0.05 + 0.11 * ambientField);
+
+    // Disc plane.
+    color += ember * discCore * (0.16 + bass * 0.12);
+    color += orange * heat * doppler * (0.56 + energy * 0.22);
+    color += hot * heat * (0.26 + treble * 0.14 + phiImpulse * 0.08) * (0.82 + 0.18 * fineFilaments);
+    color += whiteHot * heat * (0.08 + phiEvent * 0.15) * hotKnots * doppler;
+
+    // Lensing arcs.
+    color += orange * upperLens * (0.26 + bass * 0.10 + phiPulse * 0.08);
+    color += whiteHot * upperInner * (0.10 + phiEvent * 0.12);
+    color += hot * lowerLens * (0.14 + bass * 0.06);
+
+    // Volumetric structure.
+    color += orange * innerGlow * (0.04 + energy * 0.04);
+    color += ember * warmFog * (0.05 + bass * 0.04) * (1.0 - shadowMask);
+    color += orange * ambientField * (0.006 + energy * 0.010);
+    color += fieldColor * (0.08 + treble * 0.04);
+    color += hot * field * (0.03 + phiImpulse * 0.04);
+
+    color += hot * shock;
+    color += whiteHot * glimpse * (0.04 + phiEvent * 0.08);
+
+    // Deep shadow.
+    color *= 1.0 - shadowMask * 0.96;
+    color += whiteHot * ring(r, shadowRadius + 0.006, 0.005) * 0.03;
+
+    float vignette = smoothstep(1.55, 0.20, length(p));
+    color *= vignette;
+
+    frag = vec4(color, 1.0);
+}
+"""
+
 PHI_PARTICLE_FRAGMENT = """#version 330 core
 in vec3 tint;
 in float opacity;
@@ -634,7 +806,7 @@ class GpuCanvas(QOpenGLWidget):
         self.setFormat(gl_format())
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.ready = False
-        self.quad = self.particles = self.phi = self.phi_particles = self.vao = 0
+        self.quad = self.particles = self.phi = self.phi_particles = self.event_horizon = self.vao = 0
         self.textures = []
         self.uniforms = {}
         self.history_revision = -1
@@ -647,6 +819,8 @@ class GpuCanvas(QOpenGLWidget):
                                        compileShader(QUAD_FRAGMENT, GL.GL_FRAGMENT_SHADER))
             self.particles = compileProgram(compileShader(PARTICLE_VERTEX, GL.GL_VERTEX_SHADER),
                                             compileShader(PARTICLE_FRAGMENT, GL.GL_FRAGMENT_SHADER))
+            self.event_horizon = compileProgram(compileShader(QUAD_VERTEX, GL.GL_VERTEX_SHADER),
+                                               compileShader(EVENT_HORIZON_FRAGMENT, GL.GL_FRAGMENT_SHADER))
             self.phi = compileProgram(compileShader(QUAD_VERTEX, GL.GL_VERTEX_SHADER),
                                       compileShader(PHI_FRAGMENT, GL.GL_FRAGMENT_SHADER))
             self.phi_particles = compileProgram(compileShader(PHI_PARTICLE_VERTEX, GL.GL_VERTEX_SHADER),
@@ -665,7 +839,7 @@ class GpuCanvas(QOpenGLWidget):
             GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_R32F, 1216, 1, 0, GL.GL_RED, GL.GL_FLOAT, None)
             GL.glBindTexture(GL.GL_TEXTURE_2D, self.textures[1])
             GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB8, 360, 96, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, None)
-            for program in (self.quad, self.particles, self.phi, self.phi_particles):
+            for program in (self.quad, self.particles, self.phi, self.phi_particles, self.event_horizon):
                 self.uniforms[program] = {name: GL.glGetUniformLocation(program, name) for name in
                     ("mode", "resolution", "background", "accent", "cyan", "bright", "green", "magenta", "energy",
                      "phase", "bass", "treble", "phiPulse", "phiBloom", "phiTension", "phiEvent",
@@ -907,6 +1081,10 @@ class GpuCanvas(QOpenGLWidget):
 
                 self._update_aether_swarm()
                 self._draw_aether_swarm(width, height, ratio)
+            elif state.mode == 5:
+                GL.glUseProgram(self.event_horizon)
+                self.common_uniforms(self.event_horizon, width, height)
+                GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
             else:
                 self.common_uniforms(self.quad, width, height)
                 u = self.uniforms[self.quad]
@@ -951,9 +1129,9 @@ class GpuCanvas(QOpenGLWidget):
         if self.vao:
             GL.glDeleteVertexArrays(1, [self.vao])
             self.vao = 0
-        for program in (self.quad, self.particles, self.phi, self.phi_particles):
+        for program in (self.quad, self.particles, self.phi, self.phi_particles, self.event_horizon):
             if program:
                 GL.glDeleteProgram(program)
-        self.quad = self.particles = self.phi = self.phi_particles = 0
+        self.quad = self.particles = self.phi = self.phi_particles = self.event_horizon = 0
         self.ready = False
         self.doneCurrent()

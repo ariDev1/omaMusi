@@ -18,7 +18,7 @@ from .visual.director import VisualDirector
 
 class Visualizer(QWidget):
     PARTICLE_COUNT = 384  # Conservative fallback; GPU draws 4,096 streaks.
-    modes = ("Warp", "Spectrum", "Waveform", "Spectrogram", "Phi Cathedral")
+    modes = ("Warp", "Spectrum", "Waveform", "Spectrogram", "Phi Cathedral", "Event Horizon")
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -294,8 +294,10 @@ class Visualizer(QWidget):
             self.paint_waveform(p, w, h)
         elif self.mode == 3:
             self.paint_spectrogram(p, w, h)
-        else:
+        elif self.mode == 4:
             self.paint_phi(p, w, h)
+        else:
+            self.paint_event_horizon(p, w, h)
 
     def color(self, key, alpha=255):
         color = QColor(self.colors[key])
@@ -342,6 +344,87 @@ class Visualizer(QWidget):
         p.setOpacity(0.85)
         p.drawImage(QRectF(0, 0, w, h), image)
         p.setOpacity(1)
+
+    def paint_event_horizon(self, p, w, h):
+        """CPU fallback for the Event Horizon cinematic accretion-lens visual."""
+        scale = min(w, h)
+        fly = self.time * 0.038
+        center = QPointF(
+            w * (0.50
+                 + 0.14 * math.sin(fly)
+                 + 0.045 * math.sin(self.time * 0.11 + self.phi_bloom * 1.2)),
+            h * (0.50
+                 + 0.060 * math.sin(fly * 0.73 + 0.8)),
+        )
+        camera_zoom = 0.88 + 0.24 * (0.5 + 0.5 * math.cos(fly - 0.55))
+        view_tilt = 0.18 + 0.70 * (0.5 + 0.5 * math.sin(fly * 0.78 + 0.85))
+        foreshorten = 0.36 + (0.97 - 0.36) * view_tilt
+
+        shadow_r = scale * (0.092 + self.bass * 0.028 + self.phi_pulse * 0.015) * camera_zoom
+        disc_rx = scale * (0.46 + 0.03 * camera_zoom)
+        disc_ry = scale * (0.018 + self.bass * 0.010 + self.phi_pulse * 0.007) * foreshorten
+
+        p.fillRect(self.rect(), QColor("#020100"))
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        haze = QRadialGradient(center, scale * 0.95)
+        haze.setColorAt(0.0, QColor(42, 10, 2, int(20 + self.energy * 28)))
+        haze.setColorAt(0.55, QColor(18, 4, 1, 10))
+        haze.setColorAt(1.0, QColor(0, 0, 0, 0))
+        p.fillRect(self.rect(), haze)
+
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
+
+        # Rich accretion disc.
+        band_count = 30
+        for i in range(band_count):
+            t = i / max(1, band_count - 1)
+            rx = disc_rx * (0.62 + t * 0.42)
+            ry = disc_ry * (0.54 + t * 0.92)
+            wobble = math.sin(self.time * (0.42 + t * 0.55) + t * 8.0) * scale * 0.002
+            rect = QRectF(center.x() - rx, center.y() - ry - wobble, rx * 2, ry * 2)
+            alpha = int(26 + 130 * (1.0 - t) + self.energy * 26 + self.treble * 16)
+            col = QColor(255, int(92 + 120 * (1.0 - t)), int(16 + 20 * (1.0 - t)), min(220, alpha))
+            p.setPen(QPen(col, 1.0 + (1.0 - t) * 1.1))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.drawEllipse(rect)
+
+        # Upper and lower lens arcs.
+        p.setPen(QPen(QColor(255, 130, 35, int(44 + self.bass * 24 + self.phi_event * 20)), 2.2))
+        p.drawEllipse(QPointF(center.x(), center.y() - shadow_r * 0.01),
+                      shadow_r * 2.00, shadow_r * 1.15 * foreshorten)
+        p.setPen(QPen(QColor(255, 230, 170, int(12 + self.phi_event * 44)), 1.2))
+        p.drawEllipse(QPointF(center.x(), center.y() - shadow_r * 0.03),
+                      shadow_r * 1.64, shadow_r * 0.88 * foreshorten)
+        p.setPen(QPen(QColor(255, 110, 35, int(18 + self.bass * 18)), 1.1))
+        p.drawEllipse(QPointF(center.x(), center.y() + shadow_r * 0.19),
+                      shadow_r * 1.40, shadow_r * 0.58 * foreshorten)
+
+        # Sparse sparks.
+        p.setPen(Qt.PenStyle.NoPen)
+        for i in range(26):
+            seed = i * 1.61803398875
+            lane = (math.sin(seed * 12.9898) * 43758.5453) % 1.0
+            depth = 0.25 + (((math.sin(seed * 4.31) * 9412.3) % 1.0) * 0.75)
+            progress = (1.0 - self.time * (0.022 + lane * 0.040) / depth + lane) % 1.0
+            radius = scale * (0.16 + progress * 0.44)
+            angle = self.time * (0.10 + lane * 0.14) / depth + seed * 2.39996322973
+            x = center.x() + math.cos(angle) * radius
+            y = center.y() + math.sin(angle) * radius * (0.62 + 0.16 * math.sin(seed))
+            size = 0.5 + (1.0 - progress) * 1.2
+            alpha = int(10 + 95 * (1.0 - progress))
+            p.setBrush(QColor(255, int(100 + 100 * lane), 24, max(6, min(160, alpha))))
+            p.drawEllipse(QPointF(x, y), size, size)
+
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+
+        # Shadow and photon ring.
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#000000"))
+        p.drawEllipse(center, shadow_r * 0.72, shadow_r * 0.72)
+        p.setPen(QPen(QColor(255, 145, 65, 28), 1.0))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(center, shadow_r * 0.75, shadow_r * 0.75)
 
     def paint_phi(self, p, w, h):
         """CPU fallback: Fibonacci phyllotaxis, logarithmic spirals and pulse rings."""
