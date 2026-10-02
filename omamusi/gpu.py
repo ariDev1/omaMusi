@@ -590,12 +590,45 @@ uniform float phiTension;
 uniform float phiEvent;
 uniform float phiVelocity;
 uniform float phiImpulse;
+uniform float aetherOnset;
+uniform float aetherBeatPhase;
+uniform float aetherDensity;
+uniform float aetherSceneMorph;
+uniform float aetherWorldTurn;
+uniform float aetherBeatPulse;
 
 const float TAU = 6.283185307179586;
 const float PHI = 1.618033988749895;
 
 float hash1(float n) {
     return fract(sin(n * 127.1 + 311.7) * 43758.5453123);
+}
+
+float hash2(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+float noise2(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = hash2(i);
+    float b = hash2(i + vec2(1.0, 0.0));
+    float c = hash2(i + vec2(0.0, 1.0));
+    float d = hash2(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+float fbm(vec2 p) {
+    float value = 0.0;
+    float amp = 0.55;
+    mat2 m = mat2(0.80, -0.60, 0.60, 0.80);
+    for (int i = 0; i < 5; ++i) {
+        value += amp * noise2(p);
+        p = m * p * 2.04 + vec2(3.7, -2.1);
+        amp *= 0.48;
+    }
+    return value;
 }
 
 mat2 rot(float a) {
@@ -608,142 +641,244 @@ float ring(float r, float center, float width) {
     return exp(-abs(r - center) / max(width, 1e-4));
 }
 
+float annulus(float r, float innerR, float outerR, float soft) {
+    return smoothstep(innerR - soft, innerR + soft, r)
+         * (1.0 - smoothstep(outerR - soft, outerR + soft, r));
+}
+
+float starLayer(vec2 p, float scale, float threshold) {
+    vec2 cell = floor(p * scale);
+    vec2 local = fract(p * scale) - 0.5;
+    float h = hash2(cell);
+    float star = smoothstep(threshold, 1.0, h);
+    float d = length(local);
+    return star * exp(-d * d * mix(90.0, 230.0, h));
+}
+
 void main() {
-    // Cinematic flyby around an accretion lens.
-    float fly = phase * 0.038;
+    float musicDrive = clamp(
+        energy * 0.34
+        + bass * 0.22
+        + treble * 0.10
+        + aetherDensity * 0.22
+        + aetherBeatPulse * 0.18,
+        0.0, 1.0
+    );
+
+    float fly = phase * 0.029 + aetherWorldTurn * 0.060;
+    float approach = 0.5 + 0.5 * sin(fly * 0.73 - 0.6 + aetherSceneMorph * 0.8);
     vec2 cameraLoop = vec2(
-        0.14 * sin(fly) + 0.045 * sin(phase * 0.11 + phiBloom * 1.2),
-        0.060 * sin(fly * 0.73 + 0.8)
+        0.095 * sin(fly) + 0.030 * sin(phase * 0.090 + aetherSceneMorph * 1.6),
+        0.070 * sin(fly * 0.68 + 0.95)
     );
     vec2 cameraKick = vec2(
-        0.012 * sin(phase * 0.90 + phiEvent * 4.0),
-        0.008 * cos(phase * 0.74 + phiImpulse * 6.4)
-    ) * (0.25 + phiEvent * 0.90 + phiImpulse * 0.45);
-    float cameraRoll = 0.12 * sin(fly * 0.67) + 0.025 * sin(phase * 0.10 + phiEvent * 1.8);
-    float cameraZoom = 0.88 + 0.24 * (0.5 + 0.5 * cos(fly - 0.55));
-    float viewTilt = 0.18 + 0.70 * (0.5 + 0.5 * sin(fly * 0.78 + 0.85));
-    float foreshorten = mix(0.36, 0.97, viewTilt);
+        0.010 * sin(phase * 0.88 + phiEvent * 4.0),
+        0.008 * cos(phase * 0.74 + phiImpulse * 6.0)
+    ) * (0.18 + aetherOnset * 0.75 + aetherBeatPulse * 0.40);
+    float cameraRoll = 0.070 * sin(fly * 0.59)
+                     + 0.024 * sin(phase * 0.10 + aetherSceneMorph * 1.4);
+    float cameraZoom = mix(0.84, 1.18, approach);
+    float inclination = mix(
+        0.18, 0.94,
+        0.5 + 0.5 * sin(fly * 0.84 + 0.55 + aetherSceneMorph * 0.95)
+    );
+    float foreshorten = mix(0.20, 0.96, inclination);
 
-    vec2 p = uv - (vec2(0.5) + cameraLoop + cameraKick);
-    p.x *= resolution.x / resolution.y;
-    p = rot(cameraRoll) * p;
-    p.y /= foreshorten;
-    p /= cameraZoom;
-    p.x *= clamp(1.0 + p.y * 0.24 * cos(fly), 0.70, 1.34);
+    vec2 screen = uv - (vec2(0.5) + cameraLoop + cameraKick);
+    screen.x *= resolution.x / resolution.y;
+    screen = rot(cameraRoll) * screen;
+    screen /= cameraZoom;
 
-    float r = length(p);
-    float a = atan(p.y, p.x);
+    float shadowRadius = 0.148 + bass * 0.038 + phiPulse * 0.017;
+    float r = max(length(screen), 0.0005);
+    vec2 radialDir = screen / r;
+    float a = atan(screen.y, screen.x);
 
-    float shadowRadius = 0.185 + bass * 0.055 + phiPulse * 0.030;
-    float shadowMask = smoothstep(shadowRadius + 0.018, shadowRadius - 0.012, r);
+    float starBendMask = smoothstep(shadowRadius * 0.76, shadowRadius * 3.10, r);
+    float lensWarp = (0.054 + 0.024 * musicDrive) / (r * r + 0.024);
+    lensWarp *= starBendMask;
+    vec2 lensedBackground = screen + radialDir * lensWarp;
 
-    // Disc geometry.
-    float discHalfThickness = 0.020 + bass * 0.010 + phiPulse * 0.009;
-    float discWindow = smoothstep(1.25, 0.14, abs(p.x));
-    float discVertical = exp(-abs(p.y) / discHalfThickness);
-    float discCore = discVertical * discWindow;
+    float starsFine = starLayer(lensedBackground + vec2(phase * 0.0015, 0.0), 88.0, 0.987);
+    float starsCoarse = starLayer(lensedBackground * 0.60 - vec2(0.0, phase * 0.0011), 52.0, 0.981);
+    float starsHalo = ring(r, shadowRadius * 1.64, 0.18) * (starsFine * 0.60 + starsCoarse * 0.40);
+    float stars = (starsFine * 0.70 + starsCoarse * 0.32 + starsHalo * 0.55)
+                * (0.72 + 0.28 * sin(phase * 0.22 + hash2(floor(lensedBackground * 64.0)) * TAU));
 
-    // Carve the center so the black-hole shadow interrupts the disc.
-    float centerOcclusion = 1.0 - smoothstep(shadowRadius - 0.014, shadowRadius + 0.028, abs(p.x));
-    discCore *= max(0.0, 1.0 - centerOcclusion * shadowMask);
+    vec2 discP = screen;
+    discP.y /= foreshorten;
+    discP.x *= clamp(1.0 + discP.y * 0.12 * cos(fly), 0.80, 1.22);
 
-    // Hot layered plasma texture.
-    float flow = p.x * (12.0 + bass * 4.0) - phase * (0.95 + phiVelocity * 0.70);
-    float plasmaBands = 0.55 + 0.45 * sin(flow + 1.6 * sin(p.x * 2.6 + phase * 0.12));
-    plasmaBands *= 0.60 + 0.40 * sin(p.x * 28.0 - phase * 1.30 + treble * 4.0);
-    float fineFilaments = 0.58 + 0.42 * sin(p.x * 74.0 - phase * 2.15 + sin(p.x * 11.0) * 1.4);
-    float hotKnots = exp(-abs(sin(p.x * 16.0 - phase * 0.80 + phiEvent * 2.1)) * 3.8);
-    float heat = discCore * (0.30 + 0.32 * plasmaBands + 0.24 * fineFilaments + 0.22 * hotKnots);
+    float discR = length(discP);
+    float discA = atan(discP.y, discP.x);
 
-    // Gravitational lensing arcs.
-    float upperLens = ring(r, shadowRadius + 0.235 + 0.10 * (1.0 - foreshorten), 0.026)
-                    * smoothstep(-0.30, 1.15, p.y + 0.03);
-    float upperInner = ring(r, shadowRadius + 0.165 + 0.06 * (1.0 - foreshorten), 0.018)
-                     * smoothstep(-0.08, 1.08, p.y);
-    float lowerLens = ring(r, shadowRadius + 0.135 + 0.03 * (1.0 - foreshorten), 0.022)
-                    * smoothstep(-1.10, 0.38, -p.y + 0.26);
+    float discInner = shadowRadius * 1.58;
+    float discOuter = 1.06;
+    float directDisc = annulus(discR, discInner, discOuter, 0.028);
 
-    // Relativistic brightness fake.
-    float spinBias = 0.50 + 0.50 * sin(a - cameraRoll + 1.57079632679);
-    float doppler = mix(0.72, 1.55, spinBias);
+    float discHalfThickness = 0.013 + 0.038 * foreshorten + bass * 0.005;
+    float verticalProfile = exp(-abs(screen.y) / discHalfThickness);
+    float discPlane = mix(0.24, 1.0, verticalProfile);
 
-    // Volumetric glow around the disc.
-    float innerGlow = exp(-max(r - shadowRadius, 0.0) * 5.6) * (1.0 - shadowMask);
-    float warmFog = exp(-r * 2.6) * (0.45 + 0.55 * sin(a * 4.0 - phase * 0.13));
-    float ambientField = 0.5 + 0.5 * sin(p.x * 5.2 + phase * 0.07 + sin(p.y * 4.0 - phase * 0.06));
-    ambientField *= 0.5 + 0.5 * cos(p.y * 7.1 - phase * 0.10 + sin(p.x * 3.4));
-    ambientField = pow(ambientField, 2.0);
+    // Tangential belt suppresses the old radial-curtain look.
+    float tangentialBelt = exp(-abs(screen.y) / (discHalfThickness * 1.85));
+    directDisc *= discPlane * tangentialBelt;
 
-    // Sparse dust and sparks.
-    vec3 fieldColor = vec3(0.0);
-    float field = 0.0;
-    for (int i = 0; i < 26; ++i) {
-        float fi = float(i);
-        float seed = fi * PHI;
-        float lane = hash1(seed + 1.0);
-        float depth = mix(0.25, 1.0, hash1(seed + 11.0));
-        float orbit = phase * (0.016 + lane * 0.030) / depth + TAU * hash1(seed + 7.0);
-        float radius = mix(shadowRadius + 0.12, 1.12, fract(1.0 - phase * (0.022 + lane * 0.040) / depth + lane));
-        vec2 pos = vec2(cos(orbit), sin(orbit)) * radius;
-        pos *= vec2(1.0, 0.62 + 0.16 * sin(seed));
-        vec2 delta = p - pos;
-        float spark = exp(-length(delta) * mix(16.0, 34.0, depth));
-        field += spark * mix(0.04, 0.10, 1.0 - depth);
-        fieldColor += mix(vec3(0.82, 0.16, 0.02), vec3(1.0, 0.72, 0.16), lane) * spark;
-    }
+    float centerOcclusion = 1.0 - smoothstep(shadowRadius - 0.010, shadowRadius + 0.026, abs(discP.x));
+    directDisc *= max(0.0, 1.0 - centerOcclusion * smoothstep(shadowRadius * 0.82, shadowRadius * 1.06, discR));
 
-    // Audio-reactive shock and hidden geometry glimpse.
-    float shockPhase = fract(phase * (0.11 + phiVelocity * 0.11) + phiEvent * 0.20);
-    float shockRadius = shadowRadius + shockPhase * (0.75 - shadowRadius);
-    float shock = ring(r, shockRadius, 0.010 + phiImpulse * 0.014)
-                * (0.06 + phiEvent * 0.24);
+    float rotation = phase * (0.48 + phiVelocity * 0.18) + aetherWorldTurn * 0.24;
+    vec2 plasmaCoord = vec2(
+        discA * 2.8 + rotation,
+        log(max(discR, discInner)) * 6.8 - phase * 0.16
+    );
+
+    float turbulence = fbm(plasmaCoord * vec2(1.0, 1.10));
+    float turbulenceFine = fbm(plasmaCoord * vec2(2.8, 2.4) + 9.4);
+    float tangentialFlow = 0.5 + 0.5 * sin(
+        discA * 22.0
+        - phase * (1.45 + musicDrive * 0.80)
+        + turbulence * 4.0
+        + log(max(discR, discInner)) * 4.0
+    );
+    float shearFlow = 0.5 + 0.5 * sin(
+        discA * 36.0
+        - phase * (2.30 + musicDrive * 1.10)
+        + turbulenceFine * 5.0
+    );
+    float radialBands = 0.5 + 0.5 * sin(
+        log(max(discR, discInner)) * 18.0
+        - phase * 0.50
+        + turbulence * 2.0
+    );
+
+    float discCore = directDisc;
+    float plasmaBands = mix(tangentialFlow, radialBands, 0.18);
+    float fineFilaments = smoothstep(0.56, 0.90, 0.72 * shearFlow + 0.28 * turbulenceFine);
+    float hotKnots = pow(max(0.0, sin(discA * 18.0 - rotation * 2.1 + turbulenceFine * 4.0)), 9.0);
+
+    float radialHeat = 1.0 - smoothstep(discInner, discOuter, discR);
+    radialHeat = pow(clamp(radialHeat, 0.0, 1.0), 0.70);
+
+    float observerSide = 0.5 + 0.5 * cos(discA - 0.26 - cameraRoll);
+    float asymmetry = pow(observerSide, 1.55);
+    float doppler = mix(0.42, 2.12, asymmetry);
+
+    float heat = discCore
+               * (0.36 + 0.48 * plasmaBands + 0.24 * fineFilaments + 0.20 * hotKnots)
+               * (0.42 + 1.06 * radialHeat)
+               * doppler;
+
+    float photonRadius = shadowRadius * 1.50;
+
+    // Bent far-side disc images should feel like extensions of the disc, not circular rings.
+    float upperWarp = 0.010 * sin(a * 2.8 + phase * 0.05)
+                    + 0.010 * fbm(vec2(a * 2.6, phase * 0.05 + r * 7.0));
+    float lowerWarp = 0.008 * sin(a * 3.8 - phase * 0.04)
+                    + 0.008 * fbm(vec2(a * 2.2 + 5.0, phase * 0.04 + r * 6.0));
+
+    float topArcRadius = photonRadius + 0.050 + 0.074 * (1.0 - foreshorten) + upperWarp;
+    float bottomArcRadius = photonRadius + 0.024 + 0.036 * (1.0 - foreshorten) + lowerWarp;
+
+    float topAngular = smoothstep(-0.16, 0.18, sin(a))
+                     * (0.36 + 0.64 * smoothstep(-0.98, 0.24, cos(a)));
+    float bottomAngular = smoothstep(-0.16, 0.18, -sin(a))
+                        * (0.24 + 0.76 * smoothstep(-0.99, 0.04, cos(a)));
+
+    float upperLens = ring(r, topArcRadius, 0.015 + 0.010 * (1.0 - foreshorten)) * topAngular;
+    float upperInner = ring(r, photonRadius + 0.014 + upperWarp * 0.35, 0.007)
+                     * smoothstep(-0.10, 0.76, sin(a));
+    float lowerLens = ring(r, bottomArcRadius, 0.013) * bottomAngular * 0.60;
+
+    float lensFlow = 0.58 + 0.42 * sin(
+        a * 21.0
+        - phase * (1.55 + musicDrive * 0.70)
+        + fbm(vec2(a * 3.4, r * 18.0 + phase * 0.12)) * 3.5
+    );
+    float bentContinuity = 0.55 + 0.45 * tangentialFlow;
+    upperLens *= (0.56 + 0.50 * lensFlow) * bentContinuity;
+    upperInner *= (0.62 + 0.44 * lensFlow) * bentContinuity;
+    lowerLens *= (0.54 + 0.42 * (1.0 - lensFlow)) * bentContinuity;
+
+    // Softer, broken photon ring instead of a perfect UI outline.
+    float ringBreak = 0.55 + 0.45 * fbm(vec2(a * 5.2, phase * 0.04 + r * 9.0));
+    float photonRing = ring(r, photonRadius + upperWarp * 0.12, 0.0035 + 0.0018 * treble)
+                     * ringBreak * (0.30 + 0.70 * lensFlow);
+
+    float shadowMask = smoothstep(shadowRadius + 0.010, shadowRadius - 0.008, r);
+    float innerGlow = exp(-max(r - shadowRadius, 0.0) * 10.5)
+                    * smoothstep(shadowRadius, shadowRadius + 0.11, r);
+
+    float shockRadius = shadowRadius + 0.08
+                      + fract(aetherBeatPhase + phase * 0.024 + aetherOnset * 0.12) * 0.54;
+    float shock = ring(r, shockRadius, 0.006 + aetherOnset * 0.008)
+                * (aetherBeatPulse * 0.22 + aetherOnset * 0.18 + phiEvent * 0.08);
 
     float glimpseGate = smoothstep(
-        0.74, 0.98,
-        0.5 + 0.5 * sin(phase * 0.10 + phiEvent * 4.7 + phiBloom * 2.0)
+        0.78, 0.98,
+        aetherSceneMorph * 0.58 + phiEvent * 0.22 + (0.5 + 0.5 * sin(phase * 0.07)) * 0.28
     );
     float glimpse = glimpseGate * shadowMask
-                  * exp(-abs(sin(a * 6.0 + phase * 0.20) - sin(r * 44.0)) * 8.0);
+                  * exp(-abs(sin(a * 7.0 + phase * 0.18) - sin(r * 54.0 - aetherWorldTurn)) * 9.0);
 
-    // Warm cinematic palette.
-    vec3 voidBlack = vec3(0.002, 0.001, 0.000);
-    vec3 smoke = vec3(0.040, 0.010, 0.004);
-    vec3 ember = vec3(0.46, 0.06, 0.01);
-    vec3 orange = vec3(0.96, 0.34, 0.05);
-    vec3 hot = vec3(1.00, 0.70, 0.17);
-    vec3 whiteHot = vec3(1.00, 0.94, 0.74);
+    vec3 dustColor = vec3(0.0);
+    float dust = 0.0;
+    for (int i = 0; i < 18; ++i) {
+        float fi = float(i);
+        float seed = fi * PHI;
+        float depth = mix(0.18, 1.0, hash1(seed + 13.0));
+        float lane = hash1(seed + 4.0);
+        float orbit = phase * (0.017 + lane * 0.026) / depth + TAU * hash1(seed + 7.0);
+        float rr = mix(photonRadius + 0.14, 1.22, fract(1.0 - phase * (0.018 + lane * 0.028) / depth + lane));
+        vec2 pos = vec2(cos(orbit), sin(orbit)) * rr;
+        pos.y *= 0.56 + 0.18 * sin(seed);
+        float spark = exp(-length(screen - pos) * mix(20.0, 44.0, depth));
+        dust += spark * mix(0.10, 0.030, depth);
+        dustColor += mix(vec3(0.88, 0.15, 0.016), vec3(1.00, 0.68, 0.11), lane) * spark;
+    }
 
-    vec3 color = mix(voidBlack, smoke, 0.05 + 0.11 * ambientField);
+    vec3 voidBlack = vec3(0.0010, 0.0005, 0.00025);
+    vec3 smoke = vec3(0.015, 0.0035, 0.0012);
+    vec3 ember = vec3(0.30, 0.032, 0.0030);
+    vec3 orange = vec3(0.98, 0.25, 0.018);
+    vec3 hot = vec3(1.00, 0.61, 0.10);
+    vec3 whiteHot = vec3(1.00, 0.95, 0.82);
 
-    // Disc plane.
-    color += ember * discCore * (0.16 + bass * 0.12);
-    color += orange * heat * doppler * (0.56 + energy * 0.22);
-    color += hot * heat * (0.26 + treble * 0.14 + phiImpulse * 0.08) * (0.82 + 0.18 * fineFilaments);
-    color += whiteHot * heat * (0.08 + phiEvent * 0.15) * hotKnots * doppler;
+    float backgroundHalo = exp(-abs(r - photonRadius * 1.34) * 4.0);
+    vec3 color = mix(voidBlack, smoke, 0.04 + backgroundHalo * 0.04);
+    color += vec3(0.66, 0.76, 0.90) * stars * (0.24 + 0.10 * treble);
 
-    // Lensing arcs.
-    color += orange * upperLens * (0.26 + bass * 0.10 + phiPulse * 0.08);
-    color += whiteHot * upperInner * (0.10 + phiEvent * 0.12);
+    color += ember * discCore * (0.07 + 0.06 * bass);
+    color += orange * heat * (0.46 + energy * 0.14);
+    color += hot * heat * radialHeat * (0.20 + treble * 0.09 + aetherDensity * 0.08);
+    color += whiteHot * heat * hotKnots * (0.10 + aetherOnset * 0.16);
+
+    color += orange * upperLens * (0.36 + bass * 0.08);
+    color += hot * upperLens * lensFlow * (0.13 + aetherDensity * 0.08);
+    color += whiteHot * upperInner * (0.18 + aetherBeatPulse * 0.14);
     color += hot * lowerLens * (0.14 + bass * 0.06);
+    color += whiteHot * photonRing * (0.10 + treble * 0.05 + aetherOnset * 0.08);
 
-    // Volumetric structure.
-    color += orange * innerGlow * (0.04 + energy * 0.04);
-    color += ember * warmFog * (0.05 + bass * 0.04) * (1.0 - shadowMask);
-    color += orange * ambientField * (0.006 + energy * 0.010);
-    color += fieldColor * (0.08 + treble * 0.04);
-    color += hot * field * (0.03 + phiImpulse * 0.04);
-
+    color += orange * innerGlow * (0.028 + energy * 0.018);
     color += hot * shock;
-    color += whiteHot * glimpse * (0.04 + phiEvent * 0.08);
+    color += whiteHot * glimpse * (0.028 + phiEvent * 0.050);
 
-    // Deep shadow.
-    color *= 1.0 - shadowMask * 0.96;
-    color += whiteHot * ring(r, shadowRadius + 0.006, 0.005) * 0.03;
+    color += dustColor * (0.035 + treble * 0.030);
+    color += hot * dust * (0.018 + aetherOnset * 0.028);
 
-    float vignette = smoothstep(1.55, 0.20, length(p));
+    color *= 1.0 - shadowMask * 0.994;
+
+    float vignette = smoothstep(1.66, 0.18, length(screen));
     color *= vignette;
 
-    frag = vec4(color, 1.0);
+    float exposure = 0.94 + musicDrive * 0.15 + aetherOnset * 0.08;
+    color = vec3(1.0) - exp(-color * exposure);
+    color = pow(max(color, vec3(0.0)), vec3(0.97));
+
+    float grain = hash2(gl_FragCoord.xy + vec2(floor(phase * 8.0), 23.0)) - 0.5;
+    color += grain * (0.0040 + treble * 0.0014);
+
+    frag = vec4(max(color, vec3(0.0)), 1.0);
 }
 """
 

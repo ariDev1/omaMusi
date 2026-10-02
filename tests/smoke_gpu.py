@@ -33,7 +33,7 @@ def main():
             QTest.qWait(300)
             sink = window.player.sink
             assert sink is not None
-            programs = (visual._gpu.quad, visual._gpu.particles, visual._gpu.phi, visual._gpu.phi_particles, visual._gpu.vao)
+            programs = (visual._gpu.quad, visual._gpu.particles, visual._gpu.phi, visual._gpu.phi_particles, visual._gpu.event_horizon, visual._gpu.vao)
             geometry = visual.particle_vertices.copy()
             for _ in range(len(Visualizer.modes) * 8):
                 window.cycle_view()
@@ -48,7 +48,7 @@ def main():
             assert after["written"] > before["written"]
             assert after["underruns"] == 0, after
             np.testing.assert_array_equal(geometry, visual.particle_vertices)
-            assert programs == (visual._gpu.quad, visual._gpu.particles, visual._gpu.phi, visual._gpu.phi_particles, visual._gpu.vao)
+            assert programs == (visual._gpu.quad, visual._gpu.particles, visual._gpu.phi, visual._gpu.phi_particles, visual._gpu.event_horizon, visual._gpu.vao)
             window.player.toggle_pause()
             QTest.qWait(100)
             visual.timer.stop()

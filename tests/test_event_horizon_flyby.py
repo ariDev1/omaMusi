@@ -12,7 +12,8 @@ class EventHorizonFlybyTests(unittest.TestCase):
         self.assertIn("float fly =", shader)
         self.assertIn("vec2 cameraLoop = vec2(", shader)
         self.assertIn("float cameraRoll =", shader)
-        self.assertIn("float viewTilt =", shader)
+        self.assertIn("float inclination =", shader)
+        self.assertIn("float foreshorten =", shader)
 
     def test_cpu_fallback_has_cinematic_accetion_lens(self):
         text = Path(inspect.getfile(Visualizer)).read_text()
