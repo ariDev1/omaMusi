@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -39,7 +40,9 @@ class PlayerWindow(QWidget):
     def __init__(self, tracks, mode=0):
         super().__init__()
         self.setWindowTitle("omaMusi")
-        self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
+        desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").lower()
+        if "gnome" not in desktop:
+            self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
         self.resize(1060, 680)
         self.setMinimumSize(640, 420)
         self.setAcceptDrops(True)
