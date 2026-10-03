@@ -1501,6 +1501,8 @@ class GpuCanvas(QOpenGLWidget):
                 GL.glUniform1i(self.uniforms[self.event_horizon]["audioData"], 0)
                 GL.glUniform2fv(GL.glGetUniformLocation(self.event_horizon, "audioWaves[0]"),
                                 5, wave_payload(state.bursts))
+                GL.glUniform3fv(GL.glGetUniformLocation(self.event_horizon, "audioSpots[0]"),
+                                4, state.horizon_hotspots.payload())
                 GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
             elif state.mode == 6:
                 background = QColor(state.colors.get("background", "#000000"))

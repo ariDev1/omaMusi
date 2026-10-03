@@ -14,6 +14,7 @@ from .audio import SAMPLE_RATE
 from .theme import DEFAULTS
 from .visual.analysis import MusicAnalyzer
 from .visual.director import VisualDirector
+from .visual.horizon import HorizonHotspots
 
 
 class Visualizer(QWidget):
@@ -54,6 +55,7 @@ class Visualizer(QWidget):
         self.analysis_rate = None
         self.music_analyzer = MusicAnalyzer()
         self.visual_director = VisualDirector()
+        self.horizon_hotspots = HorizonHotspots()
         self.aether_onset = 0.0
         self.aether_beat_phase = 0.0
         self.aether_beat_confidence = 0.0
@@ -114,6 +116,7 @@ class Visualizer(QWidget):
         self.history_revision += 1
         self.music_analyzer.reset()
         self.visual_director.reset()
+        self.horizon_hotspots.reset()
         self.aether_onset = 0.0
         self.aether_beat_phase = 0.0
         self.aether_beat_confidence = 0.0
@@ -204,6 +207,7 @@ class Visualizer(QWidget):
             dt, self.bands, self.energy, self.bass, self.treble
         )
         directed = self.visual_director.update(metrics, dt)
+        self.horizon_hotspots.update(dt, metrics, self.active)
         self.aether_onset = metrics.onset
         self.aether_beat_phase = metrics.beat_phase
         self.aether_beat_confidence = metrics.beat_confidence
@@ -378,14 +382,45 @@ class Visualizer(QWidget):
         baseline = h * 0.19
         disk = QLinearGradient(0, baseline - h * 0.14, 0, baseline + h * 0.14)
         for stop, color in ((0.0, QColor(0, 0, 0, 0)),
-                            (0.25, QColor(166, 89, 40, 80)),
-                            (0.43, QColor(255, 209, 149, 220)),
+                            (0.25, QColor(0, 0, 0, 0)),
+                            (0.43, QColor(255, 209, 149, 0)),
                             (0.5, QColor(255, 248, 221)),
                             (0.57, QColor(255, 209, 149, 220)),
                             (0.75, QColor(166, 89, 40, 80)),
                             (1.0, QColor(0, 0, 0, 0))):
             disk.setColorAt(stop, color)
         p.fillRect(QRectF(-w * 1.5, baseline - h * 0.14, w * 3, h * 0.28), disk)
+        for age, strength, seed in self.horizon_hotspots.spots:
+            orbit = seed * math.tau + age * (1.35 + seed * 0.40)
+            orbit_r = h * (0.58 + seed * 0.21)
+            fade = min(1.0, age / 0.09) * max(0.0, min(1.0, (4.2 - age) / 2.4))
+            x = math.cos(orbit) * orbit_r
+            y = baseline - math.sin(orbit) * h * 0.12
+            visible = math.sin(orbit) < 0 or math.hypot(x, y) > radius
+            if visible:
+                p.setBrush(QColor(255, 232, 179, int(210 * strength * fade)))
+                p.drawEllipse(QPointF(x, y), h * 0.009, h * 0.009)
+                for step in range(1, 6):
+                    trail = orbit - step * 0.06
+                    p.setBrush(QColor(255, 117, 36,
+                                      int(100 * strength * fade * math.exp(-step * 0.45))))
+                    p.drawEllipse(QPointF(math.cos(trail) * orbit_r,
+                                         baseline - math.sin(trail) * h * 0.12),
+                                  h * 0.009, h * 0.009)
+            for delay, attenuation in ((0.26, 0.75), (0.62, 0.28)):
+                echo_age = age - delay
+                if echo_age <= 0:
+                    continue
+                past = seed * math.tau + echo_age * (1.35 + seed * 0.40)
+                if math.sin(past) <= 0:
+                    continue
+                echo_angle = math.atan2(abs(math.sin(past)) * 0.9 + 0.18, math.cos(past))
+                echo_r = radius + h * (0.040 + seed * 0.09)
+                p.setBrush(QColor(255, 184, 97, int(170 * strength * fade * attenuation)))
+                for side in (-1, 1):
+                    p.drawEllipse(QPointF(math.cos(echo_angle) * echo_r,
+                                         side * math.sin(echo_angle) * echo_r),
+                                  h * 0.010, h * 0.010)
         p.restore()
 
     def paint_event_horizon(self, p, w, h):
