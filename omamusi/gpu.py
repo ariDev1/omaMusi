@@ -661,7 +661,6 @@ void main() {
     vec3 orange = vec3(1.00,0.38,0.08);
     vec3 magenta = vec3(1.00,0.20,0.78);
     vec3 violet = vec3(0.46,0.30,1.00);
-    vec3 whiteHot = vec3(1.00,0.97,0.90);
 
     // Seven-stop rainbow so the flock is never two-colour: low picks go
     // teal/green, mids gold/orange, highs magenta/violet.
@@ -671,21 +670,22 @@ void main() {
     base = mix(base, magenta, smoothstep(0.55, 0.74, huePick));
     base = mix(base, violet, smoothstep(0.74, 1.0, huePick));
     base = mix(base, violet, 0.20*sin(id*0.07 + phase*0.2));
-    // Music-driven recolour stays inside the spectrum: treble/bass nudge
-    // toward green/orange, hits flash brighter (see tint below) with only
-    // a whisper of gold/white so hue variety survives the flash.
+    // Music changes hue rather than bleaching every note toward white.
     base = mix(base, green, clamp(treble*0.9*(0.4 + 0.6*huePick), 0.0, 0.35));
     base = mix(base, orange, clamp(bass*0.8*(0.4 + 0.6*(1.0 - huePick)), 0.0, 0.30));
     base = mix(base, gold, clamp(aetherOnset*0.18 + aetherBeatPulse*0.12 + bandSat*0.12, 0.0, 0.25));
-    base = mix(base, whiteHot, clamp(drive*0.22, 0.0, 0.20));
+    base = clamp(base, 0.0, 1.0);
+    base /= max(max(base.r, base.g), max(base.b, 0.001));
+    base = pow(base, vec3(1.35));
 
     float nearGlow = clamp(1.6/safeDepth, 0.0, 1.0);
-    // Dim enough at rest for 25k additive dots to not saturate to white;
-    // loud music lifts toward ~1.6x instead of 4x.
-    tint = base * (0.65 + energy*0.40 + speed*0.20 + nearGlow*0.25
-                   + drive*0.55 + bandSat*0.25 + wave*0.15 + beatWave*aetherBeatConfidence*0.20);
-    opacity = clamp(0.14 + speed*0.15 + aetherDensity*0.10 + drive*0.22 + bandSat*0.15,
-                    0.0, 0.90);
+    // Bounded light output: music primarily drives motion, hue and size.
+    // A bright source must never exceed framebuffer range and clip white.
+    float brightness = clamp(0.72 + energy*0.08 + min(speed,2.0)*0.06
+                             + nearGlow*0.10 + drive*0.12 + wave*0.03, 0.65, 0.96);
+    tint = base * brightness;
+    opacity = clamp(0.18 + min(speed,2.0)*0.08 + aetherDensity*0.06
+                    + drive*0.12 + bandSat*0.08, 0.0, 0.65);
     // Torus riders (same hash as the physics): readable ring shape, but
     // deliberately dimmer than the main shell stream.
     float torusSeed = float(gl_VertexID)*0.37 + 5.0;
@@ -729,7 +729,7 @@ void main() {
     float alpha = (body*0.95 + core + tail + halo) * opacity;
     if (alpha < 0.02) discard;
 
-    frag = vec4(tint, alpha);
+    frag = vec4(tint, clamp(alpha, 0.0, 0.85));
 }
 
 """
@@ -1416,7 +1416,9 @@ class GpuCanvas(QOpenGLWidget):
                 GL.glUniform1f(loc, value)
 
         GL.glEnable(GL.GL_BLEND)
-        GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE)
+        # Source-over keeps overlapping colors bounded instead of summing
+        # 25k growing particles into a white sheet during loud passages.
+        GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
         GL.glBindVertexArray(self.swarm_vaos[self.swarm_index])
         GL.glDrawArrays(GL.GL_POINTS, 0, AETHER_SWARM_COUNT)
         GL.glBindVertexArray(0)

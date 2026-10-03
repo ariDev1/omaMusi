@@ -520,10 +520,9 @@ class Visualizer(QWidget):
         drive = 1.0 - math.exp(-boom * 0.9)
         center = QPointF(w * 0.5, h * 0.5)
         scale = min(w, h) * 0.42
-        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
         p.setPen(Qt.PenStyle.NoPen)
         count = 500
-        palette = ("cyan", "green", "accent", "magenta", "bright_foreground", "magenta", "green")
         for i in range(count):
             group = i % 13
             seed = (i * 0.61803398875) % 1.0
@@ -565,11 +564,10 @@ class Visualizer(QWidget):
                 y = center.y() + drift_y + (ly * math.cos(tilt) - lz * math.sin(tilt)) * 0.9
                 size = min(16.0, size * 1.15)
                 alpha = max(10, alpha - 50)
-            if self.phi_event > 0.5 and (i + int(self.time * 8)) % 3 == 0:
-                key = "bright_foreground"
-            else:
-                key = palette[i % len(palette)]
-            p.setBrush(self.color(key, max(10, min(255, alpha))))
+            hue = (seed + self.time * 0.03 + drive * 0.30 + band_sat * 0.45) % 1.0
+            tint = QColor.fromHsvF(hue, 0.85, min(0.96, 0.78 + drive * 0.12))
+            tint.setAlpha(max(10, min(170, alpha)))
+            p.setBrush(tint)
             p.drawEllipse(QPointF(x, y), size, size)
         p.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
