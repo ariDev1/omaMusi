@@ -169,7 +169,7 @@ void main() {
 
 
 PHI_PARTICLE_COUNT = 6765
-AETHER_SWARM_COUNT = 2584
+AETHER_SWARM_COUNT = 25840
 
 PHI_FRAGMENT = """#version 330 core
 in vec2 uv;
@@ -185,7 +185,15 @@ float sat(float x) { return clamp(x, 0.0, 1.0); }
 
 void main() {
     vec2 screen = (uv - 0.5) * vec2(resolution.x / resolution.y, 1.0);
-    vec3 ro = vec3(0.18*sin(phase/PHI + aetherWorldTurn), 0.14*cos(phase/(PHI*PHI) - aetherWorldTurn*0.7), phase*0.18*phiVelocity);
+    // Shared dance conductor: identical math in PHI_FRAGMENT and
+    // PHI_PARTICLE_VERTEX so background and particles move as one.
+    // Beat + director terms (beatPhase/beatPulse/worldTurn/sceneMorph)
+    // ride on top of the ambient phase instead of replacing it.
+    float beatTurn = aetherBeatPhase * TAU;
+    float beatKick = aetherBeatPulse * 0.6 + phiEvent * 0.4;
+    float sceneSway = (aetherSceneMorph - 0.5);
+    float dancePhase = phase + aetherWorldTurn * 1.5 + beatTurn * 0.05;
+    vec3 ro = vec3(0.18*sin(phase/PHI + aetherWorldTurn + beatTurn*0.05), 0.14*cos(phase/(PHI*PHI) - aetherWorldTurn*0.7 + sceneSway*0.1) + beatKick*0.01, phase*0.18*phiVelocity);
     vec3 rd = normalize(vec3(screen, 1.15));
     vec3 gold = vec3(1.0, 0.72, 0.24);
     vec3 color = background * 0.24;
@@ -224,9 +232,9 @@ void main() {
         color += psychedelic*glow;
     }
 
-    vec2 c0 = vec2(0.34*sin(phase*0.23), 0.28*cos(phase*0.19));
-    vec2 c1 = vec2(0.46*sin(phase*0.17*PHI+1.4), 0.31*cos(phase*0.21/PHI+0.7));
-    vec2 c2 = vec2(0.29*sin(phase*0.27+3.1), 0.36*cos(phase*0.15+2.5));
+    vec2 c0 = vec2(0.34*sin(dancePhase*0.23 + sceneSway*0.4), 0.28*cos(dancePhase*0.19) + beatKick*0.030);
+    vec2 c1 = vec2(0.46*sin(dancePhase*0.17*PHI+1.4 + sceneSway*0.3), 0.31*cos(dancePhase*0.21/PHI+0.7) + beatKick*0.030);
+    vec2 c2 = vec2(0.29*sin(dancePhase*0.27+3.1), 0.36*cos(dancePhase*0.15+2.5 + sceneSway*0.35) + beatKick*0.030);
 
     vec2 d0 = screen - c0;
     vec2 d1 = screen - c1;
@@ -240,14 +248,15 @@ void main() {
     float a1 = atan(d1.y, d1.x);
     float a2 = atan(d2.y, d2.x);
 
-    float flock0 = exp(-r0*4.4) * exp(-abs(sin(a0*6.0  - phase*(0.7 + phiVelocity*0.22) - r0*14.0))*11.5);
-    float flock1 = exp(-r1*4.0) * exp(-abs(sin(a1*7.0  + phase*(0.6 + phiVelocity*0.18) - r1*16.0))*10.0);
-    float flock2 = exp(-r2*3.7) * exp(-abs(sin(a2*8.0  - phase*(0.8 + phiVelocity*0.20) - r2*18.0))*9.5);
+    float flockSpin = dancePhase*(0.7 + phiVelocity*0.22) + beatTurn*0.15 + beatKick*0.8;
+    float flock0 = exp(-r0*4.4) * exp(-abs(sin(a0*6.0  - flockSpin - r0*14.0))*11.5);
+    float flock1 = exp(-r1*4.0) * exp(-abs(sin(a1*7.0  + flockSpin*0.85 - r1*16.0))*10.0);
+    float flock2 = exp(-r2*3.7) * exp(-abs(sin(a2*8.0  - flockSpin*1.1 - r2*18.0))*9.5);
 
     float swirl = (flock0 + flock1 + flock2) * (0.012 + treble*0.09 + phiImpulse*0.18);
     color += mix(cyan, bright, 0.28+0.50*treble) * swirl;
 
-    float shock = exp(-abs(length(screen) - fract(phase*0.7*phiVelocity + aetherBeatPhase*0.35)*1.35)*28.0);
+    float shock = exp(-abs(length(screen) - fract(dancePhase*0.7*phiVelocity + aetherBeatPhase*0.35 + sceneSway*0.10)*1.35)*28.0);
     color += gold * shock * (0.01 + phiImpulse*0.16 + phiEvent*0.10 + aetherOnset*0.14 + aetherBeatPulse*0.10);
     frag = vec4(color, 1.0);
 }
@@ -271,74 +280,88 @@ void main() {
     float seed = fract(n*INV_PHI);
     bool swarm = seed > 0.34;
 
+    // Same dance conductor as PHI_FRAGMENT: shared beat + director timing
+    // so particles and background breathe, orbit and pulse together.
+    float beatTurn = aetherBeatPhase * 6.28318530718;
+    float beatKick = aetherBeatPulse * 0.6 + phiEvent * 0.4;
+    float sceneSway = (aetherSceneMorph - 0.5);
+    float dancePhase = phase + aetherWorldTurn * 1.5 + beatTurn * 0.05;
+
     int bandIndex = int(mod(n*13.0,96.0));
     float band = datum(bandIndex);
     int waveIndex = int(mod(n*21.0,1024.0));
     float wave = datum(192+waveIndex);
 
+    // Nuclei sit exactly on the background flock centers (c0/c1/c2),
+    // so particle clusters orbit the same anchors as the backdrop swirls.
     int cluster = int(mod(n,3.0));
     vec2 nucleus;
     if (cluster == 0) {
-        nucleus = vec2(0.55*sin(phase*0.13), 0.42*cos(phase*0.11/PHI));
+        nucleus = vec2(0.34*sin(dancePhase*0.23 + sceneSway*0.4), 0.28*cos(dancePhase*0.19) + beatKick*0.030);
     } else if (cluster == 1) {
-        nucleus = vec2(0.62*sin(phase*0.17*PHI+2.1), 0.36*cos(phase*0.09+1.3));
+        nucleus = vec2(0.46*sin(dancePhase*0.17*PHI+1.4 + sceneSway*0.3), 0.31*cos(dancePhase*0.21/PHI+0.7) + beatKick*0.030);
     } else {
-        nucleus = vec2(0.48*sin(phase*0.07+4.0), 0.50*cos(phase*0.15/PHI+2.7));
+        nucleus = vec2(0.29*sin(dancePhase*0.27+3.1), 0.36*cos(dancePhase*0.15+2.5 + sceneSway*0.35) + beatKick*0.030);
     }
 
     float relZ;
     vec2 worldXY;
 
     if (!swarm) {
-        float travel = fract(n*INV_PHI + phase*(0.045+0.060*phiVelocity)
-                             + band*0.035 + phiImpulse*0.030);
+        float travel = fract(n*INV_PHI + dancePhase*(0.045+0.060*phiVelocity)
+                             + band*0.035 + phiImpulse*0.030
+                             + aetherBeatPhase*0.08 + aetherBeatPulse*0.05 + sceneSway*0.03);
         relZ = mix(0.55, 8.25, travel);
 
         float arm = mod(n, 21.0);
         float armAngle = arm * GOLDEN_ANGLE;
         float radial = (0.22 + sqrt(n/COUNT)*1.15)
-                       * (0.78 + 0.16*sin(n*0.013 + phase/PHI));
-        float angle = armAngle + relZ*0.22 + phase*0.10 + wave*(0.08+phiTension*0.14);
+                       * (0.78 + 0.16*sin(n*0.013 + dancePhase/PHI));
+        float angle = armAngle + relZ*0.22 + dancePhase*0.10 + beatTurn*0.03 + beatKick*0.20 + wave*(0.08+phiTension*0.14);
 
         vec2 radialVec = vec2(cos(angle), sin(angle));
         vec2 tangent = vec2(-radialVec.y, radialVec.x);
         worldXY = radialVec * radial
-                + tangent * (0.05 + 0.08*sin(phase*0.7 + n*0.017));
+                + tangent * (0.05 + 0.08*sin(dancePhase*0.7 + beatTurn*0.1 + n*0.017));
         worldXY += nucleus * 0.20;
     } else {
-        float lane = fract(seed*3.137 + phase*(0.11 + 0.22*phiVelocity)
-                           + band*0.045 + phiImpulse*0.10);
+        float lane = fract(seed*3.137 + dancePhase*(0.11 + 0.22*phiVelocity)
+                           + band*0.045 + phiImpulse*0.10
+                           + aetherBeatPhase*0.08 + aetherBeatPulse*0.05 + sceneSway*0.03);
         relZ = mix(0.30, 6.20, lane) + float(cluster) * 0.08;
 
         float orbit = seed*6.28318530718
-                    + phase*(0.75 + band*0.20 + phiVelocity*0.15)
+                    + dancePhase*(0.70 + band*0.05 + phiVelocity*0.20)
                     + aetherWorldTurn*(0.8 + float(cluster)*0.27)
-                    + aetherBeatPulse*0.45;
-        float spread = 0.12 + 0.62*fract(n*0.754877666) + phiPulse*0.12;
+                    + beatTurn*0.15 + aetherBeatPulse*0.45 + beatKick*0.30;
+        float spread = 0.12 + 0.62*fract(n*0.754877666) + phiPulse*0.12 + beatKick*0.10 + aetherBeatPulse*0.06;
         vec2 radialVec = vec2(cos(orbit), sin(orbit));
         vec2 tangent = vec2(-radialVec.y, radialVec.x);
 
-        float turn = sin(phase*1.9 + n*0.031 + wave*5.0);
+        // Same spin as the background flock so swirls rotate together.
+        float flockSpin = dancePhase*(0.7 + phiVelocity*0.22) + beatTurn*0.15 + beatKick*0.8;
+        float turn = sin(flockSpin + n*0.031 + wave*2.0);
         float flock = 0.16 + 0.26*treble + 0.18*phiImpulse + aetherDensity*0.18 + aetherOnset*0.20;
 
         worldXY = nucleus
                 + radialVec * spread
                 + tangent * (0.10 + 0.22*turn + flock*0.35)
-                + vec2(sin(phase*0.9 + n*0.021),
-                       cos(phase*1.1 + n*0.018))
+                + vec2(sin(dancePhase*0.9 + beatTurn*0.1 + n*0.021),
+                       cos(dancePhase*1.1 + beatTurn*0.1 + n*0.018))
                   * 0.05 * (0.4 + band);
     }
 
-    vec2 camera = vec2(0.18*sin(phase/PHI),
-                       0.14*cos(phase/(PHI*PHI)));
+    // Same camera as the background ray origin so parallax matches.
+    vec2 camera = vec2(0.18*sin(phase/PHI + aetherWorldTurn + beatTurn*0.05),
+                       0.14*cos(phase/(PHI*PHI) - aetherWorldTurn*0.7 + sceneSway*0.1) + beatKick*0.01);
     vec2 projected = (worldXY - camera) / relZ;
     projected.x /= resolution.x / resolution.y;
     gl_Position = vec4(projected*1.72, 0.0, 1.0);
 
     float nearFactor = clamp(1.8/relZ, 0.35, 3.0);
     gl_PointSize = (swarm
-                    ? (0.9 + band*2.5 + treble*1.8 + phiImpulse*2.0)
-                    : (0.8 + band*3.1 + treble*1.2 + phiImpulse*1.0))
+                    ? (0.9 + band*2.5 + treble*1.8 + phiImpulse*2.0 + aetherBeatPulse*1.2 + beatKick*0.6)
+                    : (0.8 + band*3.1 + treble*1.2 + phiImpulse*1.0 + aetherBeatPulse*0.6))
                    * pixelRatio * nearFactor;
 
     float pick = fract(n*INV_PHI);
@@ -352,8 +375,8 @@ void main() {
     tint = mix(tint, gold, phiEvent*(0.14+0.38*band));
 
     opacity = (swarm
-               ? (0.14 + band*0.46 + treble*0.18 + phiImpulse*0.10)
-               : (0.11 + band*0.52 + energy*0.16 + phiImpulse*0.05))
+               ? (0.14 + band*0.46 + treble*0.18 + phiImpulse*0.10 + aetherBeatPulse*0.12 + beatKick*0.08)
+               : (0.11 + band*0.52 + energy*0.16 + phiImpulse*0.05 + aetherBeatPulse*0.08))
               * smoothstep(swarm ? 6.20 : 8.25,
                            swarm ? 0.30 : 0.55,
                            relZ);
@@ -373,6 +396,11 @@ uniform float aetherOnset;
 uniform float aetherDensity;
 uniform float aetherWorldTurn;
 uniform float aetherBeatPulse;
+uniform float aetherBeatPhase;
+uniform float aetherBeatConfidence;
+uniform float phiImpulse;
+uniform float phiEvent;
+uniform float phiVelocity;
 
 out vec3 outPosition;
 out vec3 outVelocity;
@@ -397,17 +425,33 @@ void main() {
     float orbit = phase*(0.07 + 0.022*group) + heading;
     float phrase = 0.5 + 0.5*sin(phase*(0.12 + group*0.007) + group*0.43 + seed*TAU);
 
+    // Continuous beat groove: even between triggers the shell breathes
+    // with the beat cycle; strength follows beat confidence so ambient
+    // music stays calm and locked grooves visibly pump.
+    float beatCycle = sin(aetherBeatPhase*TAU + g*TAU);
+    float groove = (0.25 + 0.75*aetherBeatConfidence);
+    float dance = aetherBeatPulse*1.4 + aetherOnset*1.2 + phiImpulse*1.6 + phiEvent*1.8;
+
     vec3 center = vec3(
         1.05*sin(orbit + group*PHI),
         0.82*cos(orbit/PHI + group*0.37),
         1.95*sin(orbit*0.41 + group*0.73)
     );
+    // Hit bounce: whole flock attractor jumps on transients instead of
+    // only drifting on the slow orbit.
+    center += vec3(
+        sin(group*2.1 + phase*0.4),
+        cos(group*1.7 - phase*0.33),
+        sin(group*0.9 + phase*0.27)
+    ) * (dance*0.35 + beatCycle*groove*0.08);
 
     vec3 toCenter = center - p;
     float dist = max(length(toCenter), 0.001);
     vec3 radial = toCenter / dist;
 
-    float shell = mix(0.38, 1.48, phrase);
+    // Shell structures persist, but breathe with the music instead of
+    // acting as a rigid cage that fights every transient.
+    float shell = mix(0.38, 1.48, phrase) * (1.0 + aetherBeatPulse*0.28 + aetherOnset*0.22 + phiEvent*0.34 + beatCycle*groove*0.06);
     float shellError = dist - shell;
 
     vec3 axis = normalize(vec3(
@@ -418,8 +462,9 @@ void main() {
     vec3 tangent = normalize(cross(radial, axis) + vec3(0.0001));
 
     float cohesion = 0.26 + aetherDensity*0.34 + energy*0.12;
-    float orbitForce = 0.24 + treble*0.22 + 0.08*sin(id*0.13 + phase);
-    float repel = smoothstep(0.55, 0.10, dist) * (0.75 + bass*0.70);
+    float orbitForce = (0.24 + treble*0.22 + 0.08*sin(id*0.13 + phase))
+                     * (1.0 + phiVelocity*0.35 + dance*0.8);
+    float repel = smoothstep(0.55, 0.10, dist) * (0.75 + bass*0.70 + dance*0.9);
 
     vec3 shellForce = -radial * shellError * (0.82 + 0.25*aetherDensity);
 
@@ -427,17 +472,26 @@ void main() {
         sin(p.y*1.9 + phase*0.21 + seed*TAU),
         cos(p.z*1.4 - phase*0.17 + seed*TAU),
         sin(p.x*1.6 + phase*0.13 - seed*TAU)
-    ) * (0.06 + treble*0.09);
+    ) * (0.15 + treble*0.60 + phiImpulse*1.20 + aetherOnset*0.50);
 
-    vec3 drift = normalize(center + vec3(0.001)) * (0.02 + aetherBeatPulse*0.06);
+    vec3 drift = normalize(center + vec3(0.001)) * (0.05 + aetherBeatPulse*0.50 + dance*0.20);
 
-    vec3 beatKick = tangent * (aetherBeatPulse*1.15 + aetherOnset*0.55)
-                  + radial * (bass*aetherBeatPulse*0.40)
+    // Kicks scaled ~4x up: previously tangent*1.15*dt moved velocity by
+    // ~0.02/frame (invisible next to orbital speeds of ~0.4).
+    // Explode: outward blast from the origin on hits so the whole flock
+    // pumps outward, then the shell spring pulls it back (pump, not drift).
+    vec3 dirOut = p / max(length(p), 0.35);
+    float boom = aetherBeatPulse*5.20 + aetherOnset*3.40 + phiImpulse*4.20 + phiEvent*5.50;
+    float perParticle = 0.45 + 1.10*fract(seed*7.31);
+    vec3 blast = dirOut * boom * perParticle
+               + tangent * (aetherBeatPulse*4.20 + aetherOnset*2.20 + phiImpulse*2.60 + phiEvent*3.20 + beatCycle*groove*0.55) * perParticle
+               + radial * (bass*aetherBeatPulse*2.10 + aetherOnset*1.20 + phiImpulse*2.50 + phiEvent*3.00 + beatCycle*groove*0.45);
+    vec3 beatKick = blast
                   + normalize(vec3(
                         sin(group + phase*0.2),
                         cos(group*0.7 - phase*0.13),
                         sin(seed*TAU + phase*0.17)
-                    )) * (aetherOnset*0.14);
+                    )) * (aetherOnset*0.90 + phiImpulse*0.90 + phiEvent*1.10);
 
     vec3 accel = radial*cohesion
                + shellForce
@@ -448,10 +502,15 @@ void main() {
                + beatKick;
 
     v += accel * dt;
-    v *= exp(-dt * 0.26);
+    // Snappier tracking: old 0.26 damping made velocity integrate for
+    // seconds (floaty trails). ~1.4 follows kicks within a beat while
+    // still smoothing jitter; extra damping on quiet passages.
+    // Loosen damping during blasts so explosions actually fly.
+    float blastEase = clamp(boom*0.35, 0.0, 0.9);
+    v *= exp(-dt * ((1.35 + (1.0 - clamp(dance, 0.0, 1.5))*0.55) * (1.0 - blastEase*0.55)));
 
     float speed = length(v);
-    float maxSpeed = 0.72 + energy*1.10 + aetherOnset*0.85;
+    float maxSpeed = 2.60 + energy*2.40 + aetherOnset*3.20 + aetherBeatPulse*2.80 + phiImpulse*3.40 + phiEvent*3.60;
     if (speed > maxSpeed) {
         v *= maxSpeed / speed;
     }
@@ -482,7 +541,13 @@ uniform float aetherOnset;
 uniform float aetherDensity;
 uniform float aetherWorldTurn;
 uniform float aetherBeatPulse;
+uniform float aetherBeatPhase;
+uniform float aetherBeatConfidence;
+uniform float phiImpulse;
+uniform float phiEvent;
 uniform float pixelRatio;
+uniform sampler2D audioData;
+uniform float canary;
 
 out vec3 tint;
 out float opacity;
@@ -515,31 +580,73 @@ void main() {
     gl_Position = vec4(projected*2.45, 0.0, 1.0);
 
     float speed = length(vel);
-    float nearFactor = clamp(2.9/safeDepth, 0.45, 4.6);
-    gl_PointSize = (2.4 + speed*6.2 + treble*1.5 + aetherBeatPulse*2.6)
-                   * pixelRatio * nearFactor;
+    float nearFactor = clamp(2.9/safeDepth, 0.70, 2.5);
+    // Per-particle spectrum band: neighbours dance to different parts
+    // of the music instead of all pulsing on the global smoothed level.
+    int bandIdx = int(mod(float(gl_VertexID)*13.0, 96.0));
+    float band = texelFetch(audioData, ivec2(bandIdx, 0), 0).r;
+    // Beat-wave (locked groove) + free shimmer (always moving): with no
+    // BPM lock beatPhase freezes, so a pure beat wave would freeze too.
+    float beatWave = 0.5 + 0.5*sin(aetherBeatPhase*6.28318530718 + float(gl_VertexID)*0.021);
+    float shimmer = 0.5 + 0.5*sin(phase*2.2 + float(gl_VertexID)*0.11 + float(gl_VertexID)*0.013);
+    float wave = clamp(beatWave*(0.25 + 0.75*aetherBeatConfidence) + shimmer*0.55, 0.0, 1.4);
+    float dance = aetherBeatPulse + aetherOnset + phiImpulse + phiEvent;
+    float pop = aetherBeatPulse*4.0 + aetherOnset*3.5 + phiImpulse*4.0 + phiEvent*5.0 + band*4.0;
+    float sizeVar = 0.70 + 0.60*fract(float(gl_VertexID)*0.754877666);
+    float grow = 1.0 + dance*0.5 + band*0.4;
+    // Sized for 25k additive dots: quiet ~2-5px texture, hits ~10-26px.
+    gl_PointSize = clamp((2.0 + speed*5.0 + bass*4.0 + energy*3.0 + treble*2.0 + pop
+                   + wave*(0.6 + 2.0*aetherBeatConfidence*aetherBeatPulse + dance*0.8))
+                   * sizeVar * grow * pixelRatio * nearFactor,
+                   1.5, 26.0*pixelRatio);
 
     vec2 dir = vel.xy;
     float dirLen = length(dir);
     streakDir = dirLen > 0.0001 ? dir / dirLen : vec2(1.0, 0.0);
-    streakMix = clamp(speed*1.8 + aetherBeatPulse*0.9 + aetherOnset*0.45, 0.0, 1.0);
+    streakMix = clamp(speed*1.4 + aetherBeatPulse*0.9 + aetherOnset*0.45 + phiImpulse*0.6 + phiEvent*0.5 + band*0.5, 0.0, 1.0);
 
     float id = float(gl_VertexID);
-    float huePick = fract(id*0.61803398875);
+    // Flashes rotate hue instead of washing to one color: dance/band terms
+    // shift each particle to a different part of the spectrum on hits.
+    float huePick = fract(id*0.61803398875 + energy*0.15 + aetherBeatPhase*0.10 + phase*0.03
+                          + dance*0.30 + band*0.45 + beatWave*0.15*aetherBeatConfidence);
 
     vec3 cyan = vec3(0.20,0.92,1.00);
-    vec3 magenta = vec3(1.00,0.20,0.78);
+    vec3 green = vec3(0.25,1.00,0.45);
     vec3 gold = vec3(1.00,0.72,0.24);
+    vec3 orange = vec3(1.00,0.38,0.08);
+    vec3 magenta = vec3(1.00,0.20,0.78);
     vec3 violet = vec3(0.46,0.30,1.00);
+    vec3 whiteHot = vec3(1.00,0.97,0.90);
 
-    vec3 base = mix(cyan, magenta, smoothstep(0.18,0.82,huePick));
-    base = mix(base, violet, 0.25 + 0.20*sin(id*0.07 + phase*0.2));
-    base = mix(base, gold, aetherOnset*(0.22 + 0.20*huePick));
+    // Seven-stop rainbow so the flock is never two-colour: low picks go
+    // teal/green, mids gold/orange, highs magenta/violet.
+    vec3 base = mix(cyan, green, smoothstep(0.0, 0.22, huePick));
+    base = mix(base, gold, smoothstep(0.22, 0.42, huePick));
+    base = mix(base, orange, smoothstep(0.42, 0.55, huePick));
+    base = mix(base, magenta, smoothstep(0.55, 0.74, huePick));
+    base = mix(base, violet, smoothstep(0.74, 1.0, huePick));
+    base = mix(base, violet, 0.20*sin(id*0.07 + phase*0.2));
+    // Music-driven recolour stays inside the spectrum: treble/bass nudge
+    // toward green/orange, hits flash brighter (see tint below) with only
+    // a whisper of gold/white so hue variety survives the flash.
+    base = mix(base, green, clamp(treble*0.9*(0.4 + 0.6*huePick), 0.0, 0.35));
+    base = mix(base, orange, clamp(bass*0.8*(0.4 + 0.6*(1.0 - huePick)), 0.0, 0.30));
+    base = mix(base, gold, clamp(aetherOnset*0.30 + aetherBeatPulse*0.20 + band*0.18, 0.0, 0.40));
+    base = mix(base, whiteHot, clamp(phiEvent*0.30 + phiImpulse*0.15 + dance*0.08, 0.0, 0.35));
 
     float nearGlow = clamp(1.6/safeDepth, 0.0, 1.0);
-    tint = base * (0.95 + energy*0.62 + speed*0.34 + nearGlow*0.32);
-    opacity = clamp(0.38 + speed*0.42 + aetherDensity*0.24 + aetherBeatPulse*0.18,
-                    0.0, 0.98);
+    // Dim enough at rest for 25k additive dots to not saturate to white.
+    tint = base * (0.70 + energy*0.70 + speed*0.30 + nearGlow*0.25
+                   + aetherOnset*0.60 + aetherBeatPulse*0.55 + phiImpulse*0.55 + phiEvent*0.50
+                   + band*0.45 + wave*0.20 + beatWave*aetherBeatConfidence*0.25);
+    opacity = clamp(0.16 + speed*0.25 + aetherDensity*0.12 + aetherBeatPulse*0.28 + aetherOnset*0.30 + phiImpulse*0.25 + phiEvent*0.20 + band*0.22,
+                    0.0, 0.95);
+    // Debug canary (OMA_PARTICLE_CANARY=1): unmistakable giant red dots.
+    // Proves the live shader is on screen. No-op when canary is 0.
+    gl_PointSize = max(gl_PointSize, canary*26.0*pixelRatio);
+    tint = mix(tint, vec3(1.0, 0.08, 0.15), canary*0.95);
+    opacity = max(opacity, canary*0.9);
 }
 
 """
@@ -998,6 +1105,10 @@ class GpuCanvas(QOpenGLWidget):
     def initializeGL(self):
         self.history_revision = -1
         try:
+            # Core profile ignores gl_PointSize writes from shaders unless
+            # this is enabled -- without it every point renders at 1px and
+            # all size choreography is silently dead.
+            GL.glEnable(GL.GL_PROGRAM_POINT_SIZE)
             self.quad = compileProgram(compileShader(QUAD_VERTEX, GL.GL_VERTEX_SHADER),
                                        compileShader(QUAD_FRAGMENT, GL.GL_FRAGMENT_SHADER))
             self.particles = compileProgram(compileShader(PARTICLE_VERTEX, GL.GL_VERTEX_SHADER),
@@ -1114,14 +1225,19 @@ class GpuCanvas(QOpenGLWidget):
             for name in (
                 "dt", "phase", "energy", "bass", "treble",
                 "aetherOnset", "aetherDensity", "aetherWorldTurn", "aetherBeatPulse",
+                "aetherBeatPhase", "aetherBeatConfidence",
+                "phiImpulse", "phiEvent", "phiVelocity",
             )
         }
+        import os as _os
+        self._swarm_canary = 1.0 if _os.environ.get("OMA_PARTICLE_CANARY") == "1" else 0.0
         self.swarm_render_uniforms = {
             name: GL.glGetUniformLocation(self.swarm_render, name)
             for name in (
                 "resolution", "phase", "energy", "bass", "treble",
                 "aetherOnset", "aetherDensity", "aetherWorldTurn",
-                "aetherBeatPulse", "pixelRatio",
+                "aetherBeatPulse", "aetherBeatPhase", "aetherBeatConfidence",
+                "phiImpulse", "phiEvent", "pixelRatio", "audioData", "canary",
             )
         }
 
@@ -1145,9 +1261,14 @@ class GpuCanvas(QOpenGLWidget):
             ("aetherDensity", state.aether_density),
             ("aetherWorldTurn", state.aether_world_turn),
             ("aetherBeatPulse", state.aether_beat_pulse),
+            ("aetherBeatPhase", state.aether_beat_phase),
+            ("aetherBeatConfidence", state.aether_beat_confidence),
+            ("phiImpulse", state.phi_impulse),
+            ("phiEvent", state.phi_event),
+            ("phiVelocity", state.phi_velocity),
         ):
             loc = self.swarm_update_uniforms[name]
-            if loc != -1:
+            if loc is not None and loc != -1:
                 GL.glUniform1f(loc, value)
 
         GL.glEnable(GL.GL_RASTERIZER_DISCARD)
@@ -1168,6 +1289,12 @@ class GpuCanvas(QOpenGLWidget):
         u = self.swarm_render_uniforms
         GL.glUniform2f(u["resolution"], width, height)
         GL.glUniform1f(u["pixelRatio"], ratio)
+        canary_loc = u.get("canary", -1)
+        if canary_loc is not None and canary_loc != -1:
+            GL.glUniform1f(canary_loc, getattr(self, "_swarm_canary", 0.0))
+        audio_loc = u.get("audioData", -1)
+        if audio_loc is not None and audio_loc != -1:
+            GL.glUniform1i(audio_loc, 0)
 
         for name, value in (
             ("phase", state.time),
@@ -1178,9 +1305,14 @@ class GpuCanvas(QOpenGLWidget):
             ("aetherDensity", state.aether_density),
             ("aetherWorldTurn", state.aether_world_turn),
             ("aetherBeatPulse", state.aether_beat_pulse),
+            ("aetherBeatPhase", state.aether_beat_phase),
+            ("aetherBeatConfidence", state.aether_beat_confidence),
+            ("phiImpulse", state.phi_impulse),
+            ("phiEvent", state.phi_event),
         ):
-            if u[name] != -1:
-                GL.glUniform1f(u[name], value)
+            loc = u[name]
+            if loc is not None and loc != -1:
+                GL.glUniform1f(loc, value)
 
         GL.glEnable(GL.GL_BLEND)
         GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE)
@@ -1233,6 +1365,7 @@ class GpuCanvas(QOpenGLWidget):
             GL.glBindBuffer(GL.GL_PIXEL_UNPACK_BUFFER, 0)
             GL.glDisable(GL.GL_DEPTH_TEST)
             GL.glDisable(GL.GL_BLEND)
+            GL.glEnable(GL.GL_PROGRAM_POINT_SIZE)
             GL.glBindVertexArray(self.vao)
             self.audio_payload[:96] = state.bands
             self.audio_payload[96:192] = state.peaks
@@ -1261,13 +1394,16 @@ class GpuCanvas(QOpenGLWidget):
                 GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE)
                 GL.glDrawArrays(GL.GL_POINTS, 0, PHI_PARTICLE_COUNT)
                 GL.glDisable(GL.GL_BLEND)
-
-                self._update_aether_swarm()
-                self._draw_aether_swarm(width, height, ratio)
             elif state.mode == 5:
                 GL.glUseProgram(self.event_horizon)
                 self.common_uniforms(self.event_horizon, width, height)
                 GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
+            elif state.mode == 6:
+                background = QColor(state.colors.get("background", "#000000"))
+                GL.glClearColor(background.redF(), background.greenF(), background.blueF(), 1.0)
+                GL.glClear(GL.GL_COLOR_BUFFER_BIT)
+                self._update_aether_swarm()
+                self._draw_aether_swarm(width, height, ratio)
             else:
                 self.common_uniforms(self.quad, width, height)
                 u = self.uniforms[self.quad]

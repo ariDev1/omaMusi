@@ -4,7 +4,7 @@ from omamusi import gpu
 
 class AetherSwarmTests(unittest.TestCase):
     def test_fibonacci_swarm_count(self):
-        self.assertEqual(gpu.AETHER_SWARM_COUNT, 2584)
+        self.assertEqual(gpu.AETHER_SWARM_COUNT, 25840)
 
     def test_persistent_swarm_uses_transform_feedback(self):
         source = Path(gpu.__file__).read_text()

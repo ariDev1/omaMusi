@@ -1,6 +1,7 @@
 """A text-only, keyboard-first overlay on the live audio visualization."""
 
 import argparse
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -767,6 +768,12 @@ def main():
     }
     view = aliases.get(args.view, args.view)
     window = PlayerWindow(tracks, [mode.lower() for mode in Visualizer.modes].index(view))
+    visualizer = window.visualizer
+    print(f"omaMusi: view={view} renderer={visualizer.renderer} ({visualizer.renderer_detail})",
+          file=sys.stderr)
+    if os.environ.get("OMA_PARTICLE_CANARY") == "1":
+        print("omaMusi: PARTICLE CANARY on — swarm forced to giant red dots in Particle Dance",
+              file=sys.stderr)
     window.show()
     return app.exec()
 

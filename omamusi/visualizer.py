@@ -18,7 +18,8 @@ from .visual.director import VisualDirector
 
 class Visualizer(QWidget):
     PARTICLE_COUNT = 384  # Conservative fallback; GPU draws 4,096 streaks.
-    modes = ("Warp", "Spectrum", "Waveform", "Spectrogram", "Phi Cathedral", "Event Horizon")
+    modes = ("Warp", "Spectrum", "Waveform", "Spectrogram", "Phi Cathedral", "Event Horizon",
+               "Particle Dance")
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -296,8 +297,10 @@ class Visualizer(QWidget):
             self.paint_spectrogram(p, w, h)
         elif self.mode == 4:
             self.paint_phi(p, w, h)
-        else:
+        elif self.mode == 5:
             self.paint_event_horizon(p, w, h)
+        else:
+            self.paint_particle_dance(p, w, h)
 
     def color(self, key, alpha=255):
         color = QColor(self.colors[key])
@@ -426,27 +429,76 @@ class Visualizer(QWidget):
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawEllipse(center, shadow_r * 0.75, shadow_r * 0.75)
 
+    def paint_particle_dance(self, p, w, h):
+        """CPU fallback for the standalone Particle Dance swarm visual."""
+        dance = self.time + self.aether_world_turn * 1.5 + self.aether_beat_phase * math.tau * 0.05
+        beat_kick = self.aether_beat_pulse * 0.6 + self.phi_event * 0.4
+        boom = (self.aether_beat_pulse * 1.4 + self.aether_onset * 1.2
+                + self.phi_impulse * 1.6 + self.phi_event * 1.8)
+        center = QPointF(w * 0.5, h * 0.5)
+        scale = min(w, h) * 0.42
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
+        p.setPen(Qt.PenStyle.NoPen)
+        count = 500
+        palette = ("cyan", "green", "accent", "magenta", "bright_foreground", "magenta", "green")
+        for i in range(count):
+            group = i % 13
+            seed = (i * 0.61803398875) % 1.0
+            per_particle = 0.45 + 1.10 * ((seed * 7.31) % 1.0)
+            heading = self.aether_world_turn * (0.70 + group / 13.0 * 1.05) + group / 13.0 * math.tau
+            orbit = dance * (0.07 + 0.022 * group) + heading
+            cx = math.cos(orbit) * scale * (0.45 + boom * 0.22 * per_particle)
+            cy = math.sin(orbit / 1.61803398875) * scale * (0.35 + boom * 0.18 * per_particle)
+            shell = (0.38 + (1.48 - 0.38) * (0.5 + 0.5 * math.sin(dance * 0.12 + group * 0.43)))
+            shell *= 1.0 + self.aether_beat_pulse * 0.28 + beat_kick * 0.2 + boom * 0.25
+            ang = seed * math.tau + dance * (0.70 + self.phi_velocity * 0.20) + beat_kick * 0.8
+            rad = shell * scale * (0.25 + 0.75 * ((i * 0.754877666) % 1.0))
+            rad *= 1.0 + boom * 0.55 * per_particle
+            jiggle = (0.10 + 0.22 * math.sin(dance * 0.7 + i * 0.031 + boom)) * scale * 0.08
+            x = center.x() + cx + math.cos(ang) * rad * 0.35 + jiggle * math.sin(i * 1.7)
+            y = center.y() + cy + math.sin(ang) * rad * 0.35 + jiggle * math.cos(i * 2.3)
+            band = float(self.bands[(i * 13) % 96])
+            grow = 1.0 + boom * 0.9 + band * 0.8
+            size = (3.2 + band * 6.0 + self.bass * 4.0 + self.energy * 3.0
+                    + self.phi_impulse * 4.0 + self.aether_beat_pulse * 4.5 + self.phi_event * 5.0) * grow * 0.55
+            size = max(1.5, min(22.0, size))
+            alpha = int(50 + band * 110 + self.aether_beat_pulse * 60 + self.phi_impulse * 60
+                        + self.phi_event * 50)
+            if self.phi_event > 0.5 and (i + int(self.time * 8)) % 3 == 0:
+                key = "bright_foreground"
+            else:
+                key = palette[i % len(palette)]
+            p.setBrush(self.color(key, max(10, min(255, alpha))))
+            p.drawEllipse(QPointF(x, y), size, size)
+        p.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+
     def paint_phi(self, p, w, h):
         """CPU fallback: Fibonacci phyllotaxis, logarithmic spirals and pulse rings."""
         phi = (1 + math.sqrt(5)) / 2
         golden_angle = math.tau * (1 - 1 / phi)
+        # Same dance conductor as the GPU shaders: beat + director ride
+        # on the ambient time so spirals and dots pulse together.
+        beat_turn = self.aether_beat_phase * math.tau
+        beat_kick = self.aether_beat_pulse * 0.6 + self.phi_event * 0.4
+        scene_sway = self.aether_scene_morph - 0.5
+        dance = self.time + self.aether_world_turn * 1.5 + beat_turn * 0.05
         center = QPointF(
-            w * (0.5 + 0.025 * math.sin(self.time / phi)),
-            h * (0.5 + 0.025 * math.cos(self.time / (phi * phi))),
+            w * (0.5 + 0.025 * math.sin(dance / phi + scene_sway * 0.2) + beat_kick * 0.008),
+            h * (0.5 + 0.025 * math.cos(dance / (phi * phi)) + beat_kick * 0.008),
         )
-        scale = min(w, h) * (0.43 + self.phi_bloom * 0.08)
+        scale = min(w, h) * (0.43 + self.phi_bloom * 0.08 + self.aether_beat_pulse * 0.02)
         p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
 
         # Fibonacci symmetry families breathe through 5, 8 and 13-fold structure.
-        symmetry = 5 + 3 * (0.5 + 0.5 * math.sin(self.time / phi))
+        symmetry = 5 + 3 * (0.5 + 0.5 * math.sin(dance / phi))
         symmetry += 5 * self.phi_tension
         for arm in range(13):
             phase = arm * math.tau / max(5.0, symmetry)
             path = QPainterPath()
             for step in range(96):
-                theta = step * 0.12 + phase + self.time * 0.18
+                theta = step * 0.12 + phase + dance * 0.18 + beat_turn * 0.03
                 radius = 2.0 * math.exp(step * 0.018 * phi)
-                radius *= 1 + self.phi_pulse * 0.08 * math.sin(theta * 8 - self.time * phi)
+                radius *= 1 + self.phi_pulse * 0.08 * math.sin(theta * 8 - dance * phi)
                 x = center.x() + math.cos(theta) * radius
                 y = center.y() + math.sin(theta) * radius
                 if step:
@@ -454,30 +506,30 @@ class Visualizer(QWidget):
                 else:
                     path.moveTo(x, y)
             key = ("cyan", "accent", "green", "magenta")[arm % 4]
-            p.setPen(QPen(self.color(key, int(16 + 36*self.energy + 22*self.phi_event)), 1.0))
+            p.setPen(QPen(self.color(key, int(16 + 36*self.energy + 22*self.phi_event + 20*self.aether_beat_pulse)), 1.0))
             p.drawPath(path)
 
         count = 377
         wave = self.waveform()
         for i in range(1, count + 1):
             n = i / count
-            angle = i * golden_angle + self.time * 0.12
+            angle = i * golden_angle + dance * 0.12 + beat_turn * 0.03 + beat_kick * 0.20
             band = float(self.bands[(i * 13) % 96])
             wav = float(wave[(i * 21) % 1024])
             radius = math.sqrt(n) * scale
-            radius *= 1 + self.phi_bloom * 0.16 + band * 0.09
+            radius *= 1 + self.phi_bloom * 0.16 + band * 0.09 + beat_kick * 0.06
             angle += wav * 0.22 + band * 0.18
             x = center.x() + math.cos(angle) * radius
             y = center.y() + math.sin(angle) * radius
             key = ("cyan", "accent", "green", "magenta")[i % 4]
-            size = 1.1 + band * 3.0 + self.treble * 1.4 + self.phi_event * 1.8
+            size = 1.1 + band * 3.0 + self.treble * 1.4 + self.phi_event * 1.8 + self.aether_beat_pulse * 0.9
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(self.color(key, int(45 + 125*band + 55*self.energy)))
+            p.setBrush(self.color(key, int(45 + 125*band + 55*self.energy + 40*self.aether_beat_pulse)))
             p.drawEllipse(QPointF(x, y), size, size)
 
         for fib in (5, 8, 13, 21):
-            radius = scale * (fib / 21) * (0.65 + self.phi_pulse * 0.18)
-            alpha = int(8 + self.phi_event * 45 + self.bass * 18)
+            radius = scale * (fib / 21) * (0.65 + self.phi_pulse * 0.18 + beat_kick * 0.08)
+            alpha = int(8 + self.phi_event * 45 + self.bass * 18 + self.aether_beat_pulse * 30)
             p.setPen(QPen(self.color("accent", alpha), 1.0))
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.drawEllipse(center, radius, radius)

@@ -6,7 +6,9 @@ from omamusi import gpu
 
 class EventHorizonTests(unittest.TestCase):
     def test_event_horizon_mode_exists(self):
-        self.assertEqual(Visualizer.modes[-1], "Event Horizon")
+        self.assertIn("Event Horizon", Visualizer.modes)
+        self.assertEqual(Visualizer.modes[5], "Event Horizon")
+        self.assertEqual(Visualizer.modes[-1], "Particle Dance")
 
     def test_event_horizon_render_path_exists(self):
         from pathlib import Path
