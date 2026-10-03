@@ -298,7 +298,7 @@ class Visualizer(QWidget):
         elif self.mode == 4:
             self.paint_phi(p, w, h)
         elif self.mode == 5:
-            self.paint_event_horizon(p, w, h)
+            self.paint_reference_horizon(p, w, h)
         else:
             self.paint_particle_dance(p, w, h)
 
@@ -347,6 +347,46 @@ class Visualizer(QWidget):
         p.setOpacity(0.85)
         p.drawImage(QRectF(0, 0, w, h), image)
         p.setOpacity(1)
+
+    def paint_reference_horizon(self, p, w, h):
+        """Reduced reference composition for systems without hardware GL."""
+        p.fillRect(self.rect(), QColor(1, 3, 4))
+        p.save()
+        p.translate(w * 0.82, h * 0.36)
+        p.rotate(-18)
+        radius = h * 0.49
+        glow = QRadialGradient(QPointF(0, 0), radius * 1.5)
+        for stop, color in ((0.0, QColor(0, 0, 0)),
+                            (0.665, QColor(0, 0, 0)),
+                            (0.69, QColor(255, 233, 186)),
+                            (0.80, QColor(255, 214, 152)),
+                            (0.91, QColor(132, 65, 25)),
+                            (1.0, QColor(0, 0, 0, 0))):
+            glow.setColorAt(stop, color)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(QPointF(0, 0), radius * 1.5, radius * 1.5)
+        # Real bass-hit ages, matching the GPU's outward travel and decay.
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        for age, strength in self.bursts:
+            fade = min(1.0, age / 0.07) * max(0.0, 1.0 - age / 1.8)
+            wave_radius = radius + h * (0.065 + age * 0.38)
+            p.setPen(QPen(QColor(204, 135, 71, int(55 * strength * fade)), 1.5))
+            p.drawEllipse(QPointF(0, 0), wave_radius, wave_radius)
+        p.setPen(Qt.PenStyle.NoPen)
+        # Draw the foreground disk after the shadow and bent-light band.
+        baseline = h * 0.19
+        disk = QLinearGradient(0, baseline - h * 0.14, 0, baseline + h * 0.14)
+        for stop, color in ((0.0, QColor(0, 0, 0, 0)),
+                            (0.25, QColor(166, 89, 40, 80)),
+                            (0.43, QColor(255, 209, 149, 220)),
+                            (0.5, QColor(255, 248, 221)),
+                            (0.57, QColor(255, 209, 149, 220)),
+                            (0.75, QColor(166, 89, 40, 80)),
+                            (1.0, QColor(0, 0, 0, 0))):
+            disk.setColorAt(stop, color)
+        p.fillRect(QRectF(-w * 1.5, baseline - h * 0.14, w * 3, h * 0.28), disk)
+        p.restore()
 
     def paint_event_horizon(self, p, w, h):
         """CPU fallback for the Event Horizon cinematic accretion-lens visual."""
@@ -421,10 +461,17 @@ class Visualizer(QWidget):
 
         p.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
-        # Shadow and photon ring.
+        # Black sphere with a soft limb and subtle penumbra shadow.
         p.setPen(Qt.PenStyle.NoPen)
+        for grow, alpha in ((1.45, 26), (1.22, 52), (1.08, 90)):
+            p.setBrush(QColor(0, 0, 0, alpha))
+            p.drawEllipse(center, shadow_r * 0.72 * grow, shadow_r * 0.72 * grow)
         p.setBrush(QColor("#000000"))
         p.drawEllipse(center, shadow_r * 0.72, shadow_r * 0.72)
+        # Inner rim light just inside the limb, brighter toward the bottom.
+        p.setPen(QPen(QColor(255, 200, 140, 90), 1.5))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(center, shadow_r * 0.68, shadow_r * 0.68)
         p.setPen(QPen(QColor(255, 145, 65, 28), 1.0))
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawEllipse(center, shadow_r * 0.75, shadow_r * 0.75)
@@ -435,6 +482,7 @@ class Visualizer(QWidget):
         beat_kick = self.aether_beat_pulse * 0.6 + self.phi_event * 0.4
         boom = (self.aether_beat_pulse * 1.4 + self.aether_onset * 1.2
                 + self.phi_impulse * 1.6 + self.phi_event * 1.8)
+        drive = 1.0 - math.exp(-boom * 0.9)
         center = QPointF(w * 0.5, h * 0.5)
         scale = min(w, h) * 0.42
         p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
@@ -450,20 +498,38 @@ class Visualizer(QWidget):
             cx = math.cos(orbit) * scale * (0.45 + boom * 0.22 * per_particle)
             cy = math.sin(orbit / 1.61803398875) * scale * (0.35 + boom * 0.18 * per_particle)
             shell = (0.38 + (1.48 - 0.38) * (0.5 + 0.5 * math.sin(dance * 0.12 + group * 0.43)))
-            shell *= 1.0 + self.aether_beat_pulse * 0.28 + beat_kick * 0.2 + boom * 0.25
+            shell *= 1.0 + self.aether_beat_pulse * 0.28 + beat_kick * 0.2 + drive * 0.30
             ang = seed * math.tau + dance * (0.70 + self.phi_velocity * 0.20) + beat_kick * 0.8
             rad = shell * scale * (0.25 + 0.75 * ((i * 0.754877666) % 1.0))
-            rad *= 1.0 + boom * 0.55 * per_particle
+            rad *= 1.0 + drive * 0.50 * per_particle
             jiggle = (0.10 + 0.22 * math.sin(dance * 0.7 + i * 0.031 + boom)) * scale * 0.08
             x = center.x() + cx + math.cos(ang) * rad * 0.35 + jiggle * math.sin(i * 1.7)
             y = center.y() + cy + math.sin(ang) * rad * 0.35 + jiggle * math.cos(i * 2.3)
             band = float(self.bands[(i * 13) % 96])
-            grow = 1.0 + boom * 0.9 + band * 0.8
-            size = (3.2 + band * 6.0 + self.bass * 4.0 + self.energy * 3.0
-                    + self.phi_impulse * 4.0 + self.aether_beat_pulse * 4.5 + self.phi_event * 5.0) * grow * 0.55
-            size = max(1.5, min(22.0, size))
+            band_sat = 1.0 - math.exp(-band * 2.5)
+            grow = 1.0 + drive * 0.45 + band_sat * 0.35
+            size = (2.0 + band * 3.0 + self.bass * 2.5 + self.energy * 2.0
+                    + self.phi_impulse * 2.5 + self.aether_beat_pulse * 2.5 + self.phi_event * 3.0) * grow * 0.55
+            size = max(1.5, min(14.0, size))
             alpha = int(50 + band * 110 + self.aether_beat_pulse * 60 + self.phi_impulse * 60
                         + self.phi_event * 50)
+            # Torus riders: every 6th dot runs a fast tilted ring at ~3x speed.
+            # The ring drifts through space and stays dimmer than the shells.
+            if i % 6 == 0:
+                u = seed * math.tau + dance * 3.1 * (0.8 + drive * 0.6) + beat_kick * 0.3
+                v = (seed * 7.77 % 1.0) * math.tau * 3.0 + dance * 1.2
+                ring_r = scale * 0.55 * (1.0 + drive * 0.22)
+                tube_r = scale * 0.13 * (1.0 + drive * 0.45)
+                tilt = 0.42 + 0.16 * math.sin(dance * 0.09 + 1.0)
+                lx = (ring_r + tube_r * math.cos(v)) * math.cos(u)
+                ly = (ring_r + tube_r * math.cos(v)) * math.sin(u)
+                lz = tube_r * math.sin(v)
+                drift_x = scale * 0.28 * math.sin(dance * 0.11 + self.aether_world_turn * 0.4)
+                drift_y = scale * 0.22 * math.cos(dance * 0.083 + 1.2)
+                x = center.x() + drift_x + lx
+                y = center.y() + drift_y + (ly * math.cos(tilt) - lz * math.sin(tilt)) * 0.9
+                size = min(16.0, size * 1.15)
+                alpha = max(10, alpha - 50)
             if self.phi_event > 0.5 and (i + int(self.time * 8)) % 3 == 0:
                 key = "bright_foreground"
             else:

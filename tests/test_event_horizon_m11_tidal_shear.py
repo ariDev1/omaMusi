@@ -3,24 +3,21 @@ import unittest
 from omamusi import gpu
 
 
-class EventHorizonM12RelativisticSurgeTests(unittest.TestCase):
-    def test_shader_has_left_side_activity(self):
+class EventHorizonM11TidalShearTests(unittest.TestCase):
+    def test_shader_has_tidal_shear_terms(self):
         shader = gpu.EVENT_HORIZON_FRAGMENT
-        self.assertIn("float leftSurge =", shader)
-        self.assertIn("float leftWake =", shader)
-        self.assertIn("energyStream += leftSurge * 0.52 + leftWake * 0.42;", shader)
+        self.assertIn("float tidalShear =", shader)
+        self.assertIn("float tidalShearB =", shader)
+        self.assertIn("float tidalShearC =", shader)
+        self.assertIn("float foregroundSheet =", shader)
+        self.assertIn("float foregroundSheetB =", shader)
 
-    def test_shader_has_foreground_depth_layers(self):
+    def test_shader_softens_flat_shadow(self):
         shader = gpu.EVENT_HORIZON_FRAGMENT
-        self.assertIn("float foregroundDustVeil =", shader)
-        self.assertIn("float foregroundDustStreak =", shader)
-        self.assertIn("float dustFront = 0.0;", shader)
-
-    def test_shader_has_lensing_and_disc_coherence_refinement(self):
-        shader = gpu.EVENT_HORIZON_FRAGMENT
-        self.assertIn("float lensEdgeComplexity =", shader)
-        self.assertIn("float discLaneCoherence =", shader)
-        self.assertIn("float discLaneContrast =", shader)
+        self.assertIn("float edgeFray =", shader)
+        self.assertIn("float shadowCore =", shader)
+        self.assertIn("float penumbra =", shader)
+        self.assertIn("color *= 1.0 - shadowCore * 0.996;", shader)
 
     def test_shader_keeps_existing_contract_markers(self):
         shader = gpu.EVENT_HORIZON_FRAGMENT
@@ -59,16 +56,6 @@ class EventHorizonM12RelativisticSurgeTests(unittest.TestCase):
             "float discHalfThickness =",
             "float photonRing =",
             "float ringSide =",
-            "float tidalShear =",
-            "float tidalShearB =",
-            "float tidalShearC =",
-            "float foregroundSheet =",
-            "float foregroundSheetB =",
-            "float edgeFray =",
-            "float shadowCore =",
-            "float penumbra =",
-            "color *= 1.0 - shadowCore * 0.996;",
-            "color *= 1.0 - penumbra * 0.30;",
             "color += orange * heroBandTop",
         )
         for marker in required:

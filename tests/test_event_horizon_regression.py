@@ -13,7 +13,7 @@ class EventHorizonRegressionTests(unittest.TestCase):
         text = Path(inspect.getfile(Visualizer)).read_text()
         self.assertIn("def paint_event_horizon", text)
         self.assertIn("elif self.mode == 4:", text)
-        self.assertIn("self.paint_event_horizon(p, w, h)", text)
+        self.assertIn("self.paint_reference_horizon(p, w, h)", text)
 
     def test_gpu_program_is_registered_for_common_uniforms(self):
         import inspect
@@ -27,7 +27,7 @@ class EventHorizonRegressionTests(unittest.TestCase):
         import inspect
         text = Path(inspect.getfile(gpu)).read_text()
         start = text.index("elif state.mode == 5:")
-        block = text[start:start + 260]
+        block = text[start:text.index("elif state.mode == 6:", start)]
         self.assertIn("GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)", block)
 
 

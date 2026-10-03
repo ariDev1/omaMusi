@@ -17,7 +17,7 @@ class EventHorizonM4CinematicTests(unittest.TestCase):
     def test_cpu_fallback_draws_lens_arcs_and_shadow(self):
         text = Path(inspect.getfile(Visualizer)).read_text()
         self.assertIn("# Upper and lower lens arcs.", text)
-        self.assertIn("# Shadow and photon ring.", text)
+        self.assertIn("# Black sphere with a soft limb and subtle penumbra shadow.", text)
         self.assertIn("shadow_r =", text)
 
 

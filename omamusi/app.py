@@ -744,6 +744,36 @@ def parser():
     return result
 
 
+def _rev():
+    """Short git hash of the running source, so screenshots stay attributable."""
+    try:
+        import subprocess
+        root = Path(__file__).resolve().parent.parent
+        hash_ = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"], cwd=root,
+            stderr=subprocess.DEVNULL, timeout=2,
+        ).decode().strip()
+        dirty = subprocess.check_output(
+            ["git", "status", "--porcelain"], cwd=root,
+            stderr=subprocess.DEVNULL, timeout=2,
+        ).decode().strip()
+        return hash_ + ("+dirty" if dirty else "")
+    except Exception:
+        return "unknown"
+
+
+def _shader_tag():
+    """Short hash of the Event Horizon shader text actually in memory."""
+    try:
+        import hashlib
+        from . import gpu as _gpu
+        return hashlib.sha256(
+            _gpu.reference_horizon_fragment.encode()
+        ).hexdigest()[:8]
+    except Exception:
+        return "unknown"
+
+
 def main():
     cli = parser()
     args = cli.parse_args()
@@ -769,7 +799,7 @@ def main():
     view = aliases.get(args.view, args.view)
     window = PlayerWindow(tracks, [mode.lower() for mode in Visualizer.modes].index(view))
     visualizer = window.visualizer
-    print(f"omaMusi: view={view} renderer={visualizer.renderer} ({visualizer.renderer_detail})",
+    print(f"omaMusi: rev={_rev()} eh={_shader_tag()} view={view} renderer={visualizer.renderer} ({visualizer.renderer_detail})",
           file=sys.stderr)
     if os.environ.get("OMA_PARTICLE_CANARY") == "1":
         print("omaMusi: PARTICLE CANARY on — swarm forced to giant red dots in Particle Dance",

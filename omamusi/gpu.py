@@ -8,6 +8,8 @@ from PySide6.QtGui import QColor, QGuiApplication, QOffscreenSurface, QOpenGLCon
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 import math
 import time
+from .visual.horizon import REFERENCE_EVENT_HORIZON_FRAGMENT as reference_horizon_fragment
+from .visual.horizon import wave_payload
 
 
 PARTICLE_COUNT = 4096
@@ -431,6 +433,9 @@ void main() {
     float beatCycle = sin(aetherBeatPhase*TAU + g*TAU);
     float groove = (0.25 + 0.75*aetherBeatConfidence);
     float dance = aetherBeatPulse*1.4 + aetherOnset*1.2 + phiImpulse*1.6 + phiEvent*1.8;
+    // Saturating drive: loud passages compress toward 1 instead of stacking
+    // linearly into instant white-out. Quiet detail stays, hits stay bounded.
+    float drive = 1.0 - exp(-dance*0.9);
 
     vec3 center = vec3(
         1.05*sin(orbit + group*PHI),
@@ -443,7 +448,7 @@ void main() {
         sin(group*2.1 + phase*0.4),
         cos(group*1.7 - phase*0.33),
         sin(group*0.9 + phase*0.27)
-    ) * (dance*0.35 + beatCycle*groove*0.08);
+    ) * (drive*0.35 + beatCycle*groove*0.08);
 
     vec3 toCenter = center - p;
     float dist = max(length(toCenter), 0.001);
@@ -451,7 +456,7 @@ void main() {
 
     // Shell structures persist, but breathe with the music instead of
     // acting as a rigid cage that fights every transient.
-    float shell = mix(0.38, 1.48, phrase) * (1.0 + aetherBeatPulse*0.28 + aetherOnset*0.22 + phiEvent*0.34 + beatCycle*groove*0.06);
+    float shell = mix(0.38, 1.48, phrase) * (1.0 + drive*0.38 + beatCycle*groove*0.06);
     float shellError = dist - shell;
 
     vec3 axis = normalize(vec3(
@@ -463,8 +468,8 @@ void main() {
 
     float cohesion = 0.26 + aetherDensity*0.34 + energy*0.12;
     float orbitForce = (0.24 + treble*0.22 + 0.08*sin(id*0.13 + phase))
-                     * (1.0 + phiVelocity*0.35 + dance*0.8);
-    float repel = smoothstep(0.55, 0.10, dist) * (0.75 + bass*0.70 + dance*0.9);
+                     * (1.0 + phiVelocity*0.35 + drive*0.7);
+    float repel = smoothstep(0.55, 0.10, dist) * (0.75 + bass*0.70 + drive*0.8);
 
     vec3 shellForce = -radial * shellError * (0.82 + 0.25*aetherDensity);
 
@@ -472,28 +477,29 @@ void main() {
         sin(p.y*1.9 + phase*0.21 + seed*TAU),
         cos(p.z*1.4 - phase*0.17 + seed*TAU),
         sin(p.x*1.6 + phase*0.13 - seed*TAU)
-    ) * (0.15 + treble*0.60 + phiImpulse*1.20 + aetherOnset*0.50);
+    ) * (0.15 + treble*0.50 + drive*0.90);
 
-    vec3 drift = normalize(center + vec3(0.001)) * (0.05 + aetherBeatPulse*0.50 + dance*0.20);
+    vec3 drift = normalize(center + vec3(0.001)) * (0.05 + drive*0.45);
 
     // Kicks scaled ~4x up: previously tangent*1.15*dt moved velocity by
     // ~0.02/frame (invisible next to orbital speeds of ~0.4).
     // Explode: outward blast from the origin on hits so the whole flock
     // pumps outward, then the shell spring pulls it back (pump, not drift).
     vec3 dirOut = p / max(length(p), 0.35);
-    float boom = aetherBeatPulse*5.20 + aetherOnset*3.40 + phiImpulse*4.20 + phiEvent*5.50;
+    float boom = drive*5.00 + beatCycle*groove*0.45;
     float perParticle = 0.45 + 1.10*fract(seed*7.31);
     vec3 blast = dirOut * boom * perParticle
-               + tangent * (aetherBeatPulse*4.20 + aetherOnset*2.20 + phiImpulse*2.60 + phiEvent*3.20 + beatCycle*groove*0.55) * perParticle
-               + radial * (bass*aetherBeatPulse*2.10 + aetherOnset*1.20 + phiImpulse*2.50 + phiEvent*3.00 + beatCycle*groove*0.45);
+               + tangent * (drive*3.40 + beatCycle*groove*0.55) * perParticle
+               + radial * (bass*drive*1.60 + drive*2.20 + beatCycle*groove*0.45);
     vec3 beatKick = blast
                   + normalize(vec3(
                         sin(group + phase*0.2),
                         cos(group*0.7 - phase*0.13),
                         sin(seed*TAU + phase*0.17)
-                    )) * (aetherOnset*0.90 + phiImpulse*0.90 + phiEvent*1.10);
+                    )) * drive*1.10;
 
-    vec3 accel = radial*cohesion
+    vec3 accel = vec3(0.0);
+    vec3 flockAccel = radial*cohesion
                + shellForce
                + tangent*orbitForce
                - radial*repel
@@ -501,16 +507,50 @@ void main() {
                + drift
                + beatKick;
 
+    // Torus riders: ~18% of the flock leaves the shells and runs a fast
+    // tilted ring at ~3x flock speed. Membership is a stable per-particle
+    // hash so the render shader can highlight the same riders.
+    float torusMask = step(hash1(id*0.37 + 5.0), 0.18);
+    float uT = seed*TAU + phase*(1.10*(0.7 + drive*0.6 + phiVelocity*0.20)) + beatCycle*groove*0.10;
+    float vT = fract(seed*7.77)*TAU*3.0 + phase*(1.10 + drive*0.80) + g*2.20;
+    float ringR = 1.15*(1.0 + drive*0.22 + beatCycle*groove*0.05);
+    float tubeR = 0.30*(1.0 + drive*0.45);
+    float cuT = cos(uT), suT = sin(uT), cvT = cos(vT), svT = sin(vT);
+    vec3 torusLocal = vec3((ringR + tubeR*cvT)*cuT, (ringR + tubeR*cvT)*suT, tubeR*svT);
+    float tiltT = 0.42 + 0.16*sin(phase*0.09 + 1.0);
+    float cTilt = cos(tiltT), sTilt = sin(tiltT);
+    vec3 torusTilt = vec3(torusLocal.x, torusLocal.y*cTilt - torusLocal.z*sTilt,
+                          torusLocal.y*sTilt + torusLocal.z*cTilt);
+    float yawT = aetherWorldTurn*0.6 + phase*0.06;
+    float cYaw = cos(yawT), sYaw = sin(yawT);
+    // The ring itself travels: slow Lissajous drift through the volume so
+    // it is never stuck at the center; hits add a small extra wander.
+    vec3 torusCenter = vec3(0.85*sin(phase*0.11 + aetherWorldTurn*0.40),
+                            0.65*cos(phase*0.083 + 1.2) + drive*0.15*sin(phase*0.9),
+                            0.70*sin(phase*0.067 + 2.1) + drive*0.20*sin(phase*1.1));
+    vec3 torusTarget = vec3(torusTilt.x*cYaw - torusTilt.y*sYaw,
+                            torusTilt.x*sYaw + torusTilt.y*cYaw,
+                            torusTilt.z)
+                     + torusCenter;
+    vec3 torusTanLocal = vec3(-suT, cuT, 0.15*sin(vT*2.0 + phase*1.3));
+    vec3 torusTanTilt = vec3(torusTanLocal.x, torusTanLocal.y*cTilt - torusTanLocal.z*sTilt,
+                             torusTanLocal.y*sTilt + torusTanLocal.z*cTilt);
+    vec3 torusTangent = normalize(vec3(torusTanTilt.x*cYaw - torusTanTilt.y*sYaw,
+                                       torusTanTilt.x*sYaw + torusTanTilt.y*cYaw,
+                                       torusTanTilt.z) + vec3(0.0001));
+    vec3 torusAccel = (torusTarget - p)*3.0 + torusTangent*(1.10 + drive*2.20 + phiVelocity*0.40);
+    accel = mix(flockAccel, torusAccel + shellForce*0.25 + curl*0.5, torusMask);
+
     v += accel * dt;
     // Snappier tracking: old 0.26 damping made velocity integrate for
     // seconds (floaty trails). ~1.4 follows kicks within a beat while
     // still smoothing jitter; extra damping on quiet passages.
     // Loosen damping during blasts so explosions actually fly.
-    float blastEase = clamp(boom*0.35, 0.0, 0.9);
+    float blastEase = clamp(drive*0.9, 0.0, 0.9);
     v *= exp(-dt * ((1.35 + (1.0 - clamp(dance, 0.0, 1.5))*0.55) * (1.0 - blastEase*0.55)));
 
     float speed = length(v);
-    float maxSpeed = 2.60 + energy*2.40 + aetherOnset*3.20 + aetherBeatPulse*2.80 + phiImpulse*3.40 + phiEvent*3.60;
+    float maxSpeed = 1.60 + energy*1.20 + drive*2.20;
     if (speed > maxSpeed) {
         v *= maxSpeed / speed;
     }
@@ -591,14 +631,18 @@ void main() {
     float shimmer = 0.5 + 0.5*sin(phase*2.2 + float(gl_VertexID)*0.11 + float(gl_VertexID)*0.013);
     float wave = clamp(beatWave*(0.25 + 0.75*aetherBeatConfidence) + shimmer*0.55, 0.0, 1.4);
     float dance = aetherBeatPulse + aetherOnset + phiImpulse + phiEvent;
-    float pop = aetherBeatPulse*4.0 + aetherOnset*3.5 + phiImpulse*4.0 + phiEvent*5.0 + band*4.0;
+    // Same saturating drive as the physics: loud music compresses toward
+    // 1 instead of stacking linearly into big white blobs.
+    float drive = 1.0 - exp(-dance*0.9);
+    float bandSat = 1.0 - exp(-band*2.5);
+    float pop = drive*4.5 + bandSat*4.0;
     float sizeVar = 0.70 + 0.60*fract(float(gl_VertexID)*0.754877666);
-    float grow = 1.0 + dance*0.5 + band*0.4;
-    // Sized for 25k additive dots: quiet ~2-5px texture, hits ~10-26px.
-    gl_PointSize = clamp((2.0 + speed*5.0 + bass*4.0 + energy*3.0 + treble*2.0 + pop
-                   + wave*(0.6 + 2.0*aetherBeatConfidence*aetherBeatPulse + dance*0.8))
+    float grow = 1.0 + drive*0.45 + bandSat*0.35;
+    // Sized for 25k additive dots: quiet ~2-5px texture, hits ~8-18px.
+    gl_PointSize = clamp((2.0 + speed*3.5 + bass*2.5 + energy*2.0 + treble*1.5 + pop
+                   + wave*(0.6 + 2.0*aetherBeatConfidence*aetherBeatPulse + drive*0.8))
                    * sizeVar * grow * pixelRatio * nearFactor,
-                   1.5, 26.0*pixelRatio);
+                   1.5, 18.0*pixelRatio);
 
     vec2 dir = vel.xy;
     float dirLen = length(dir);
@@ -609,7 +653,7 @@ void main() {
     // Flashes rotate hue instead of washing to one color: dance/band terms
     // shift each particle to a different part of the spectrum on hits.
     float huePick = fract(id*0.61803398875 + energy*0.15 + aetherBeatPhase*0.10 + phase*0.03
-                          + dance*0.30 + band*0.45 + beatWave*0.15*aetherBeatConfidence);
+                          + drive*0.30 + bandSat*0.45 + beatWave*0.15*aetherBeatConfidence);
 
     vec3 cyan = vec3(0.20,0.92,1.00);
     vec3 green = vec3(0.25,1.00,0.45);
@@ -632,16 +676,24 @@ void main() {
     // a whisper of gold/white so hue variety survives the flash.
     base = mix(base, green, clamp(treble*0.9*(0.4 + 0.6*huePick), 0.0, 0.35));
     base = mix(base, orange, clamp(bass*0.8*(0.4 + 0.6*(1.0 - huePick)), 0.0, 0.30));
-    base = mix(base, gold, clamp(aetherOnset*0.30 + aetherBeatPulse*0.20 + band*0.18, 0.0, 0.40));
-    base = mix(base, whiteHot, clamp(phiEvent*0.30 + phiImpulse*0.15 + dance*0.08, 0.0, 0.35));
+    base = mix(base, gold, clamp(aetherOnset*0.18 + aetherBeatPulse*0.12 + bandSat*0.12, 0.0, 0.25));
+    base = mix(base, whiteHot, clamp(drive*0.22, 0.0, 0.20));
 
     float nearGlow = clamp(1.6/safeDepth, 0.0, 1.0);
-    // Dim enough at rest for 25k additive dots to not saturate to white.
-    tint = base * (0.70 + energy*0.70 + speed*0.30 + nearGlow*0.25
-                   + aetherOnset*0.60 + aetherBeatPulse*0.55 + phiImpulse*0.55 + phiEvent*0.50
-                   + band*0.45 + wave*0.20 + beatWave*aetherBeatConfidence*0.25);
-    opacity = clamp(0.16 + speed*0.25 + aetherDensity*0.12 + aetherBeatPulse*0.28 + aetherOnset*0.30 + phiImpulse*0.25 + phiEvent*0.20 + band*0.22,
-                    0.0, 0.95);
+    // Dim enough at rest for 25k additive dots to not saturate to white;
+    // loud music lifts toward ~1.6x instead of 4x.
+    tint = base * (0.65 + energy*0.40 + speed*0.20 + nearGlow*0.25
+                   + drive*0.55 + bandSat*0.25 + wave*0.15 + beatWave*aetherBeatConfidence*0.20);
+    opacity = clamp(0.14 + speed*0.15 + aetherDensity*0.10 + drive*0.22 + bandSat*0.15,
+                    0.0, 0.90);
+    // Torus riders (same hash as the physics): readable ring shape, but
+    // deliberately dimmer than the main shell stream.
+    float torusSeed = float(gl_VertexID)*0.37 + 5.0;
+    float torusMask = step(fract(sin(torusSeed*12.9898 + 78.233)*43758.5453), 0.18);
+    gl_PointSize *= (1.0 + torusMask*0.15);
+    streakMix = clamp(streakMix + torusMask*0.10, 0.0, 1.0);
+    tint *= (1.0 - torusMask*0.38);
+    opacity = clamp(opacity - torusMask*0.10, 0.0, 0.90);
     // Debug canary (OMA_PARTICLE_CANARY=1): unmistakable giant red dots.
     // Proves the live shader is on screen. No-op when canary is 0.
     gl_PointSize = max(gl_PointSize, canary*26.0*pixelRatio);
@@ -790,7 +842,9 @@ void main() {
                      + 0.022 * phraseSurge * sin(phase * 0.06);
     float edgeZoom = mix(1.10, 1.48, edgeFeeling);
     float cameraZoom = (mix(0.92, 1.34, approach) + edgeZoom * 0.16) - gravityPull * 0.20;
-    float inclination = mix(0.16, 0.995, 0.5 + 0.5 * sin(fly * 0.84 + 0.55 + aetherSceneMorph * 0.95));
+    // Locked near edge-on: Gargantua's disk is a thin line, never a wide
+    // ellipse. The flyby keeps drift/zoom/roll motion without going face-on.
+    float inclination = mix(0.10, 0.24, 0.5 + 0.5 * sin(fly * 0.84 + 0.55 + aetherSceneMorph * 0.95));
     float foreshorten = mix(0.11, 0.995, inclination);
 
     vec2 screen = uv - (vec2(0.5) + cameraLoop + cameraKick);
@@ -834,16 +888,24 @@ void main() {
     float discA = atan(discP.y, discP.x);
 
     float discInner = shadowRadius * 1.46;
-    float discOuter = 1.38;
+    float discOuter = 1.05;
     float directDisc = annulus(discR, discInner, discOuter, 0.040);
 
-    float discHalfThickness = 0.022 + 0.060 * foreshorten + bass * 0.010 + phraseSurge * 0.010;
-    float discPlane = mix(0.14, 1.0, exp(-abs(p.y) / discHalfThickness));
-    float tangentialBelt = exp(-abs(p.y) / (discHalfThickness * 2.80));
+    // Thin Interstellar-style disk plane: narrow bright band, not a cloud.
+    // No ambient floor: off-plane the disk is fully black (Gargantua dark).
+    // Sharpened profile so the band is a razor line, not a tall glow.
+    float discHalfThickness = 0.007 + 0.020 * foreshorten + bass * 0.003 + phraseSurge * 0.003;
+    float discPlane = exp(-abs(p.y) / discHalfThickness);
+    float tangentialBelt = exp(-abs(p.y) / (discHalfThickness * 1.4));
     directDisc *= discPlane * tangentialBelt;
 
     float centerOcclusion = 1.0 - smoothstep(shadowRadius - 0.014, shadowRadius + 0.040, abs(discP.x));
     directDisc *= max(0.0, 1.0 - centerOcclusion * smoothstep(shadowRadius * 0.80, shadowRadius * 1.05, discR));
+
+    // Razor midplane spine with a soft bloom companion: white-hot thread
+    // wrapped in a faint warm glow, like the reference disk photography.
+    float diskSpine = exp(-abs(p.y) / 0.006) * clamp(directDisc * 2.0, 0.0, 1.0);
+    float diskGlow = exp(-abs(p.y) / 0.030) * clamp(directDisc * 1.5, 0.0, 1.0);
 
     float rotation = phase * (0.58 + phiVelocity * 0.22) + aetherWorldTurn * 0.32;
     vec2 plasmaCoord = vec2(discA * 4.0 + rotation, log(max(discR, discInner)) * 6.6 - phase * 0.22);
@@ -865,7 +927,7 @@ void main() {
     float fineFilaments = smoothstep(0.50, 0.93, 0.66 * shearFlow + 0.34 * turbulenceFine);
     float hotKnots = pow(max(0.0, sin(discA * 18.0 - rotation * 2.2 + turbulenceFine * 4.4)), 10.0);
     float radialHeat = 1.0 - smoothstep(discInner, discOuter, discR);
-    radialHeat = pow(clamp(radialHeat, 0.0, 1.0), 0.62);
+    radialHeat = pow(clamp(radialHeat, 0.0, 1.0), 1.6);
 
     float observerSide = 0.5 + 0.5 * cos(discA - 0.35 - cameraRoll);
     float asymmetry = pow(observerSide, 1.82);
@@ -879,14 +941,17 @@ void main() {
     float upperWarp = 0.012 * sin(a * 2.8 + phase * 0.05) + 0.013 * fbm(vec2(a * 2.7, phase * 0.05 + r * 7.2));
     float lowerWarp = 0.010 * sin(a * 3.8 - phase * 0.04) + 0.011 * fbm(vec2(a * 2.3 + 5.0, phase * 0.04 + r * 6.2));
 
-    float topArcRadius = photonRadius + 0.070 + 0.120 * (1.0 - foreshorten) + upperWarp;
+    float topArcRadius = photonRadius + 0.045 + 0.050 * (1.0 - foreshorten) + upperWarp;
     float bottomArcRadius = photonRadius + 0.038 + 0.074 * (1.0 - foreshorten) + lowerWarp;
 
-    float topAngular = smoothstep(-0.04, 0.38, sin(a)) * (0.18 + 0.82 * smoothstep(-0.90, 0.66, cos(a)));
-    float bottomAngular = smoothstep(-0.12, 0.30, -sin(a)) * (0.08 + 0.92 * smoothstep(-0.995, 0.34, cos(a)));
+    float topAngular = smoothstep(-0.04, 0.38, sin(a)) * (0.82 * smoothstep(-0.90, 0.66, cos(a)));
+    float bottomAngular = smoothstep(-0.12, 0.30, -sin(a)) * (0.92 * smoothstep(-0.995, 0.34, cos(a)));
 
-    float upperLens = ring(r, topArcRadius, 0.021 + 0.018 * (1.0 - foreshorten)) * topAngular;
-    float upperInner = ring(r, photonRadius + 0.020 + upperWarp * 0.35, 0.0092) * smoothstep(-0.02, 0.92, sin(a));
+    float upperLens = ring(r, topArcRadius, 0.010 + 0.007 * (1.0 - foreshorten)) * topAngular;
+    // White halo rides at the golden stream's radius: same large ring,
+    // with a faint wide glow so it reads cinematic, not wiry.
+    float upperInner = ring(r, topArcRadius - 0.008 + upperWarp * 0.35, 0.006) * smoothstep(-0.02, 0.92, sin(a));
+    float haloGlow = ring(r, topArcRadius - 0.008 + upperWarp * 0.35, 0.030) * smoothstep(-0.02, 0.92, sin(a));
     float lowerLens = ring(r, bottomArcRadius, 0.018) * bottomAngular * 0.78;
 
     float lensFlow = 0.58 + 0.42 * sin(a * 24.0 - phase * (1.92 + musicDrive * 0.92) + fbm(vec2(a * 3.8, r * 18.0 + phase * 0.12)) * 4.4);
@@ -895,24 +960,31 @@ void main() {
     upperInner *= (0.74 + 0.52 * lensFlow) * bentContinuity;
     lowerLens *= (0.68 + 0.50 * (1.0 - lensFlow)) * bentContinuity;
 
-    float heroBandTop = ring(r, photonRadius + 0.096 + upperWarp * 0.9, 0.036 + 0.024 * (1.0 - foreshorten))
+    // Bright lower border: crisp thin ring hugging the limb across the
+    // bottom, acting as a defined glowing border, not a diffuse arc.
+    float bottomGate = smoothstep(0.15, -0.30, sin(a));
+    float lowerBorder = ring(r, shadowRadius + 0.004, 0.0055) * bottomGate;
+
+    float heroBandTop = ring(r, photonRadius + 0.096 + upperWarp * 0.9, 0.020 + 0.012 * (1.0 - foreshorten))
                       * smoothstep(0.06, 0.998, sin(a))
                       * smoothstep(-0.84, 0.70, cos(a));
-    float heroBandBottom = ring(r, photonRadius + 0.050 + lowerWarp * 0.8, 0.027)
-                         * smoothstep(0.00, 0.998, -sin(a))
-                         * smoothstep(-0.995, 0.36, cos(a));
+    // (Outer bottom arc removed: single crisp lowerBorder only.)
     float heroFlow = 0.52 + 0.48 * sin(a * 26.0 - phase * 2.02 + turbulenceFine * 5.2);
     heroBandTop *= (0.78 + 0.70 * heroFlow) * bentContinuity;
-    heroBandBottom *= (0.68 + 0.58 * (1.0 - heroFlow)) * bentContinuity;
 
     float ringBreak = 0.24 + 0.76 * fbm(vec2(a * 5.5, phase * 0.05 + r * 10.0));
     float ringSide = smoothstep(-0.06, 0.92, cos(a - 0.05));
     float photonRing = ring(r, photonRadius + upperWarp * 0.12, 0.0032 + 0.0026 * treble) * ringBreak * ringSide * (0.14 + 0.86 * lensFlow);
 
-    // Tidal shear sheets replace the eye-like spoke reading.
-    float tidalShear = exp(-abs(p.y - (0.14 * sin(p.x * 1.9 + phase * 0.38) - 0.01)) * (9.4 + phraseSurge * 2.6));
-    float tidalShearB = exp(-abs(p.y - (-0.19 * sin(p.x * 1.55 - phase * 0.36) + 0.14)) * (6.8 + beatSurge * 2.1));
-    float tidalShearC = exp(-abs(p.y - (0.28 * sin(p.x * 0.92 + phase * 0.20) + 0.34)) * (4.4 + edgeFeeling * 1.1));
+    // Orbital energy flow: tight circular ring streams hugging the sphere,
+    // brightness waves traveling azimuthally. Narrow enough to read as
+    // rings, never broad bands across the frame.
+    float tidalShear = exp(-abs(r - (photonRadius + 0.13 + 0.03*sin(phase*0.31))) * 22.0)
+                     * pow(0.5 + 0.5*sin(a*7.0 - phase*(1.6 + musicDrive*0.8) + r*12.0), 2.0);
+    float tidalShearB = exp(-abs(r - (photonRadius + 0.22 + 0.035*sin(phase*0.23 + 2.0))) * 19.0)
+                     * pow(0.5 + 0.5*sin(a*5.0 - phase*(1.2 + musicDrive*0.6) + r*9.0 + 2.1), 2.0);
+    float tidalShearC = exp(-abs(r - (photonRadius + 0.33 + 0.04*sin(phase*0.19 + 4.0))) * 16.0)
+                     * pow(0.5 + 0.5*sin(a*4.0 - phase*(0.9 + musicDrive*0.5) + r*7.0 + 4.2), 2.0);
     float leftSurge = exp(-abs(p.y - (-0.12 * sin((p.x + 0.95) * 2.4 - phase * 0.42) - 0.02)) * (6.0 + aetherOnset * 3.0))
                     * smoothstep(0.55, -0.82, p.x);
     float leftWake = exp(-abs(p.y - (0.08 * sin((p.x + 0.60) * 3.1 + phase * 0.56) + 0.10)) * (7.0 + treble * 2.4))
@@ -939,10 +1011,18 @@ void main() {
     float shock = ring(r, shockRadius, 0.010 + aetherOnset * 0.010) * (aetherBeatPulse * 0.24 + aetherOnset * 0.22 + phiEvent * 0.10);
 
     float shadowMask = smoothstep(shadowRadius + 0.010, shadowRadius - 0.008, r);
-    // Give the silhouette a subtle not-perfect edge.
-    float edgeFray = 0.010 * fbm(vec2(a * 6.4 + phase * 0.02, r * 24.0));
-    float shadowFray = smoothstep(shadowRadius + 0.014 + edgeFray, shadowRadius - 0.010 + edgeFray, r);
-    float lensEdgeComplexity = ring(r, shadowRadius + 0.020 + edgeFray * 0.45, 0.012)
+    // Smooth silhouette: broad low-frequency undulation instead of jagged
+    // fray, so the sphere reads round with no sharp or ragged edges.
+    float edgeFray = 0.006 * fbm(vec2(a * 3.0 + phase * 0.02, r * 12.0));
+    // Soft limb: the black sphere fades out over a gentle gradient rather
+    // than a hard circle; interior stays fully black.
+    float shadowCore = smoothstep(shadowRadius + 0.016 + edgeFray, shadowRadius - 0.014 + edgeFray, r);
+    // Physical penumbra: subtle gravitational-dimming veil decaying outward
+    // from the limb, like light bending around the shadow. Outside only so
+    // the ball interior keeps its own shading below.
+    float penumbra = exp(-max(r - shadowRadius, 0.0) * 9.0)
+                   * smoothstep(shadowRadius * 0.96, shadowRadius * 1.04, r);
+    float lensEdgeComplexity = ring(r, shadowRadius + 0.026 + edgeFray * 0.45, 0.018)
                              * (0.44 + 0.56 * sin(a * 10.0 + phase * 0.26 + turbulence * 1.8));
     float innerGlow = exp(-max(r - shadowRadius, 0.0) * 10.2) * smoothstep(shadowRadius, shadowRadius + 0.15, r);
 
@@ -971,8 +1051,8 @@ void main() {
         dustColor += mix(vec3(0.88, 0.15, 0.016), vec3(1.00, 0.72, 0.12), lane) * (spark + streak * 0.4);
     }
 
-    vec3 voidBlack = vec3(0.0010, 0.0005, 0.0002);
-    vec3 smoke = vec3(0.014, 0.0032, 0.0010);
+    vec3 voidBlack = vec3(0.0006, 0.0008, 0.0016);
+    vec3 smoke = vec3(0.008, 0.006, 0.012);
     vec3 ember = vec3(0.34, 0.034, 0.0030);
     vec3 orange = vec3(1.00, 0.28, 0.020);
     vec3 hot = vec3(1.00, 0.66, 0.12);
@@ -992,43 +1072,64 @@ void main() {
     color += hot * wrapFlow * discCore * (0.12 + 0.20 * phraseSurge);
     color += hot * discLaneCoherence * discCore * (0.10 + 0.16 * treble);
 
-    color += orange * upperLens * (0.48 + bass * 0.12) * antiEyeBias;
-    color += hot * upperLens * lensFlow * (0.24 + aetherDensity * 0.10) * antiEyeBias;
-    color += whiteHot * upperInner * (0.26 + aetherBeatPulse * 0.16) * antiEyeBias;
+    color += orange * upperLens * (0.42 + bass * 0.10) * antiEyeBias;
+    color += hot * upperLens * lensFlow * (0.22 + aetherDensity * 0.08) * antiEyeBias;
+    color += whiteHot * upperInner * (0.70 + aetherBeatPulse * 0.25) * antiEyeBias;
+    color += mix(whiteHot, hot, 0.55) * haloGlow * (0.10 + energy * 0.06) * antiEyeBias;
+    color += mix(whiteHot, hot, 0.25) * diskSpine * (0.85 + energy * 0.35 + beatSurge * 0.30) * antiEyeBias;
+    color += mix(hot, orange, 0.50) * diskGlow * (0.10 + energy * 0.06) * antiEyeBias;
     color += hot * lowerLens * (0.26 + bass * 0.10);
+    color += mix(whiteHot, hot, 0.30) * lowerBorder * (0.85 + energy * 0.45 + bass * 0.20);
     color += whiteHot * lensEdgeComplexity * (0.05 + beatSurge * 0.05);
 
-    color += orange * heroBandTop * (0.96 + bass * 0.22 + phraseSurge * 0.40) * antiEyeBias;
-    color += hot * heroBandTop * (0.46 + heroFlow * 0.22) * antiEyeBias;
-    color += hot * heroBandBottom * (0.40 + bass * 0.15 + beatSurge * 0.22);
-    color += whiteHot * heroBandTop * (0.20 + aetherOnset * 0.18) * antiEyeBias;
+    color += orange * heroBandTop * (0.60 + bass * 0.15 + phraseSurge * 0.25) * antiEyeBias;
+    color += hot * heroBandTop * (0.30 + heroFlow * 0.15) * antiEyeBias;
+    color += whiteHot * heroBandTop * (0.14 + aetherOnset * 0.12) * antiEyeBias;
     color += whiteHot * photonRing * (0.04 + treble * 0.04 + aetherOnset * 0.06);
 
-    color += mix(orange, hot, 0.55) * energyStream * (0.34 + beatSurge * 0.38 + phraseSurge * 0.24);
-    color += whiteHot * energyStream * stressLines * 0.08;
-    color += hot * leftSurge * (0.18 + 0.22 * aetherOnset);
-    color += orange * leftWake * (0.12 + 0.18 * treble);
+    // Diffuse wash near zero: broad layers stay black, thin arcs carry the frame.
+    color += mix(orange, hot, 0.55) * energyStream * (0.008 + beatSurge * 0.010 + phraseSurge * 0.006);
+    color += whiteHot * energyStream * stressLines * discCore * 0.08;
+    color += hot * leftSurge * (0.008 + 0.010 * aetherOnset);
+    color += orange * leftWake * (0.006 + 0.008 * treble);
 
-    color += orange * foregroundSheet * (0.20 + 0.26 * phraseSurge + 0.18 * beatSurge);
-    color += hot * foregroundSheetB * (0.16 + 0.20 * aetherOnset);
-    color += hot * foregroundDustVeil * (0.08 + 0.14 * beatSurge);
-    color += whiteHot * foregroundDustStreak * (0.04 + 0.10 * treble);
-    color += whiteHot * dustFront * 0.08;
+    color += orange * foregroundSheet * (0.004 + 0.006 * phraseSurge + 0.004 * beatSurge);
+    color += hot * foregroundSheetB * (0.003 + 0.004 * aetherOnset);
+    color += hot * foregroundDustVeil * (0.002 + 0.003 * beatSurge);
+    color += whiteHot * foregroundDustStreak * (0.001 + 0.003 * treble);
+    color += whiteHot * dustFront * 0.002;
 
-    color += orange * innerGlow * (0.048 + energy * 0.030);
+    color += orange * innerGlow * (0.036 + energy * 0.022);
     color += hot * shock;
     color += whiteHot * glimpse * (0.040 + phiEvent * 0.060);
-    color += dustColor * (0.048 + treble * 0.040);
-    color += hot * dust * (0.026 + aetherOnset * 0.036);
+    color += dustColor * (0.001 + treble * 0.001);
+    color += hot * dust * (0.001 + aetherOnset * 0.001);
 
-    color *= 1.0 - shadowFray * 0.992;
+    color *= 1.0 - shadowCore * 0.996;
+    // Penumbra veil last: gently dims the surroundings into the shadow.
+    color *= 1.0 - penumbra * 0.30;
+
+    // Glossy black sphere: specular glint, inner rim light and faint
+    // light-side shading, all masked strictly inside the ball so the
+    // sphere stays black while reading round and polished like obsidian.
+    // (shadowCore is 1 inside the sphere, 0 outside.)
+    // Light comes from below (bright disk side): glint, rim and shading
+    // all gather along the bottom, with the crisp border outside the limb.
+    float ballMask = shadowCore;
+    float lightSide = pow(0.5 + 0.5 * cos(a + 1.5708), 2.0);
+    float rimLight = ring(r, shadowRadius * 0.90, 0.020) * lightSide
+                   * (0.35 + energy * 0.25);
+    float ballShade = ballMask * lightSide * 0.035 * (0.7 + energy * 0.6);
+    vec3 glossTint = vec3(1.00, 0.95, 0.86);
+    color += mix(glossTint, orange, 0.45) * rimLight * ballMask;
+    color += vec3(0.45, 0.38, 0.34) * ballShade;
 
     float vignette = smoothstep(1.76, 0.16, length(screen));
     color *= vignette;
 
-    float exposure = 1.22 + musicDrive * 0.28 + phraseSurge * 0.16 + aetherOnset * 0.14;
+    float exposure = 1.10 + musicDrive * 0.22 + phraseSurge * 0.12 + aetherOnset * 0.10;
     color = vec3(1.0) - exp(-color * exposure);
-    color = pow(max(color, vec3(0.0)), vec3(0.93));
+    color = pow(max(color, vec3(0.0)), vec3(1.08));
 
     float grain = hash2(gl_FragCoord.xy + vec2(floor(phase * 8.0), 23.0)) - 0.5;
     color += grain * (0.0046 + treble * 0.0016);
@@ -1114,7 +1215,7 @@ class GpuCanvas(QOpenGLWidget):
             self.particles = compileProgram(compileShader(PARTICLE_VERTEX, GL.GL_VERTEX_SHADER),
                                             compileShader(PARTICLE_FRAGMENT, GL.GL_FRAGMENT_SHADER))
             self.event_horizon = compileProgram(compileShader(QUAD_VERTEX, GL.GL_VERTEX_SHADER),
-                                               compileShader(EVENT_HORIZON_FRAGMENT, GL.GL_FRAGMENT_SHADER))
+                                                compileShader(reference_horizon_fragment, GL.GL_FRAGMENT_SHADER))
             self.phi = compileProgram(compileShader(QUAD_VERTEX, GL.GL_VERTEX_SHADER),
                                       compileShader(PHI_FRAGMENT, GL.GL_FRAGMENT_SHADER))
             self.phi_particles = compileProgram(compileShader(PHI_PARTICLE_VERTEX, GL.GL_VERTEX_SHADER),
@@ -1397,6 +1498,9 @@ class GpuCanvas(QOpenGLWidget):
             elif state.mode == 5:
                 GL.glUseProgram(self.event_horizon)
                 self.common_uniforms(self.event_horizon, width, height)
+                GL.glUniform1i(self.uniforms[self.event_horizon]["audioData"], 0)
+                GL.glUniform2fv(GL.glGetUniformLocation(self.event_horizon, "audioWaves[0]"),
+                                5, wave_payload(state.bursts))
                 GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
             elif state.mode == 6:
                 background = QColor(state.colors.get("background", "#000000"))
