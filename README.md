@@ -26,7 +26,7 @@ Tested on Omarchy (Hyprland) and GNOME. Omarchy keeps the frameless window; GNOM
 
 ## Seven visuals
 
-- **Event Horizon** — a cinematic black hole with a glowing disk, bass-driven waves, orbiting hot spots, and delayed light echoes.
+- **Event Horizon** — a cinematic black hole with a glowing disk, gentle camera drift, bass-driven waves, orbiting hot spots, and delayed light echoes.
 - **Particle Dance** — thousands of colorful particles dancing to the music, with a faster torus drifting through the swarm.
 - **Phi Cathedral** — evolving golden-ratio patterns and spirals.
 - **Warp** — a swirling flight through colored star streams.
@@ -51,9 +51,9 @@ Make sure `~/.local/bin` is on your `PATH`. You can also run `.venv/bin/omaMusi`
 
 ## Omarchy plugin
 
-The optional Omarchy Quattro bar widget uses an Event Horizon logo. Click it to open omaMusi with Event Horizon selected. It opens your Music folder recursively, or an empty playlist if that folder is missing. The player continues to work as a standalone application on GNOME and other desktops.
+The optional Omarchy Quattro bar widget uses a monochrome Event Horizon symbol with Omarchy's native icon sizing and theme color. Click it to open omaMusi with Event Horizon selected. It opens your Music folder recursively, or an empty playlist if that folder is missing. The player continues to work as a standalone application on GNOME and other desktops.
 
-Once this plugin branch has been published and merged, install from the repository:
+Install from the repository:
 
 ```bash
 omarchy plugin add https://github.com/ariDev1/omaMusi.git --enable

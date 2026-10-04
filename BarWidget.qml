@@ -1,4 +1,7 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
+import QtQuick.Shapes
 import Quickshell
 import qs.Ui as Ui
 
@@ -13,28 +16,38 @@ Ui.BarWidget {
         Quickshell.execDetached(["bash", decodeURIComponent(script.replace(/^file:\/\//, ""))]);
     }
 
-    Ui.WidgetButton {
+    Ui.BarIconButton {
         id: button
         anchors.fill: parent
         bar: root.bar
-        hasVisualContent: true
-        labelVisible: false
-        fixedWidth: root.barSize
-        fixedHeight: root.barSize
         tooltipText: "omaMusi · Open Event Horizon"
         onPressed: function(buttonCode) {
             if (buttonCode === Qt.LeftButton)
                 root.launch();
         }
 
-        Image {
-            anchors.centerIn: parent
-            width: Math.max(16, root.barSize - 8)
-            height: width
-            source: Qt.resolvedUrl("assets/event-horizon.png")
-            fillMode: Image.PreserveAspectFit
-            smooth: true
-            mipmap: true
+        iconComponent: Component {
+            Item {
+                Shape {
+                    anchors.centerIn: parent
+                    width: 24
+                    height: 24
+                    scale: Math.min(parent.width, parent.height) / 24
+                    rotation: -24
+
+                    ShapePath {
+                        strokeColor: button.foreground
+                        strokeWidth: 1.6
+                        fillColor: "transparent"
+                        capStyle: ShapePath.RoundCap
+                        joinStyle: ShapePath.RoundJoin
+                        PathSvg {
+                            path: "M 19 12 A 7 7 0 1 1 5 12 A 7 7 0 1 1 19 12 "
+                                + "M 22.5 12 A 10.5 2.8 0 1 1 1.5 12 A 10.5 2.8 0 1 1 22.5 12"
+                        }
+                    }
+                }
+            }
         }
     }
 }

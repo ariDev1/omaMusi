@@ -90,11 +90,14 @@ vec3 thermal(float heat) {
 void main() {
     float aspect=resolution.x/resolution.y;
     vec2 screen=(uv-0.5)*vec2(aspect,1.0);
-    // Stable close-up framing. Slow drift does not turn the disk face-on
-    // or change the reference's silhouette on every musical transient.
+    // Gentle camera float around the close-up framing, independent of beats.
+    // Keep travel, zoom and roll small so the disk silhouette stays familiar.
     vec2 center=vec2(aspect*0.32,0.14);
-    center+=vec2(sin(phase*0.018)*0.015,cos(phase*0.014)*0.012);
-    vec2 p=rotate(0.31+0.012*sin(phase*0.025))*(screen-center);
+    vec2 cameraDrift=vec2(sin(phase*0.075)*0.018,
+                          sin(phase*0.058)*0.012);
+    float cameraZoom=1.0+0.012*sin(phase*0.047);
+    float cameraRoll=0.008*sin(phase*0.063);
+    vec2 p=rotate(0.31+cameraRoll)*(screen-center-cameraDrift)/cameraZoom;
     float radius=0.49;
     float r=length(p);
     float angle=atan(p.y,p.x);
