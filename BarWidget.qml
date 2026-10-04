@@ -28,22 +28,31 @@ Ui.BarWidget {
 
         iconComponent: Component {
             Item {
+                clip: true
                 Shape {
                     anchors.centerIn: parent
                     width: 24
                     height: 24
                     scale: Math.min(parent.width, parent.height) / 24
-                    rotation: -24
 
                     ShapePath {
-                        strokeColor: button.foreground
-                        strokeWidth: 1.6
+                        strokeColor: "transparent"
+                        fillColor: button.foreground
+                        fillRule: ShapePath.OddEvenFill
+                        PathSvg {
+                            // Outer radius / inner radius = the golden ratio.
+                            path: "M 22 12 A 10 10 0 1 1 2 12 A 10 10 0 1 1 22 12 Z "
+                                + "M 18.18034 12 A 6.18034 6.18034 0 1 1 5.81966 12 "
+                                + "A 6.18034 6.18034 0 1 1 18.18034 12 Z"
+                        }
+                    }
+                    ShapePath {
+                        strokeColor: "#e9ad42"
+                        strokeWidth: 2.36068
                         fillColor: "transparent"
                         capStyle: ShapePath.RoundCap
-                        joinStyle: ShapePath.RoundJoin
                         PathSvg {
-                            path: "M 19 12 A 7 7 0 1 1 5 12 A 7 7 0 1 1 19 12 "
-                                + "M 22.5 12 A 10.5 2.8 0 1 1 1.5 12 A 10.5 2.8 0 1 1 22.5 12"
+                            path: "M 0.75 17.5 L 23.25 6.5"
                         }
                     }
                 }
