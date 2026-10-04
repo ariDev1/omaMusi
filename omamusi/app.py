@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from .audio import AudioPlayer, probe
+from . import __version__
 from .library import AUDIO_EXTENSIONS, discover, natural_key
 from .theme import load_theme, stylesheet
 from .visualizer import Visualizer
@@ -171,7 +172,12 @@ class PlayerWindow(QWidget):
         transport.addWidget(self.settings_label)
         root.addLayout(transport)
         self.hint = self.label("space pause · ↑↓ select · enter play · c folders · v visuals · +/− volume", "hint", True)
-        root.addWidget(self.hint)
+        footer = QHBoxLayout()
+        footer.setSpacing(20)
+        footer.addWidget(self.hint, 1)
+        self.version_label = self.label(f"v{__version__} · {_rev()}", "hint")
+        footer.addWidget(self.version_label, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
+        root.addLayout(footer)
 
     def _setup_navigation_idle(self):
         """Fade navigation chrome while leaving playing-song information visible."""
@@ -193,6 +199,7 @@ class PlayerWindow(QWidget):
             self.panel,
             self.status,
             self.hint,
+            self.version_label,
         ):
             effect = QGraphicsOpacityEffect(widget)
             effect.setOpacity(1.0)
@@ -742,7 +749,7 @@ def parser():
     ]
     result.add_argument("--view", choices=view_choices, default="warp",
                         help="Initial visualization (change with V while playing)")
-    result.add_argument("--version", action="version", version="omaMusi 0.3.6")
+    result.add_argument("--version", action="version", version=f"omaMusi {__version__}")
     return result
 
 

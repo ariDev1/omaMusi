@@ -1,5 +1,7 @@
 # omaMusi
 
+Current version: **v0.9.1**.
+
 **Your music. A little text. A whole universe of visuals.**
 
 omaMusi is a local music player for Linux with animated visuals that react to your music. Open it in your music folder, choose a song, and enjoy. The interface stays out of the way: just your playlist, track information, and playback time.
@@ -15,6 +17,10 @@ omaMusi is a local music player for Linux with animated visuals that react to yo
 - Runs music-reactive visuals on your GPU, with a simpler fallback when hardware rendering is unavailable.
 
 The visuals analyze the music without changing its sound.
+
+The subtle footer shows the version and short Git commit hash. A `+dirty` suffix means the checkout has uncommitted changes; the hash reads `unknown` when Git information is unavailable. You can also check the version with `omaMusi --version`.
+
+Tested on Omarchy (Hyprland) and GNOME. Omarchy keeps the frameless window; GNOME uses native window decorations.
 
 ## Seven visuals
 
