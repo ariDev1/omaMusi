@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.aridev1.omamusi",
+  "name": "omaMusi",
+  "version": "0.9.1",
+  "author": "ariDev1",
+  "license": "MIT",
+  "description": "Launch your local music player with an Event Horizon visualization.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {"barWidget": "BarWidget.qml"},
+  "barWidget": {
+    "displayName": "omaMusi",
+    "description": "Event Horizon music player launcher",
+    "category": "Media",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

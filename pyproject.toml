@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "omaMusi"
 version = "0.9.1"
 description = "A local music player with a live audio visualization and playlist"
+license = {file = "LICENSE"}
 requires-python = ">=3.11"
 dependencies = ["PySide6>=6.7,<7", "numpy>=1.26,<3", "PyOpenGL>=3.1.7,<4"]
 
