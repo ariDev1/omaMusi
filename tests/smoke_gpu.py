@@ -59,6 +59,8 @@ def main():
                 assert visual.mode == expected
                 image = visual._gpu.grabFramebuffer()
                 assert not image.isNull()
+                expected_alpha = 0 if expected == 2 else 255
+                assert image.pixelColor(1, 1).alpha() == expected_alpha, (expected, image.pixelColor(1, 1))
                 frames.append(bytes(image.bits()))
                 window.cycle_view()
                 QTest.qWait(30)
@@ -67,8 +69,31 @@ def main():
             image = visual._gpu.grabFramebuffer()
             returned = bytes(image.bits())
             assert returned == frames[0], "Warp star seeds changed when cycling views"
+            # Exercise the density upload and real alpha-capable framebuffer.
+            visual.mode = 2
+            density = visual.wave_persistence
+            density.reset()
+            density.step(1 / 30, np.zeros(1024))
+            density.latest_alpha = 0
+            cold = visual._gpu.grabFramebuffer()
+            x, y = cold.width() // 2, int(cold.height() * 0.47)
+            cold_color = cold.pixelColor(x, y)
+            assert cold_color.alpha() > 0 and cold_color.blue() > cold_color.red(), cold_color
+            for _ in range(60):
+                density.step(1 / 30, np.zeros(1024))
+            density.latest_alpha = 0
+            hot = visual._gpu.grabFramebuffer()
+            hot_color = hot.pixelColor(x, y)
+            assert hot_color.red() > hot_color.blue(), hot_color
+            assert hot.pixelColor(1, 1).alpha() == 0
+            assert window.grab().toImage().pixelColor(1, 1).alpha() == 0
+            density.reset()
+            cleared = visual._gpu.grabFramebuffer()
+            assert cleared.pixelColor(x, y).alpha() == 0
+            visual.mode = 0
+            assert visual._gpu.grabFramebuffer().pixelColor(1, 1).alpha() == 255
             print(f"GPU: {visual.renderer_detail}")
-            print(f"PASS: all GPU views including Phi Cathedral, persistent resources, {len(Visualizer.modes) * 8} switches, 650 ms UI stall, zero audio underruns")
+            print(f"PASS: all GPU views, waveform density and transparency, persistent resources, {len(Visualizer.modes) * 8} switches, 650 ms UI stall, zero audio underruns")
         finally:
             window.close()
     return 0

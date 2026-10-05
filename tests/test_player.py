@@ -5,6 +5,7 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 from pathlib import Path
 import queue
+import random
 import subprocess
 import tempfile
 import time
@@ -176,6 +177,96 @@ class PlayerTests(unittest.TestCase):
             window.search.clear()
             QTest.keyClick(window, Qt.Key.Key_Down)
             self.assertEqual(window.playlist.currentRow(), 0)
+        finally:
+            window.close()
+
+    def test_random_shortcut_advances_and_preserves_previous_history(self):
+        window = PlayerWindow([])
+        window.tracks = [self.tone, self.tone]
+        window.populate()
+        window.player.set_volume(0)
+        window.show()
+        self.focus_window(window)
+        window.setFocus()
+        try:
+            window.play_track(1)
+            QTest.keyClick(window, Qt.Key.Key_R)
+            self.assertIn("random on", window.hint.text())
+            self.assertEqual(window.current, 1)  # Toggling preserves playback.
+            QTest.keyClick(window, Qt.Key.Key_N)
+            self.assertEqual(window.current, 0)
+            self.assertEqual(window.history, [1])
+            QTest.keyClick(window, Qt.Key.Key_P)
+            self.assertEqual(window.current, 1)
+            window.on_finished()
+            self.assertEqual(window.current, 0)
+            QTest.keyClick(window, Qt.Key.Key_R)
+            self.assertIn("random off", window.hint.text())
+            window.current = 1
+            self.assertIsNone(window.next_index(automatic=True))
+        finally:
+            window.close()
+
+    def test_random_mode_handles_empty_single_and_all_playlist_tracks(self):
+        window = PlayerWindow([])
+        window.show()
+        self.focus_window(window)
+        window.setFocus()
+        try:
+            QTest.keyClick(window, Qt.Key.Key_R)
+            self.assertIn("random on", window.hint.text())
+            self.assertIsNone(window.next_index())
+            window.tracks = [self.tone]
+            window.current = 0
+            self.assertEqual(window.next_index(automatic=True), 0)
+            window.tracks = [self.tone] * 4
+            window.populate()
+            window.search.setText("no match")
+            for current in range(4):
+                window.current = current
+                for automatic in (False, True):
+                    index = window.next_index(automatic=automatic)
+                    self.assertIn(index, set(range(4)) - {current})
+            # A seeded real generator proves selection is not fixed or sequential.
+            state = random.getstate()
+            try:
+                random.seed(17)
+                window.current = 0
+                choices = {window.next_index() for _ in range(30)}
+                self.assertEqual(choices, {1, 2, 3})
+            finally:
+                random.setstate(state)
+        finally:
+            window.close()
+
+    def test_random_shortcut_respects_text_input_modifiers_and_folder_hint(self):
+        window = PlayerWindow([])
+        window.show()
+        self.focus_window(window)
+        window.setFocus()
+        try:
+            self.assertIn("random off", window.hint.text())
+            for modifier in (Qt.KeyboardModifier.ControlModifier,
+                             Qt.KeyboardModifier.AltModifier,
+                             Qt.KeyboardModifier.MetaModifier):
+                QTest.keyClick(window, Qt.Key.Key_R, modifier)
+                self.assertIn("random off", window.hint.text())
+            window.begin_search()
+            QTest.keyClicks(window.search, "random")
+            self.assertEqual(window.search.text(), "random")
+            self.assertIn("random off", window.hint.text())
+            QTest.keyClick(window.search, Qt.Key.Key_Escape)
+            window.begin_folder_change()
+            window.folder_input.clear()
+            QTest.keyClicks(window.folder_input, "random")
+            self.assertEqual(window.folder_input.text(), "random")
+            self.assertIn("random off", window.hint.text())
+            QTest.keyClick(window.folder_input, Qt.Key.Key_Escape)
+            window.begin_folder_browse()
+            QTest.keyClick(window, Qt.Key.Key_R)
+            self.assertIn("random on", window.hint.text())
+            window.end_folder_browse()
+            self.assertIn("random on", window.hint.text())
         finally:
             window.close()
 

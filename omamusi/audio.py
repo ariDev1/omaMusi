@@ -12,8 +12,9 @@ from PySide6.QtCore import QObject, QThread, QTimer, Qt, Signal, Slot
 from PySide6 import QtMultimedia
 from PySide6.QtMultimedia import QAudioFormat, QAudioSink, QMediaDevices
 
-# Qt 6.10 moved these enums; QAudio's compatibility enums compare unequal.
-AudioEnums = getattr(QtMultimedia, "QtAudio", QtMultimedia.QAudio)
+# Prefer the canonical enums. PySide lazily exposes legacy aliases, so do
+# not evaluate QAudio as a getattr default before looking up QtAudio.
+AudioEnums = getattr(QtMultimedia, "QtAudio", None) or QtMultimedia.QAudio
 
 
 SAMPLE_RATE = 48000

@@ -15,6 +15,7 @@ from .theme import DEFAULTS
 from .visual.analysis import MusicAnalyzer
 from .visual.director import VisualDirector
 from .visual.horizon import HorizonHotspots
+from .visual.waveform import WaveformPersistence
 
 
 class Visualizer(QWidget):
@@ -30,6 +31,10 @@ class Visualizer(QWidget):
         self.mode = 0
         self.sample_rate = SAMPLE_RATE
         self.buffer = np.zeros(4096, dtype=np.float32)
+        self.wave_persistence = WaveformPersistence()
+        self._wave_audio_revision = 0
+        self._wave_seen_revision = 0
+        self._wave_exposure = 0.0
         self.fft_window = np.hanning(4096)
         self.energy = 0.0
         self.bass = 0.0
@@ -101,9 +106,13 @@ class Visualizer(QWidget):
         if n:
             self.buffer = np.roll(self.buffer, -n)
             self.buffer[-n:] = samples[-n:]
+            self._wave_audio_revision += 1
 
     def reset(self):
         self.buffer.fill(0)
+        self.wave_persistence.reset()
+        self._wave_seen_revision = self._wave_audio_revision
+        self._wave_exposure = 0.0
         self.energy = self.bass = self.treble = self.previous_bass = 0
         self.phi_pulse = self.phi_bloom = self.phi_tension = self.phi_event = 0
         self.phi_event_cooldown = 0
@@ -135,8 +144,16 @@ class Visualizer(QWidget):
         return self.modes[self.mode]
 
     def tick(self):
-        dt = min(0.05, max(0.001, self.clock.nsecsElapsed() / 1e9))
+        elapsed = max(0.001, self.clock.nsecsElapsed() / 1e9)
+        dt = min(0.05, elapsed)
         self.clock.restart()
+        fresh_wave = self.active and self.mode == 2 and self._wave_seen_revision != self._wave_audio_revision
+        self._wave_exposure = min(0.1, self._wave_exposure + elapsed)
+        self.wave_persistence.step(elapsed, self.waveform() if fresh_wave else None,
+                                   exposure=self._wave_exposure)
+        if fresh_wave or not self.active or self.mode != 2:
+            self._wave_exposure = 0.0
+        self._wave_seen_revision = self._wave_audio_revision
         if self.analysis_rate != self.sample_rate:
             self.analysis_rate = self.sample_rate
             self.frequencies = np.fft.rfftfreq(len(self.buffer), 1 / self.sample_rate)
@@ -289,7 +306,8 @@ class Visualizer(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
         w, h = self.width(), self.height()
-        p.fillRect(self.rect(), QColor(self.colors["background"]))
+        if self.mode != 2:
+            p.fillRect(self.rect(), QColor(self.colors["background"]))
         if self.mode == 0:
             self.ensure_sprites()
             self.paint_warp(p, w, h)
@@ -330,7 +348,13 @@ class Visualizer(QWidget):
             p.drawLine(QPointF(i * step + 2, y), QPointF((i + 1) * step - 2, y))
 
     def paint_waveform(self, p, w, h):
-        data = self.waveform()
+        pixels = self.wave_persistence.rgba()
+        image = QImage(pixels.data, self.wave_persistence.WIDTH, self.wave_persistence.HEIGHT,
+                       self.wave_persistence.WIDTH * 4, QImage.Format.Format_RGBA8888)
+        p.drawImage(QRectF(0, 0, w, h), image)
+        if self.wave_persistence.latest_alpha < 0.004:
+            return
+        data = self.wave_persistence.latest
         stride = max(1, len(data) // max(1, w))
         data = data[::stride]
         path = QPainterPath()
@@ -341,9 +365,8 @@ class Visualizer(QWidget):
                 path.lineTo(x, y)
             else:
                 path.moveTo(x, y)
-        for width, alpha in ((16, 14), (7, 45), (1.8, 235)):
-            p.setPen(QPen(self.color("accent", alpha), width))
-            p.drawPath(path)
+        p.setPen(QPen(QColor(235, 252, 255, int(255 * self.wave_persistence.latest_alpha)), 1.1))
+        p.drawPath(path)
 
     def paint_spectrogram(self, p, w, h):
         pixels = np.ascontiguousarray(self.history)

@@ -1,12 +1,13 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "omaMusi"
-version = "0.9.1"
+version = "0.10.0"
 description = "A local music player with a live audio visualization and playlist"
-license = {file = "LICENSE"}
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = ["PySide6>=6.7,<7", "numpy>=1.26,<3", "PyOpenGL>=3.1.7,<4"]
 

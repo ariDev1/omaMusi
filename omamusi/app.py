@@ -3,6 +3,7 @@
 import argparse
 import os
 from pathlib import Path
+import random
 import shutil
 import sys
 
@@ -15,6 +16,9 @@ from PySide6.QtWidgets import (
 from .audio import AudioPlayer, probe
 from . import __version__
 from .library import AUDIO_EXTENSIONS, discover, natural_key
+from .instance import SingleInstance
+from .playlists import PlaylistStore
+from .playlist_ui import PlaylistDialog
 from .theme import load_theme, stylesheet
 from .visualizer import Visualizer
 
@@ -39,6 +43,10 @@ class SearchFilter(QObject):
 class PlayerWindow(QWidget):
     def __init__(self, tracks, mode=0):
         super().__init__()
+        # Allocate an alpha-capable surface before it is shown. Opaque visuals
+        # still paint every pixel; only Waveform leaves background pixels clear.
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, False)
         self.setWindowTitle("omaMusi")
         desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").lower()
         if "gnome" not in desktop:
@@ -53,6 +61,8 @@ class PlayerWindow(QWidget):
         self.current = -1
         self.duration = 0
         self.history = []
+        self.random_playback = False
+        self.saved_playlist_dialog = None
         self.metadata = {}
         self.last_theme = None
         self.visualizer = Visualizer(self)
@@ -171,7 +181,8 @@ class PlayerWindow(QWidget):
         self.settings_label.hide()
         transport.addWidget(self.settings_label)
         root.addLayout(transport)
-        self.hint = self.label("space pause · ↑↓ select · enter play · c folders · v visuals · +/− volume", "hint", True)
+        self.hint = self.label("", "hint", True)
+        self.update_hint()
         footer = QHBoxLayout()
         footer.setSpacing(20)
         footer.addWidget(self.hint, 1)
@@ -359,6 +370,9 @@ class PlayerWindow(QWidget):
     def next_index(self, automatic=False):
         if not self.tracks:
             return None
+        if self.random_playback:
+            candidates = [i for i in range(len(self.tracks)) if i != self.current]
+            return random.choice(candidates) if candidates else 0
         if self.current + 1 < len(self.tracks):
             return self.current + 1
         if not automatic:
@@ -369,6 +383,17 @@ class PlayerWindow(QWidget):
         index = self.next_index()
         if index is not None:
             self.play_track(index)
+
+    def update_hint(self):
+        controls = ("↑↓ select · →/enter open/play · ← parent · v visuals · esc back"
+                    if self.browser_folder is not None else
+                    "space pause · ↑↓ select · enter play · c folders · v visuals · +/− volume")
+        self.hint.setText(f"{controls} · r random {'on' if self.random_playback else 'off'} · a add · b playlists")
+
+    def toggle_random(self):
+        self.random_playback = not self.random_playback
+        self.update_hint()
+        self._show_navigation()
 
     def previous_track(self):
         if self.player.sink and self.player.position > 3:
@@ -414,6 +439,56 @@ class PlayerWindow(QWidget):
                                                f"Audio files ({extensions});;All files (*)")
         if paths:
             self.add_paths(paths)
+
+    def playlist_notice(self, message):
+        self.status.setText(message)
+        self.status.setToolTip("")
+        self.status.show()
+        self._show_navigation()
+
+    def open_saved_playlists(self, adding=False):
+        if self.saved_playlist_dialog is not None:
+            self.saved_playlist_dialog.raise_()
+            self.saved_playlist_dialog.activateWindow()
+            return
+        track = None
+        if adding:
+            if self.browser_folder is not None:
+                item = self.folder_list.currentItem()
+                target = item.data(Qt.ItemDataRole.UserRole) if item is not None else None
+                if isinstance(target, Path) and target.is_file():
+                    track = target
+            else:
+                row = self.playlist.currentRow()
+                if 0 <= row < len(self.tracks) and not self.playlist.item(row).isHidden():
+                    track = self.tracks[row]
+            if track is None and 0 <= self.current < len(self.tracks):
+                track = self.tracks[self.current]
+            if track is None:
+                self.playlist_notice("Select a track first, or start playing one.")
+                return
+        try:
+            store = PlaylistStore()
+        except (OSError, ValueError) as error:
+            self.playlist_notice(str(error))
+            return
+        dialog = PlaylistDialog(self, store, track)
+        self.saved_playlist_dialog = dialog
+        dialog.notice.connect(self.playlist_notice)
+        dialog.finished.connect(self.saved_playlists_closed)
+        dialog.show()
+        dialog.setFocus()
+
+    def saved_playlists_closed(self, _result):
+        self.saved_playlist_dialog = None
+        self.setFocus()
+
+    def load_saved_playlist(self, name, tracks, missing=0):
+        self.load_folder(tracks[0].parent, tracks=tracks)
+        message = f"Loaded playlist: {name} · {len(tracks)} tracks"
+        if missing:
+            message += f" · {missing} missing files skipped"
+        self.playlist_notice(message)
 
     def begin_folder_change(self):
         self.folder_label.show()
@@ -522,7 +597,7 @@ class PlayerWindow(QWidget):
         self.folder_list.setCurrentRow(0)
         self.folder_list.show()
         self.count.setText(f"browse · {len(folders)} folders · {len(files)} audio files")
-        self.hint.setText("↑↓ select · →/enter open/play · ← parent · v visuals · esc back")
+        self.update_hint()
         self.fit_list()
 
     def activate_folder_item(self):
@@ -556,7 +631,7 @@ class PlayerWindow(QWidget):
         self.folder_label.setText(str(self.current_folder))
         self.folder_label.hide()
         self.count.setText(f"playlist · {len(self.tracks)} files")
-        self.hint.setText("space pause · ↑↓ select · enter play · c folders · v visuals · +/− volume")
+        self.update_hint()
         self.fit_list()
         self.setFocus()
 
@@ -659,6 +734,15 @@ class PlayerWindow(QWidget):
             event.accept()
         elif key == Qt.Key.Key_P:
             self.previous_track()
+            event.accept()
+        elif key == Qt.Key.Key_R:
+            self.toggle_random()
+            event.accept()
+        elif key == Qt.Key.Key_A:
+            self.open_saved_playlists(adding=True)
+            event.accept()
+        elif key == Qt.Key.Key_B:
+            self.open_saved_playlists()
             event.accept()
         elif key == Qt.Key.Key_V:
             self.cycle_view(-1 if shift else 1)
@@ -786,6 +870,21 @@ def _shader_tag():
 def main():
     cli = parser()
     args = cli.parse_args()
+    app = QApplication(sys.argv[:1])
+    app.setApplicationName("omaMusi")
+    instance = SingleInstance(app)
+    try:
+        if not instance.start_or_activate():
+            return 0
+        return run_player(app, instance, cli, args)
+    except RuntimeError as error:
+        print(f"omaMusi: {error}", file=sys.stderr)
+        return 1
+    finally:
+        instance.close()
+
+
+def run_player(app, instance, cli, args):
     for executable in ("ffmpeg", "ffprobe"):
         if not shutil.which(executable):
             cli.error(f"{executable} is required. Install FFmpeg first.")
@@ -796,8 +895,6 @@ def main():
         cli.error(str(error))
     if not tracks:
         print("omaMusi: no audio files found. Press o to open files or drop music onto the window.", file=sys.stderr)
-    app = QApplication(sys.argv[:1])
-    app.setApplicationName("omaMusi")
     app.setStyle("Fusion")
     aliases = {
         "sprites": "warp",
@@ -807,6 +904,7 @@ def main():
     }
     view = aliases.get(args.view, args.view)
     window = PlayerWindow(tracks, [mode.lower() for mode in Visualizer.modes].index(view))
+    instance.window = window
     visualizer = window.visualizer
     print(f"omaMusi: rev={_rev()} eh={_shader_tag()} view={view} renderer={visualizer.renderer} ({visualizer.renderer_detail})",
           file=sys.stderr)

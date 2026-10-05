@@ -30,7 +30,8 @@ uniform int mode;
 uniform vec2 resolution;
 uniform vec3 background, accent, cyan, bright;
 uniform float energy, phase, bass;
-uniform sampler2D audioData, historyData;
+uniform sampler2D audioData, historyData, waveDensity;
+uniform float waveAlpha;
 float datum(int i) { return texelFetch(audioData, ivec2(i, 0), 0).r; }
 void main() {
     vec3 color = background;
@@ -81,9 +82,14 @@ void main() {
         int i = int(x);
         float sampleValue = mix(datum(192+i), datum(192+min(i+1,1023)), fract(x));
         float distance = abs(uv.y - (0.53 + sampleValue * 0.28)) * resolution.y;
-        float glow = exp(-distance * 0.22) * 0.22;
-        float line = exp(-distance * distance * 0.38);
-        color += accent * (glow + line);
+        vec4 heat = texture(waveDensity, vec2(uv.x, 1.0-uv.y));
+        float line = exp(-distance * distance * 0.8) * waveAlpha;
+        float alpha = line + heat.a * (1.0-line);
+        // Qt's window composition consumes premultiplied color. Empty density
+        // pixels remain truly transparent, rather than painting a dark panel.
+        color = heat.rgb * heat.a * (1.0-line) + vec3(0.92, 0.99, 1.0) * line;
+        frag = vec4(color, alpha);
+        return;
     } else {
         color = mix(background, texture(historyData, vec2(uv.x, 1.0-uv.y)).rgb, 0.85);
     }
@@ -1160,6 +1166,7 @@ def gl_format():
     fmt.setProfile(QSurfaceFormat.OpenGLContextProfile.CoreProfile)
     fmt.setSwapInterval(1)
     fmt.setDepthBufferSize(24)
+    fmt.setAlphaBufferSize(8)
     return fmt
 
 
@@ -1196,15 +1203,18 @@ class GpuCanvas(QOpenGLWidget):
         self.owner = owner
         self.setFormat(gl_format())
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, False)
         self.ready = False
         self.quad = self.particles = self.phi = self.phi_particles = self.event_horizon = self.vao = 0
         self.textures = []
         self.uniforms = {}
         self.history_revision = -1
+        self.wave_revision = -1
         self.audio_payload = np.zeros(1216, dtype=np.float32)
 
     def initializeGL(self):
         self.history_revision = -1
+        self.wave_revision = -1
         try:
             # Core profile ignores gl_PointSize writes from shaders unless
             # this is enabled -- without it every point renders at 1px and
@@ -1223,7 +1233,7 @@ class GpuCanvas(QOpenGLWidget):
             self._init_aether_swarm()
             self.vao = int(GL.glGenVertexArrays(1))
             GL.glBindVertexArray(self.vao)
-            self.textures = [int(x) for x in GL.glGenTextures(2)]
+            self.textures = [int(x) for x in GL.glGenTextures(3)]
             for texture in self.textures:
                 GL.glBindTexture(GL.GL_TEXTURE_2D, texture)
                 GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
@@ -1234,13 +1244,17 @@ class GpuCanvas(QOpenGLWidget):
             GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_R32F, 1216, 1, 0, GL.GL_RED, GL.GL_FLOAT, None)
             GL.glBindTexture(GL.GL_TEXTURE_2D, self.textures[1])
             GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB8, 360, 96, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, None)
+            GL.glBindTexture(GL.GL_TEXTURE_2D, self.textures[2])
+            wave = self.owner.wave_persistence
+            GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA8, wave.WIDTH, wave.HEIGHT,
+                            0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, None)
             for program in (self.quad, self.particles, self.phi, self.phi_particles, self.event_horizon):
                 self.uniforms[program] = {name: GL.glGetUniformLocation(program, name) for name in
                     ("mode", "resolution", "background", "accent", "cyan", "bright", "green", "magenta", "energy",
                      "phase", "bass", "treble", "phiPulse", "phiBloom", "phiTension", "phiEvent",
                      "phiVelocity", "phiImpulse", "aetherOnset", "aetherBeatPhase",
                      "aetherDensity", "aetherSceneMorph", "aetherWorldTurn", "aetherBeatPulse",
-                     "pixelRatio", "audioData", "historyData")}
+                     "pixelRatio", "audioData", "historyData", "waveDensity", "waveAlpha")}
             self.context().aboutToBeDestroyed.connect(self.cleanup)
             self.ready = True
         except Exception as error:
@@ -1472,7 +1486,9 @@ class GpuCanvas(QOpenGLWidget):
             GL.glBindVertexArray(self.vao)
             self.audio_payload[:96] = state.bands
             self.audio_payload[96:192] = state.peaks
-            if state.mode in (0, 2, 4):
+            if state.mode == 2:
+                self.audio_payload[192:] = state.wave_persistence.latest
+            elif state.mode in (0, 4):
                 self.audio_payload[192:] = state.waveform()
             GL.glActiveTexture(GL.GL_TEXTURE0)
             GL.glBindTexture(GL.GL_TEXTURE_2D, self.textures[0])
@@ -1483,6 +1499,13 @@ class GpuCanvas(QOpenGLWidget):
                 GL.glTexSubImage2D(GL.GL_TEXTURE_2D, 0, 0, 0, 360, 96, GL.GL_RGB,
                                    GL.GL_UNSIGNED_BYTE, np.ascontiguousarray(state.history))
                 self.history_revision = state.history_revision
+            GL.glActiveTexture(GL.GL_TEXTURE2)
+            GL.glBindTexture(GL.GL_TEXTURE_2D, self.textures[2])
+            if state.mode == 2 and self.wave_revision != state.wave_persistence.revision:
+                wave = state.wave_persistence
+                GL.glTexSubImage2D(GL.GL_TEXTURE_2D, 0, 0, 0, wave.WIDTH, wave.HEIGHT,
+                                   GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, wave.rgba())
+                self.wave_revision = wave.revision
             if state.mode == 4:
                 self.common_uniforms(self.phi, width, height)
                 u = self.uniforms[self.phi]
@@ -1518,6 +1541,8 @@ class GpuCanvas(QOpenGLWidget):
                 GL.glUniform1i(u["mode"], state.mode)
                 GL.glUniform1i(u["audioData"], 0)
                 GL.glUniform1i(u["historyData"], 1)
+                GL.glUniform1i(u["waveDensity"], 2)
+                GL.glUniform1f(u["waveAlpha"], state.wave_persistence.latest_alpha)
                 GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
                 if state.mode == 0:
                     self.common_uniforms(self.particles, width, height)

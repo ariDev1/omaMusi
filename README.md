@@ -1,6 +1,6 @@
 # omaMusi
 
-Current version: **v0.9.1**.
+Current version: **v0.10.0**.
 
 Licensed under the [MIT license](LICENSE).
 
@@ -109,6 +109,9 @@ omaMusi --view "particle dance"
 | Space | Play / pause |
 | Up / Down, Enter | Select and play a song |
 | N / P | Next / previous track |
+| R | Toggle random playback (off by default) |
+| A | Add highlighted track to a saved playlist (falls back to playing track) |
+| B | Browse saved playlists |
 | Left / Right | Seek backward / forward 5 seconds |
 | + / − | Adjust player volume |
 | V / Shift+V | Next / previous visual |
@@ -122,6 +125,29 @@ omaMusi --view "particle dance"
 
 While browsing folders, use the arrow keys and Enter to navigate; press **L** to play the current folder. Press **Escape** to return from text input to player shortcuts.
 
+Random playback uses the entire loaded playlist, including tracks hidden by a search filter. When enabled, **N** and automatic advancement choose a random track, avoiding the current track when more than one is loaded. **P** keeps its usual restart/history behavior. Pressing **R** leaves the current song playing; the footer shows `random on` or `random off`.
+
+Waveform uses an oscilloscope-style colored persistence map. Traces fade over roughly two seconds; repeated traces build from purple/blue through cyan and green to yellow/red, with a thin bright line for the latest waveform. Empty areas reveal the desktop in Waveform mode, while the other visuals paint their usual opaque backgrounds. Track changes and seeking clear the persistence map. Use **V** to cycle to Waveform, or start with `omaMusi --view waveform`.
+
+## Saved playlists
+
+Select a track with **↑/↓**, then press **A**. Choose a playlist with **↑/↓** and press **Enter** to add it, or choose **Create new playlist…**, type a name, and press **Enter**. Adding leaves playback running and prevents duplicate entries. With no highlighted track, **A** uses the playing track. It also works on audio files highlighted in the folder browser.
+
+Press **B** to browse saved playlists:
+
+| Key | Action in the playlist browser |
+| --- | --- |
+| ↑ / ↓ | Select a playlist or track |
+| Enter | Load the selected playlist as the play queue and start playback |
+| → / ← | Inspect playlist tracks / return to playlist names |
+| F2 | Rename the selected playlist |
+| Delete | Remove a track, or request deletion of a playlist |
+| Escape | Cancel a name/deletion prompt, or close the browser |
+
+Playlist deletion asks for **Enter** to confirm; **Escape** cancels. Removing tracks or deleting playlists leaves the music files untouched. Missing files are marked `[missing]` when inspecting tracks and skipped when loading a playlist. An empty playlist, or one with no available files, leaves the current queue and playback intact. Random playback also works with loaded playlists.
+
+Playlists save automatically to `${XDG_DATA_HOME:-~/.local/share}/omamusi/playlists.json` as ordered references to absolute file paths. Names are unique without regard to case. **A** and **B** keep their normal text-entry behavior while typing in a field.
+
 ## Development checks
 
 ```bash
@@ -130,3 +156,5 @@ While browsing folders, use the arrow keys and Enter to navigate; press **L** to
 ```
 
 The GPU smoke test needs a desktop session with a hardware GPU.
+
+See [compatibility validation](docs/compatibility.md) for tested Python/Qt versions and the GNOME desktop checks.
