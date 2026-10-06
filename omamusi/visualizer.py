@@ -303,26 +303,29 @@ class Visualizer(QWidget):
         if self._gpu:
             return
         p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-        w, h = self.width(), self.height()
-        if self.mode != 2:
-            p.fillRect(self.rect(), QColor(self.colors["background"]))
-        if self.mode == 0:
-            self.ensure_sprites()
-            self.paint_warp(p, w, h)
-        elif self.mode == 1:
-            self.paint_spectrum(p, w, h)
-        elif self.mode == 2:
-            self.paint_waveform(p, w, h)
-        elif self.mode == 3:
-            self.paint_spectrogram(p, w, h)
-        elif self.mode == 4:
-            self.paint_phi(p, w, h)
-        elif self.mode == 5:
-            self.paint_reference_horizon(p, w, h)
-        else:
-            self.paint_particle_dance(p, w, h)
+        try:
+            p.setRenderHint(QPainter.RenderHint.Antialiasing)
+            p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+            w, h = self.width(), self.height()
+            if self.mode != 2:
+                p.fillRect(self.rect(), QColor(self.colors["background"]))
+            if self.mode == 0:
+                self.ensure_sprites()
+                self.paint_warp(p, w, h)
+            elif self.mode == 1:
+                self.paint_spectrum(p, w, h)
+            elif self.mode == 2:
+                self.paint_waveform(p, w, h)
+            elif self.mode == 3:
+                self.paint_spectrogram(p, w, h)
+            elif self.mode == 4:
+                self.paint_phi(p, w, h)
+            elif self.mode == 5:
+                self.paint_reference_horizon(p, w, h)
+            else:
+                self.paint_particle_dance(p, w, h)
+        finally:
+            p.end()
 
     def color(self, key, alpha=255):
         color = QColor(self.colors[key])

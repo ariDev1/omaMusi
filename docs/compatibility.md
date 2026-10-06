@@ -15,8 +15,8 @@ omaMusi uses one Python/PySide6 application on Linux. The Omarchy plugin is a la
 
 | Environment | Result |
 | --- | --- |
-| Python 3.14.7, PySide6/Qt 6.11.2 | All 140 development unit/integration tests pass |
-| Python 3.11.17, PySide6/Qt 6.7.0, NumPy 1.26.4, PyOpenGL 3.1.7 | All 140 development unit/integration tests pass |
+| Python 3.14.7, PySide6/Qt 6.11.2 | All 142 development unit/integration tests pass |
+| Python 3.11.17, PySide6/Qt 6.7.0, NumPy 1.26.4, PyOpenGL 3.1.7 | All 142 development unit/integration tests pass, including a full run with only built-in theme colors |
 | Setuptools 77.0.3 | Wheel builds with version 0.10.0, MIT license expression, license file, and all new modules |
 | Hyprland, AMD Radeon GPU, Qt 6.11.2 and Qt 6.7.0 | GPU smoke tests pass on both runtimes, including waveform alpha, color accumulation, 56 view switches, and uninterrupted audio |
 | GNOME configuration, offscreen renderer | Native decoration flags retained; Waveform has transparent background pixels and other visuals are opaque |
@@ -52,3 +52,5 @@ The development branch also covers slow metadata reads, slow or unreadable folde
 Audio teardown uses `QAudioSink.reset()` to discard buffered samples when seeking, switching tracks, or closing. Qt documents that `stop()` drains buffers synchronously on Linux; this produced a long stall when seeking a suspended Qt 6.7 sink during compatibility testing. See [Qt audio sink buffer behavior](https://doc.qt.io/qt-6/qaudiosink.html#stop).
 
 The regression workflow in `.github/workflows/tests.yml` runs the complete suite and builds a wheel under Python 3.11 / Qt 6.7.0 / NumPy 1.26.4 / PyOpenGL 3.1.7, and Python 3.14 with current dependency versions. Its virtual PulseAudio output exercises playback without desktop speakers. A hosted CI pass does not replace the real GPU/audio smoke test or the GNOME checklist above.
+
+CPU fallback checks render all seven visuals without Omarchy theme files. The built-in palette includes every required color, and painter resources are released even if a drawing method raises an exception. These checks cover a missing default color that was hidden by the local Omarchy palette and first surfaced on the clean CI runner.

@@ -10,6 +10,7 @@ DEFAULTS = {
     "background": "#1a1b26", "foreground": "#c0caf5", "accent": "#7aa2f7",
     "dark_foreground": "#565f89", "light_foreground": "#a9b1d6",
     "cyan": "#7dcfff", "green": "#9ece6a", "bright_foreground": "#ffffff",
+    "magenta": "#bb9af7",
 }
 
 
