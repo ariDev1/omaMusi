@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from PySide6.QtWidgets import QApplication
 
-from omamusi.audio import AudioPlayer
+from omamusi.audio import AudioPlayer, _AudioEngine
 
 
 class AudioEventTests(unittest.TestCase):
@@ -76,3 +76,27 @@ class AudioEventTests(unittest.TestCase):
         self.app.processEvents()
         self.assertEqual(self.finished, [True])
         self.assertEqual(self.failed, ["old failure"])
+
+    def test_stop_discards_buffered_output_without_waiting_for_playback(self):
+        # Model a suspended backend: draining cannot make progress. The
+        # driver's reset operation must discard the audio instead.
+        class SuspendedSink:
+            buffered = b"old audio"
+            def processedUSecs(self):
+                return 12000
+            def stop(self):
+                raise AssertionError("Draining a suspended sink can block")
+            def reset(self):
+                self.buffered = b""
+            def deleteLater(self):
+                pass
+        engine = _AudioEngine()
+        sink = SuspendedSink()
+        engine.sink = sink
+        engine.pending = b"more old audio"
+        engine.paused = True
+        engine.stop(clear=True)
+        self.assertEqual(sink.buffered, b"")
+        self.assertEqual(engine.pending, b"")
+        self.assertIsNone(engine.sink)
+        self.assertFalse(engine.paused)

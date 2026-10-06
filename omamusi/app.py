@@ -1,10 +1,12 @@
 """A text-only, keyboard-first overlay on the live audio visualization."""
 
 import argparse
+from functools import partial
 import os
 from pathlib import Path
 import random
 import shutil
+import stat
 import sys
 
 from PySide6.QtCore import QEvent, QObject, Qt, QTimer
@@ -14,8 +16,9 @@ from PySide6.QtWidgets import (
 )
 
 from .audio import AudioPlayer, probe
+from .background import BackgroundTasks
 from . import __version__
-from .library import AUDIO_EXTENSIONS, discover, natural_key
+from .library import AUDIO_EXTENSIONS, directory_entries, discover, natural_key
 from .instance import SingleInstance
 from .playlists import PlaylistStore
 from .playlist_ui import PlaylistDialog
@@ -64,6 +67,13 @@ class PlayerWindow(QWidget):
         self.random_playback = False
         self.saved_playlist_dialog = None
         self.metadata = {}
+        self.background = BackgroundTasks(self)
+        self._add_requests = []
+        self._loading_track = False
+        self._pause_when_ready = False
+        self._browser_request = None
+        self._folder_scan_pending = False
+        self._closed = False
         self.last_theme = None
         self.visualizer = Visualizer(self)
         self.visualizer.mode = mode
@@ -316,15 +326,45 @@ class PlayerWindow(QWidget):
         self.panel.setVisible(browsing or len(self.tracks) > 1 or self.search.isVisible())
 
     def play_track(self, index, remember=True):
-        if not 0 <= index < len(self.tracks):
+        if self._closed or not 0 <= index < len(self.tracks):
             return
         if remember and self.current >= 0 and index != self.current:
             self.history.append(self.current)
         self.current = index
+        self._loading_track = True
+        self._pause_when_ready = False
         path = self.tracks[index]
-        if path not in self.metadata:
-            self.metadata[path] = probe(path)
-        data = self.metadata[path]
+        self.background.invalidate("metadata")
+        self.player.stop(clear=True)
+        self.duration = 0
+        self.title.setText(path.stem)
+        self.subtitle.hide()
+        self.playlist.setCurrentRow(index)
+        self.update_markers()
+        self.visualizer.reset()
+        self.status.setText("loading track…")
+        self.status.setToolTip("")
+        self.status.show()
+        self.update_state()
+        self._show_navigation()
+        self.background.submit("metadata", partial(self._probe_track, path, self.metadata.get(path)),
+                               partial(self._track_ready, index, path))
+
+    @staticmethod
+    def _probe_track(path, cached):
+        # Check even cached tracks: removable media may have disappeared.
+        if not stat.S_ISREG(path.stat().st_mode):
+            raise ValueError(f"Audio file is unavailable: {path}")
+        return cached if cached is not None else probe(path)
+
+    def _track_ready(self, index, path, data, error):
+        self._loading_track = False
+        pause = self._pause_when_ready
+        self._pause_when_ready = False
+        if error is not None:
+            self.on_error(error)
+            return
+        self.metadata[path] = data
         self.duration = data["duration"]
         self.title.setText(data["title"])
         self.subtitle.setText(" · ".join(x for x in (data["artist"], data["album"]) if x))
@@ -332,14 +372,17 @@ class PlayerWindow(QWidget):
         self.current_folder = path.parent
         if self.browser_folder is None:
             self.folder_label.setText(str(self.current_folder))
-        self.status.setText("")
-        self.status.hide()
-        self.status.setToolTip("")
+        if self.status.text().startswith("loading track…"):
+            self.status.setText("")
+            self.status.hide()
+            self.status.setToolTip("")
         self.setWindowTitle(f"{data['title']} — omaMusi")
         self.playlist.setCurrentRow(index)
         self.update_markers()
         self.visualizer.reset()
         self.player.play(path, sample_rate=data["sample_rate"])
+        if pause:
+            self.player.toggle_pause()
         self.visualizer.sample_rate = self.player.sample_rate
         self.update_state()
         self._show_navigation()
@@ -361,7 +404,12 @@ class PlayerWindow(QWidget):
         self.visual_notice_timer.start(2000)
 
     def toggle_play(self):
-        if self.player.sink:
+        if self._loading_track:
+            self._pause_when_ready = not self._pause_when_ready
+            self.status.setText("loading track… · pause requested" if self._pause_when_ready
+                                else "loading track…")
+            self.status.show()
+        elif self.player.sink:
             self.player.toggle_pause()
         elif self.tracks:
             self.play_track(max(0, self.current))
@@ -419,18 +467,35 @@ class PlayerWindow(QWidget):
         self.status.setToolTip(message)
         self.update_state()
 
-    def add_paths(self, paths):
-        try:
-            new = discover(paths)
-        except ValueError as error:
-            self.on_error(str(error))
+    def add_paths(self, paths, recursive=False):
+        if self._closed:
+            return
+        # Repeated drops retain all requested paths, even if an earlier scan
+        # is still running. The pending worker task stays bounded.
+        self._add_requests.append((list(paths), recursive))
+        self._folder_scan_pending = False
+        requested = list(self._add_requests)
+        self.background.submit("library", partial(self._discover_requests, requested),
+                               self._paths_ready)
+
+    @staticmethod
+    def _discover_requests(requests):
+        tracks = []
+        for paths, recursive in requests:
+            tracks.extend(discover(paths, recursive=recursive))
+        return list(dict.fromkeys(tracks))
+
+    def _paths_ready(self, new, error):
+        self._add_requests.clear()
+        if error is not None:
+            self.on_error(error)
             return
         seen = set(self.tracks)
         added = [path for path in new if path not in seen]
         start = len(self.tracks)
         self.tracks.extend(added)
         self.populate()
-        if added and not self.player.sink:
+        if added and not self.player.sink and not self._loading_track:
             self.play_track(start)
 
     def open_files(self):
@@ -456,7 +521,7 @@ class PlayerWindow(QWidget):
             if self.browser_folder is not None:
                 item = self.folder_list.currentItem()
                 target = item.data(Qt.ItemDataRole.UserRole) if item is not None else None
-                if isinstance(target, Path) and target.is_file():
+                if isinstance(target, Path) and not item.data(Qt.ItemDataRole.UserRole + 1):
                     track = target
             else:
                 row = self.playlist.currentRow()
@@ -503,30 +568,49 @@ class PlayerWindow(QWidget):
             self.status.setText("folder: enter a path · esc to cancel")
             self.status.show()
             return
-        try:
-            folder = Path(value).expanduser()
-            if not folder.is_absolute():
-                folder = (self.browser_folder or self.current_folder) / folder
-            folder = folder.resolve()
-            if not folder.is_dir():
-                raise ValueError(f"Not a folder: {folder}")
-            tracks = discover([str(folder)])
-        except (OSError, ValueError, RuntimeError) as error:
-            self.status.setText(f"folder: {error}")
-            self.status.show()
-            return
+        base = self.browser_folder or self.current_folder
+        self._add_requests.clear()
+        self._folder_scan_pending = True
+        self.background.submit("library", partial(self._scan_folder, value, base),
+                               self._folder_ready)
 
-        self.load_folder(folder, tracks)
+    @staticmethod
+    def _scan_folder(value, base):
+        folder = Path(value).expanduser()
+        if not folder.is_absolute():
+            folder = base / folder
+        folder = folder.resolve()
+        try:
+            mode = folder.stat().st_mode
+        except FileNotFoundError as error:
+            raise ValueError(f"Not a folder: {folder}") from error
+        if not stat.S_ISDIR(mode):
+            raise ValueError(f"Not a folder: {folder}")
+        return folder, discover([str(folder)])
+
+    def _folder_ready(self, result, error, start_path=None):
+        self._folder_scan_pending = False
+        if error is not None:
+            self.on_error(f"folder: {error}")
+            return
+        folder, tracks = result
+        self.load_folder(folder, tracks, start_path)
 
     def load_folder(self, folder, tracks=None, start_path=None):
+        if self._closed:
+            return
         if tracks is None:
-            try:
-                tracks = discover([str(folder)])
-            except (OSError, ValueError) as error:
-                self.status.setText(f"folder: {error}")
-                self.status.show()
-                return
+            self._add_requests.clear()
+            self._folder_scan_pending = True
+            self.background.submit("library", partial(self._scan_folder, folder, self.current_folder),
+                                   lambda result, error: self._folder_ready(result, error, start_path))
+            return
 
+        self.background.invalidate("library")
+        self._folder_scan_pending = False
+        self.background.invalidate("metadata")
+        self._add_requests.clear()
+        self._loading_track = False
         self.player.stop(clear=True)
         self.current_folder = folder
         self.tracks = tracks
@@ -564,15 +648,26 @@ class PlayerWindow(QWidget):
         self.setFocus()
 
     def show_folder(self, folder):
-        try:
-            entries = list(folder.iterdir())
-            folders = sorted((path for path in entries if path.is_dir()), key=natural_key)
-            files = sorted((path for path in entries if path.is_file()
-                            and path.suffix.lower() in AUDIO_EXTENSIONS), key=natural_key)
-        except OSError as error:
-            self.status.setText(f"folder: {error}")
-            self.status.show()
+        if self._closed:
             return
+        self._browser_request = folder
+        self.background.submit("browser", partial(self._list_folder, folder),
+                               partial(self._browser_ready, folder))
+
+    @staticmethod
+    def _list_folder(folder):
+        entries = directory_entries(folder)
+        folders = sorted((path for path, mode, _ in entries if stat.S_ISDIR(mode)), key=natural_key)
+        files = sorted((path for path, mode, _ in entries if stat.S_ISREG(mode)
+                        and path.suffix.lower() in AUDIO_EXTENSIONS), key=natural_key)
+        return folders, files
+
+    def _browser_ready(self, folder, result, error):
+        self._browser_request = None
+        if error is not None:
+            self.on_error(f"folder: {error}")
+            return
+        folders, files = result
         self.browser_folder = folder
         self.folder_label.show()
         self.folder_label.setText(str(folder))
@@ -585,10 +680,12 @@ class PlayerWindow(QWidget):
         if folder.parent != folder:
             parent = QListWidgetItem("  ../")
             parent.setData(Qt.ItemDataRole.UserRole, folder.parent)
+            parent.setData(Qt.ItemDataRole.UserRole + 1, True)
             self.folder_list.addItem(parent)
         for path in folders:
             item = QListWidgetItem(f"  {path.name}/")
             item.setData(Qt.ItemDataRole.UserRole, path)
+            item.setData(Qt.ItemDataRole.UserRole + 1, True)
             self.folder_list.addItem(item)
         for path in files:
             item = QListWidgetItem(f"  {path.name}")
@@ -610,7 +707,7 @@ class PlayerWindow(QWidget):
         target = item.data(Qt.ItemDataRole.UserRole)
         if target == "play":
             self.load_folder(self.browser_folder)
-        elif target.is_dir():
+        elif item.data(Qt.ItemDataRole.UserRole + 1):
             self.show_folder(target)
         else:
             self.load_folder(self.browser_folder, start_path=target)
@@ -624,6 +721,9 @@ class PlayerWindow(QWidget):
             self.load_folder(self.browser_folder)
 
     def end_folder_browse(self):
+        self._cancel_folder_scan()
+        self.background.invalidate("browser")
+        self._browser_request = None
         self.browser_folder = None
         self.folder_list.hide()
         self.playlist.show()
@@ -634,6 +734,11 @@ class PlayerWindow(QWidget):
         self.update_hint()
         self.fit_list()
         self.setFocus()
+
+    def _cancel_folder_scan(self):
+        if self._folder_scan_pending:
+            self.background.invalidate("library")
+            self._folder_scan_pending = False
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls() and any(url.isLocalFile() for url in event.mimeData().urls()):
@@ -666,10 +771,11 @@ class PlayerWindow(QWidget):
 
     def escape(self):
         if self.folder_prompt.isVisible():
+            self._cancel_folder_scan()
             self.folder_prompt.hide()
             self.folder_label.setVisible(self.browser_folder is not None)
             self.setFocus()
-        elif self.browser_folder is not None:
+        elif self.browser_folder is not None or self._browser_request is not None:
             self.end_folder_browse()
         elif self.search.hasFocus():
             self.search.clearFocus()
@@ -813,6 +919,8 @@ class PlayerWindow(QWidget):
         super().resizeEvent(event)
 
     def closeEvent(self, event):
+        self._closed = True
+        self.background.close()
         application = QApplication.instance()
         if application is not None:
             application.removeEventFilter(self)
@@ -888,13 +996,7 @@ def run_player(app, instance, cli, args):
     for executable in ("ffmpeg", "ffprobe"):
         if not shutil.which(executable):
             cli.error(f"{executable} is required. Install FFmpeg first.")
-    try:
-        paths = ([str(Path.cwd())] if args.all else []) + args.paths
-        tracks = discover(paths or [str(Path.cwd())], recursive=args.recursive)
-    except ValueError as error:
-        cli.error(str(error))
-    if not tracks:
-        print("omaMusi: no audio files found. Press o to open files or drop music onto the window.", file=sys.stderr)
+    paths = ([str(Path.cwd())] if args.all else []) + args.paths
     app.setStyle("Fusion")
     aliases = {
         "sprites": "warp",
@@ -903,7 +1005,7 @@ def run_player(app, instance, cli, args):
         "phi-cathedral": "phi cathedral",
     }
     view = aliases.get(args.view, args.view)
-    window = PlayerWindow(tracks, [mode.lower() for mode in Visualizer.modes].index(view))
+    window = PlayerWindow([], [mode.lower() for mode in Visualizer.modes].index(view))
     instance.window = window
     visualizer = window.visualizer
     print(f"omaMusi: rev={_rev()} eh={_shader_tag()} view={view} renderer={visualizer.renderer} ({visualizer.renderer_detail})",
@@ -912,6 +1014,7 @@ def run_player(app, instance, cli, args):
         print("omaMusi: PARTICLE CANARY on — swarm forced to giant red dots in Particle Dance",
               file=sys.stderr)
     window.show()
+    window.add_paths(paths or [str(Path.cwd())], recursive=args.recursive)
     return app.exec()
 
 

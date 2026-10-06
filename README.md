@@ -102,6 +102,8 @@ omaMusi --view "event horizon"
 omaMusi --view "particle dance"
 ```
 
+Folder scans and track metadata load in the background, including the initial scan. The window stays responsive while waiting for storage. Failed scans leave the existing queue and playback intact and show an error. Escape cancels a pending folder change or folder browse; an outdated result cannot reopen it. Pressing Space while a track loads preserves the requested pause when playback starts.
+
 ## Main controls
 
 | Key | Action |
@@ -156,5 +158,7 @@ Playlists save automatically to `${XDG_DATA_HOME:-~/.local/share}/omamusi/playli
 ```
 
 The GPU smoke test needs a desktop session with a hardware GPU.
+
+GitHub Actions runs the full regression suite and a wheel build on pushes to `development` and `main`, and on pull requests. It tests Python 3.11 with the minimum supported dependencies and Python 3.14 with current dependencies, using a virtual audio output. Hardware GPU/audio checks and a real GNOME session remain release checks; hosted CI does not validate either desktop compositor.
 
 See [compatibility validation](docs/compatibility.md) for tested Python/Qt versions and the GNOME desktop checks.

@@ -227,7 +227,9 @@ class _AudioEngine(QObject):
         self.timer.stop()
         if self.sink:
             self.offset = self.position
-            self.sink.stop()
+            # stop() drains buffered output on Linux and can stall while
+            # suspended. Seeking, switching and closing discard that audio.
+            self.sink.reset()
             self.sink.deleteLater()
         if self.decoder:
             self.decoder.close()

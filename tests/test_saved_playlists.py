@@ -7,6 +7,7 @@ import importlib.util
 from pathlib import Path
 import subprocess
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -206,6 +207,10 @@ class SavedPlaylistKeyboardTests(unittest.TestCase):
         store.create("Ambient")
         store.create("Favorites")
         self.window.show_folder(self.root)
+        deadline = time.monotonic() + 3
+        while self.window.browser_folder != self.root and time.monotonic() < deadline:
+            QTest.qWait(10)
+        self.assertEqual(self.window.browser_folder, self.root)
         for row in range(self.window.folder_list.count()):
             if self.window.folder_list.item(row).data(Qt.ItemDataRole.UserRole) == track:
                 self.window.folder_list.setCurrentRow(row)

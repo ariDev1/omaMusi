@@ -8,9 +8,11 @@ import queue
 import random
 import subprocess
 import tempfile
+import threading
 import time
 import unittest
 import warnings
+from unittest.mock import patch
 
 import numpy as np
 from PySide6.QtCore import Qt
@@ -140,6 +142,34 @@ class PlayerTests(unittest.TestCase):
             self.assertIn("finished", window.status.text())
             self.assertFalse(errors)
         finally:
+            window.close()
+
+    def test_pause_during_pending_metadata_pauses_the_selected_track(self):
+        window = PlayerWindow([])
+        window.tracks = [self.tone]
+        window.populate()
+        window.player.set_volume(0)
+        release = threading.Event()
+        started = threading.Event()
+        def slow_probe(path):
+            started.set()
+            release.wait(0.5)
+            return probe(path)
+        try:
+            with patch("omamusi.app.probe", side_effect=slow_probe):
+                window.play_track(0)
+                self.wait_until(started.is_set)
+                window.toggle_play()
+                window.playlist_notice("Saved playlist updated")
+                release.set()
+                self.wait_until(lambda: window.player.sink is not None)
+                self.assertTrue(window.player.paused)
+                self.assertEqual(window.status.text(), "Saved playlist updated")
+                position = window.player.position
+                QTest.qWait(100)
+                self.assertAlmostEqual(window.player.position, position, delta=0.04)
+        finally:
+            release.set()
             window.close()
 
     def test_text_only_overlay_and_keyboard_filter(self):
@@ -294,6 +324,7 @@ class PlayerTests(unittest.TestCase):
             self.assertTrue(window.folder_input.hasFocus())
             QTest.keyClicks(window.folder_input, "missing folder")
             QTest.keyClick(window.folder_input, Qt.Key.Key_Return)
+            self.wait_until(lambda: "Not a folder" in window.status.text())
             self.assertIn("Not a folder", window.status.text())
             self.assertEqual(window.tracks, [self.tone])
             self.assertIs(window.player.sink, original_sink)
@@ -307,6 +338,7 @@ class PlayerTests(unittest.TestCase):
             QTest.keyClick(window, Qt.Key.Key_L, Qt.KeyboardModifier.ControlModifier)
             QTest.keyClicks(window.folder_input, "next album")
             QTest.keyClick(window.folder_input, Qt.Key.Key_Return)
+            self.wait_until(lambda: window.player.path == track)
             self.assertEqual(window.current_folder, folder)
             self.assertEqual(window.tracks, [track])
             self.assertEqual(window.current, 0)
@@ -321,10 +353,12 @@ class PlayerTests(unittest.TestCase):
             window.begin_folder_change()
             window.folder_input.setText(str(track))
             window.change_folder()
+            self.wait_until(lambda: "Not a folder" in window.status.text())
             self.assertEqual(window.tracks, [track])
             self.assertTrue(window.folder_prompt.isVisible())
             window.folder_input.setText(str(empty))
             window.change_folder()
+            self.wait_until(lambda: window.current_folder == empty)
             self.assertEqual(window.current_folder, empty)
             self.assertEqual(window.folder_label.text(), str(empty))
             self.assertEqual(window.tracks, [])
@@ -428,6 +462,7 @@ class PlayerTests(unittest.TestCase):
             window.toggle_play()
             sink = window.player.sink
             QTest.keyClick(window, Qt.Key.Key_C)
+            self.wait_until(lambda: window.browser_folder == base)
             self.assertEqual(window.browser_folder, base)
             self.assertTrue(window.folder_list.isVisible())
             self.assertFalse(window.playlist.isVisible())
@@ -441,6 +476,7 @@ class PlayerTests(unittest.TestCase):
             QTest.keyClick(window, Qt.Key.Key_Down)
             self.assertEqual(window.player.volume, 0)
             QTest.keyClick(window, Qt.Key.Key_Right)
+            self.wait_until(lambda: window.browser_folder == album)
             self.assertEqual(window.browser_folder, album)
             self.assertEqual(window.current_folder, base)
             self.assertIs(window.player.sink, sink)
@@ -449,13 +485,16 @@ class PlayerTests(unittest.TestCase):
             self.assertIn("1 audio files", window.count.text())
             # The first entry is "play this folder"; Enter loads it.
             QTest.keyClick(window, Qt.Key.Key_Return)
+            self.wait_until(lambda: window.player.path == track)
             self.assertIsNone(window.browser_folder)
             self.assertEqual(window.tracks, [track])
             self.assertFalse(window.player.paused)
             window.toggle_play()
             QTest.keyClick(window, Qt.Key.Key_C, Qt.KeyboardModifier.ShiftModifier)
+            self.wait_until(lambda: window.browser_folder == album)
             self.assertEqual(window.browser_folder, album)
             QTest.keyClick(window, Qt.Key.Key_Left)
+            self.wait_until(lambda: window.browser_folder == base)
             self.assertEqual(window.browser_folder, base)
             QTest.keyClick(window, Qt.Key.Key_Escape)
             self.assertIsNone(window.browser_folder)
@@ -652,12 +691,14 @@ class PlayerTests(unittest.TestCase):
         QTest.qWait(100)
         try:
             QTest.keyClick(window, Qt.Key.Key_C)
+            self.wait_until(lambda: window.browser_folder == folder)
             self.assertEqual(window.folder_list.item(2).text().strip(), first.name)
             self.assertEqual(window.folder_list.item(3).text().strip(), selected.name)
             self.assertIn("2 audio files", window.count.text())
             for _ in range(3):
                 QTest.keyClick(window, Qt.Key.Key_Down)
             QTest.keyClick(window, Qt.Key.Key_Return)
+            self.wait_until(lambda: window.player.path == selected)
             self.assertIsNone(window.browser_folder)
             self.assertEqual(window.tracks, [first, selected])
             self.assertEqual(window.current, 1)

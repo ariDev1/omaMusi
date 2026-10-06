@@ -30,6 +30,9 @@ def main():
             assert visual.renderer == "gpu", visual.renderer_detail
             assert visual._gpu.ready, "GPU shaders did not initialize"
             window.play_track(0)
+            deadline = time.monotonic() + 5
+            while window.player.sink is None and time.monotonic() < deadline:
+                QTest.qWait(20)
             QTest.qWait(300)
             sink = window.player.sink
             assert sink is not None
