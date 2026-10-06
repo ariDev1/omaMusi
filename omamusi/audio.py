@@ -111,8 +111,8 @@ class Decoder:
 
 class _AudioEngine(QObject):
     """Own the sink and feed timer in a dedicated audio thread."""
-    finished = Signal()
-    failed = Signal(str)
+    finished = Signal(int)
+    failed = Signal(int, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -130,6 +130,7 @@ class _AudioEngine(QObject):
         self.divisor = 32768
         self.written = 0
         self.sink_serial = 0
+        self.generation = 0
         self.underruns = 0
         self.was_underrun = False
         self.analysis_buffer = np.zeros(4096, dtype=np.float32)
@@ -145,6 +146,10 @@ class _AudioEngine(QObject):
     @Slot(str, object)
     def dispatch(self, method, arguments):
         args, kwargs = arguments
+        # Only user playback requests invalidate pending completion/error
+        # events. Internal stop() at EOF must retain the completing generation.
+        if method in ("play", "seek", "stop"):
+            self.generation += 1
         getattr(self, method)(*args, **kwargs)
         self._publish()
 
@@ -157,6 +162,7 @@ class _AudioEngine(QObject):
             "sink_id": self.sink_serial if self.sink else None,
             "format": QAudioFormat(self.sink.format()) if self.sink else None,
             "written": self.written, "underruns": self.underruns,
+            "generation": self.generation,
         }
 
     @property
@@ -178,7 +184,7 @@ class _AudioEngine(QObject):
         self.mailbox = (self.analysis_revision, self.analysis_buffer.copy())
         device = QMediaDevices.defaultAudioOutput()
         if device.isNull():
-            self.failed.emit("No audio output device is available.")
+            self.failed.emit(self.generation, "No audio output device is available.")
             return
         fmt = QAudioFormat()
         fmt.setChannelCount(CHANNELS)
@@ -193,7 +199,7 @@ class _AudioEngine(QObject):
             if supported:
                 break
         if not supported:
-            self.failed.emit("The audio output does not support stereo PCM.")
+            self.failed.emit(self.generation, "The audio output does not support stereo PCM.")
             return
         floating = fmt.sampleFormat() == QAudioFormat.SampleFormat.Float
         self.sample_rate = fmt.sampleRate()
@@ -203,7 +209,7 @@ class _AudioEngine(QObject):
         try:
             self.decoder = Decoder(path, offset, sample_rate=self.sample_rate, floating=floating)
         except OSError as error:
-            self.failed.emit(str(error))
+            self.failed.emit(self.generation, str(error))
             return
         self.sink = QAudioSink(device, fmt, self)
         self.sink_serial += 1
@@ -213,7 +219,7 @@ class _AudioEngine(QObject):
         self.output = self.sink.start()
         if self.output is None:
             self.stop()
-            self.failed.emit("Could not open the audio output.")
+            self.failed.emit(self.generation, "Could not open the audio output.")
             return
         self.timer.start()
 
@@ -259,7 +265,7 @@ class _AudioEngine(QObject):
         if self.sink.error() not in (AudioEnums.Error.NoError, AudioEnums.Error.UnderrunError):
             self.stop()
             self._publish()
-            self.failed.emit("Audio output failed. Check your output device.")
+            self.failed.emit(self.generation, "Audio output failed. Check your output device.")
             return
         capacity = self.sink.bytesFree()
         idle = self.sink.state() == AudioEnums.State.IdleState
@@ -300,9 +306,9 @@ class _AudioEngine(QObject):
                 self.stop()
                 self._publish()
                 if error:
-                    self.failed.emit(error)
+                    self.failed.emit(self.generation, error)
                 else:
-                    self.finished.emit()
+                    self.finished.emit(self.generation)
 
 
 class _SinkView:
@@ -387,16 +393,16 @@ class AudioPlayer(QObject):
             self.samples.emit(frame)
         self.positionChanged.emit(self.position)
 
-    @Slot()
-    def _finished(self):
-        if self._closed:
+    @Slot(int)
+    def _finished(self, generation):
+        if self._closed or generation != self._engine.published["generation"]:
             return
         self._sync()
         self.finished.emit()
 
-    @Slot(str)
-    def _failed(self, message):
-        if self._closed:
+    @Slot(int, str)
+    def _failed(self, generation, message):
+        if self._closed or generation != self._engine.published["generation"]:
             return
         self._sync()
         self.failed.emit(message)

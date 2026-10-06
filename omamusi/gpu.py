@@ -1560,30 +1560,35 @@ class GpuCanvas(QOpenGLWidget):
             self.failed.emit(f"OpenGL rendering: {error}")
 
     def cleanup(self):
-        # Aether persistent swarm resources.
-        if getattr(self, "swarm_vbos", None):
-            GL.glDeleteBuffers(len(self.swarm_vbos), self.swarm_vbos)
-            self.swarm_vbos = []
-        if getattr(self, "swarm_vaos", None):
-            GL.glDeleteVertexArrays(len(self.swarm_vaos), self.swarm_vaos)
-            self.swarm_vaos = []
-        for name in ("swarm_update", "swarm_render"):
-            program = getattr(self, name, None)
-            if program:
-                GL.glDeleteProgram(program)
-                setattr(self, name, None)
-        if not self.context() or not self.context().isValid():
+        self.ready = False
+        context = self.context()
+        if context is None or not context.isValid():
             return
         self.makeCurrent()
-        if self.textures:
-            GL.glDeleteTextures(self.textures)
-            self.textures = []
-        if self.vao:
-            GL.glDeleteVertexArrays(1, [self.vao])
-            self.vao = 0
-        for program in (self.quad, self.particles, self.phi, self.phi_particles, self.event_horizon):
-            if program:
-                GL.glDeleteProgram(program)
-        self.quad = self.particles = self.phi = self.phi_particles = self.event_horizon = 0
-        self.ready = False
-        self.doneCurrent()
+        if QOpenGLContext.currentContext() != context:
+            return
+        try:
+            # Aether persistent swarm resources.
+            if getattr(self, "swarm_vbos", None):
+                GL.glDeleteBuffers(len(self.swarm_vbos), self.swarm_vbos)
+                self.swarm_vbos = []
+            if getattr(self, "swarm_vaos", None):
+                GL.glDeleteVertexArrays(len(self.swarm_vaos), self.swarm_vaos)
+                self.swarm_vaos = []
+            for name in ("swarm_update", "swarm_render"):
+                program = getattr(self, name, None)
+                if program:
+                    GL.glDeleteProgram(program)
+                    setattr(self, name, None)
+            if self.textures:
+                GL.glDeleteTextures(self.textures)
+                self.textures = []
+            if self.vao:
+                GL.glDeleteVertexArrays(1, [self.vao])
+                self.vao = 0
+            for program in (self.quad, self.particles, self.phi, self.phi_particles, self.event_horizon):
+                if program:
+                    GL.glDeleteProgram(program)
+            self.quad = self.particles = self.phi = self.phi_particles = self.event_horizon = 0
+        finally:
+            self.doneCurrent()

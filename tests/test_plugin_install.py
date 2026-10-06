@@ -70,6 +70,38 @@ else:
         self.assertIn("already exists", result.stderr)
         self.assertEqual(launcher.read_text(), "unrelated")
 
+    def test_remove_preserves_saved_playlists_and_other_user_data(self):
+        self.assertEqual(self.run_script("setup-player.sh").returncode, 0)
+        install = self.home / "data folder/omamusi"
+        saved = install / "playlists.json"
+        saved.write_text('{"version": 1, "playlists": {"Favorites": []}}')
+        (install / "notes.txt").write_text("keep this too")
+        result = self.run_script("remove-player.sh")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(saved.read_text())["playlists"], {"Favorites": []})
+        self.assertEqual((install / "notes.txt").read_text(), "keep this too")
+        self.assertFalse((install / "venv").exists())
+        result = self.run_script("setup-player.sh")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(saved.read_text())["playlists"], {"Favorites": []})
+        self.assertEqual((install / "notes.txt").read_text(), "keep this too")
+
+    def test_setup_accepts_existing_standalone_playlists(self):
+        install = self.home / "data folder/omamusi"
+        install.mkdir(parents=True)
+        saved = install / "playlists.json"
+        saved.write_text('{"version": 1, "playlists": {"Favorites": []}}')
+        result = self.run_script("setup-player.sh")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(saved.read_text())["playlists"], {"Favorites": []})
+
+    def test_setup_refuses_unmarked_virtual_environment(self):
+        install = self.home / "data folder/omamusi"
+        (install / "venv").mkdir(parents=True)
+        (install / "venv/keep").write_text("unmanaged")
+        self.assertNotEqual(self.run_script("setup-player.sh").returncode, 0)
+        self.assertEqual((install / "venv/keep").read_text(), "unmanaged")
+
     def test_launch_preserves_music_path_with_spaces(self):
         self.assertEqual(self.run_script("setup-player.sh").returncode, 0)
         (self.home / "Music").mkdir()

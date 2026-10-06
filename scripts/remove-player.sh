@@ -18,5 +18,7 @@ fi
 if [[ -L "$launcher" && $(readlink -- "$launcher") == "$install_dir/venv/bin/omaMusi" ]]; then
   rm -- "$launcher"
 fi
-rm -rf -- "$install_dir"
-printf 'Removed managed player installation. Your music is untouched.\n'
+# The directory also holds persistent user data. The marker remains so
+# subsequent setup/removal can recognize ownership without adopting other files.
+rm -rf -- "$install_dir/venv"
+printf 'Removed managed player installation. Saved playlists and music are preserved.\n'

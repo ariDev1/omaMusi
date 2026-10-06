@@ -15,7 +15,18 @@ if [[ -e "$launcher" || -L "$launcher" ]]; then
   [[ -L "$launcher" && $(readlink -- "$launcher") == "$install_dir/venv/bin/omaMusi" && -f "$marker" ]] || fail "$launcher already exists and is not managed by this installer."
 fi
 if [[ -e "$install_dir" || -L "$install_dir" ]]; then
-  [[ ! -L "$install_dir" && -d "$install_dir" && -f "$marker" && $(cat -- "$marker") == io.github.aridev1.omamusi ]] || fail "Refusing to modify an unmanaged installation at $install_dir."
+  [[ ! -L "$install_dir" && -d "$install_dir" ]] || fail "Refusing to modify an unmanaged installation at $install_dir."
+  if [[ -f "$marker" && $(cat -- "$marker") == io.github.aridev1.omamusi ]]; then
+    : # Previously managed player; its user data stays in place.
+  else
+    # Standalone use creates this directory before any managed install.
+    # Only adopt an empty directory or one containing the playlist data file.
+    shopt -s nullglob dotglob
+    for entry in "$install_dir"/*; do
+      [[ "$entry" == "$install_dir/playlists.json" && -f "$entry" && ! -L "$entry" ]] || fail "Refusing to modify an unmanaged installation at $install_dir."
+    done
+    shopt -u nullglob dotglob
+  fi
 fi
 mkdir -p -- "$install_dir" "$(dirname -- "$launcher")"
 printf 'io.github.aridev1.omamusi\n' > "$marker"

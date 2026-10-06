@@ -84,7 +84,7 @@ bash ~/.config/omarchy/plugins/io.github.aridev1.omamusi/scripts/remove-player.s
 omarchy plugin remove io.github.aridev1.omamusi
 ```
 
-Removal affects only the managed player and its launcher. A separately installed development player is preserved. Git information may be unavailable in the pip-installed copy, in which case the footer shows `unknown` for the commit hash.
+Removal affects only the managed virtual environment and its launcher. Saved playlists and other user data remain in the data directory, together with the ownership marker for later reinstallation. Setup also accepts a data directory created by standalone playlist use. A separately installed development player is preserved. Git information may be unavailable in the pip-installed copy, in which case the footer shows `unknown` for the commit hash.
 
 ## Play
 
