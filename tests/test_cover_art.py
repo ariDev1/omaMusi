@@ -126,7 +126,7 @@ class CoverArtWindowTests(unittest.TestCase):
                 center = cover_rectangle(visual.width(), visual.height(), art.size()).center().toPoint()
                 self.assertEqual(image.pixelColor(center), QColor("red"))
 
-    def test_music_changes_cover_scale_and_light(self):
+    def test_music_changes_cover_scale_on_a_black_stage(self):
         window = self.window()
         visual = window.visualizer
         art = QImage(200, 200, QImage.Format.Format_RGB32)
@@ -144,9 +144,8 @@ class CoverArtWindowTests(unittest.TestCase):
         from omamusi.visual.cover import cover_rectangle
         rectangle = cover_rectangle(visual.width(), visual.height(), art.size())
         x, y = int(rectangle.left() - 30), int(rectangle.center().y())
-        self.assertGreater(loud.pixelColor(x, y).red(), quiet.pixelColor(x, y).red())
-        self.assertEqual(loud.pixelColor(x, y).green(), 0)
-        self.assertEqual(loud.pixelColor(x, y).blue(), 0)
+        self.assertEqual(quiet.pixelColor(x, y), QColor("black"))
+        self.assertEqual(loud.pixelColor(x, y), QColor("black"))
 
     def test_cover_survives_seek_reset_and_cycles_with_other_visuals(self):
         window = self.window()

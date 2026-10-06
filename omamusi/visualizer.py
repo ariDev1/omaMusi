@@ -16,7 +16,7 @@ from .visual.analysis import MusicAnalyzer
 from .visual.director import VisualDirector
 from .visual.horizon import HorizonHotspots
 from .visual.waveform import WaveformPersistence
-from .visual.cover import artwork_color, paint_cover
+from .visual.cover import paint_cover
 
 
 class Visualizer(QWidget):
@@ -31,7 +31,6 @@ class Visualizer(QWidget):
         self.active = False
         self.mode = 0
         self.cover_art = QImage()
-        self.cover_accent = QColor("white")
         self.sample_rate = SAMPLE_RATE
         self.buffer = np.zeros(4096, dtype=np.float32)
         self.wave_persistence = WaveformPersistence()
@@ -113,13 +112,12 @@ class Visualizer(QWidget):
 
     def set_cover_art(self, image):
         self.cover_art = QImage(image)
-        self.cover_accent = artwork_color(image)
         if self._gpu:
             self._gpu.update()
         self.update()
 
     def paint_cover_art(self, painter, width, height):
-        paint_cover(painter, self.cover_art, width, height, self.bass, self.energy, self.cover_accent)
+        paint_cover(painter, self.cover_art, width, height, self.bass)
 
     def reset(self):
         self.buffer.fill(0)

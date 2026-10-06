@@ -31,7 +31,7 @@ Tested on Omarchy (Hyprland) and GNOME. Omarchy keeps the frameless window; GNOM
 - **Phi Cathedral** — evolving golden-ratio patterns and spirals.
 - **Warp** — a swirling flight through colored star streams.
 - **Spectrum**, **Waveform**, and **Spectrogram** — three classic ways to see your music.
-- **Cover Art** — a single album cover on the right side of the window, with a gentle bass-driven pulse and an artwork-colored glow that brightens with the music. The image stays sharp and keeps its proportions. Without readable artwork, the stage is black.
+- **Cover Art** — a single album cover on the right side of the window, with a gentle bass-driven pulse against a plain black background. The image stays sharp and keeps its proportions. Without readable artwork, the stage is black.
 
 Press **V** to switch visuals, or **Shift+V** to go back.
 

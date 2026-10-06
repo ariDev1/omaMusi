@@ -1,24 +1,6 @@
 """One album cover on the right, with a restrained audio-reactive pulse."""
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QPainter, QPen, QRadialGradient
-
-
-def artwork_color(image):
-    """Pick a warm/cool light from the artwork once, rather than per frame."""
-    if image.isNull():
-        return QColor("white")
-    sample = image.scaled(16, 16, Qt.AspectRatioMode.KeepAspectRatio,
-                          Qt.TransformationMode.SmoothTransformation)
-    red = green = blue = total = 0.0
-    for y in range(sample.height()):
-        for x in range(sample.width()):
-            color = sample.pixelColor(x, y)
-            weight = color.saturationF() * color.valueF() * color.alphaF()
-            red += color.redF() * weight
-            green += color.greenF() * weight
-            blue += color.blueF() * weight
-            total += weight
-    return QColor.fromRgbF(red / total, green / total, blue / total) if total else QColor("white")
+from PySide6.QtGui import QColor, QPainter, QPen
 
 
 def cover_rectangle(width, height, image_size, bass=0.0):
@@ -31,7 +13,7 @@ def cover_rectangle(width, height, image_size, bass=0.0):
     return rectangle
 
 
-def paint_cover(painter, image, width, height, bass=0.0, energy=0.0, accent=None):
+def paint_cover(painter, image, width, height, bass=0.0):
     painter.fillRect(QRectF(0, 0, width, height), Qt.GlobalColor.black)
     if image.isNull():
         return
@@ -42,17 +24,6 @@ def paint_cover(painter, image, width, height, bass=0.0, energy=0.0, accent=None
     try:
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        # Light grows with loudness; the image itself keeps its original colors.
-        light = QColor(accent if accent is not None else QColor("white"))
-        light.setAlpha(int(36 + 88 * max(0.0, min(1.0, energy))))
-        transparent = QColor(light)
-        transparent.setAlpha(0)
-        radius = max(rectangle.width(), rectangle.height()) * .95
-        glow = QRadialGradient(rectangle.center(), radius)
-        glow.setColorAt(0, light)
-        glow.setColorAt(.45, light)
-        glow.setColorAt(1, transparent)
-        painter.fillRect(QRectF(0, 0, width, height), glow)
         painter.drawImage(rectangle, image, QRectF(image.rect()))
         painter.setPen(QPen(QColor(255, 255, 255, 28), 1))
         painter.setBrush(Qt.BrushStyle.NoBrush)
