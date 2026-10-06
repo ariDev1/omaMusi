@@ -16,12 +16,13 @@ from .visual.analysis import MusicAnalyzer
 from .visual.director import VisualDirector
 from .visual.horizon import HorizonHotspots
 from .visual.waveform import WaveformPersistence
+from .visual.cover import paint_gallery
 
 
 class Visualizer(QWidget):
     PARTICLE_COUNT = 384  # Conservative fallback; GPU draws 4,096 streaks.
     modes = ("Warp", "Spectrum", "Waveform", "Spectrogram", "Phi Cathedral", "Event Horizon",
-               "Particle Dance")
+               "Particle Dance", "Cover Art")
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -29,6 +30,7 @@ class Visualizer(QWidget):
         self.colors = dict(DEFAULTS)
         self.active = False
         self.mode = 0
+        self.cover_art = QImage()
         self.sample_rate = SAMPLE_RATE
         self.buffer = np.zeros(4096, dtype=np.float32)
         self.wave_persistence = WaveformPersistence()
@@ -107,6 +109,15 @@ class Visualizer(QWidget):
             self.buffer = np.roll(self.buffer, -n)
             self.buffer[-n:] = samples[-n:]
             self._wave_audio_revision += 1
+
+    def set_cover_art(self, image):
+        self.cover_art = QImage(image)
+        if self._gpu:
+            self._gpu.update()
+        self.update()
+
+    def paint_cover_art(self, painter, width, height):
+        paint_gallery(painter, self.cover_art, width, height)
 
     def reset(self):
         self.buffer.fill(0)
@@ -307,6 +318,9 @@ class Visualizer(QWidget):
             p.setRenderHint(QPainter.RenderHint.Antialiasing)
             p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
             w, h = self.width(), self.height()
+            if self.mode == 7:
+                self.paint_cover_art(p, w, h)
+                return
             if self.mode != 2:
                 p.fillRect(self.rect(), QColor(self.colors["background"]))
             if self.mode == 0:

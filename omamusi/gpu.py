@@ -4,7 +4,7 @@ import numpy as np
 from OpenGL import GL
 from OpenGL.GL.shaders import compileProgram, compileShader
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor, QGuiApplication, QOffscreenSurface, QOpenGLContext, QSurfaceFormat
+from PySide6.QtGui import QColor, QGuiApplication, QOffscreenSurface, QOpenGLContext, QPainter, QSurfaceFormat
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 import math
 import time
@@ -1471,6 +1471,16 @@ class GpuCanvas(QOpenGLWidget):
             return
         try:
             state = self.owner
+            if state.mode == 7:
+                # Native visuals leave the waveform texture on unit 2;
+                # Qt's image painter expects texture unit 0 on entry.
+                GL.glActiveTexture(GL.GL_TEXTURE0)
+                painter = QPainter(self)
+                try:
+                    state.paint_cover_art(painter, self.width(), self.height())
+                finally:
+                    painter.end()
+                return
             ratio = self.devicePixelRatioF()
             width, height = int(self.width()*ratio), int(self.height()*ratio)
             GL.glViewport(0, 0, width, height)

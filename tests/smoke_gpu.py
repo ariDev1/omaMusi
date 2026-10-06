@@ -7,10 +7,12 @@ import time
 
 import numpy as np
 from PySide6.QtTest import QTest
+from PySide6.QtGui import QColor, QImage
 from PySide6.QtWidgets import QApplication
 
 from omamusi.app import PlayerWindow
 from omamusi.visualizer import Visualizer
+from omamusi.visual.cover import gallery_rectangles
 
 
 def main():
@@ -95,6 +97,24 @@ def main():
             assert cleared.pixelColor(x, y).alpha() == 0
             visual.mode = 0
             assert visual._gpu.grabFramebuffer().pixelColor(1, 1).alpha() == 255
+            # QPainter on the GPU canvas must render real cover images, clear
+            # them to black, and leave the original GL modes intact.
+            visual.mode = Visualizer.modes.index("Cover Art")
+            art = QImage(200, 100, QImage.Format.Format_RGB32)
+            art.fill(QColor("red"))
+            visual.set_cover_art(art)
+            gallery = visual._gpu.grabFramebuffer()
+            center = gallery_rectangles(visual.width(), visual.height(), art.size())[0].center()
+            ratio = visual._gpu.devicePixelRatioF()
+            color = gallery.pixelColor(int(center.x() * ratio), int(center.y() * ratio))
+            assert color == QColor("red"), (color.getRgb(), center, ratio, gallery.size())
+            assert gallery.pixelColor(1, 1) == QColor("black")
+            visual.set_cover_art(QImage())
+            empty = visual._gpu.grabFramebuffer()
+            assert empty.pixelColor(empty.width() // 2, empty.height() // 2) == QColor("black")
+            visual.mode = 0
+            restored = visual._gpu.grabFramebuffer()
+            assert bytes(restored.bits()) == frames[0], "Cover Art changed the Warp rendering state"
             print(f"GPU: {visual.renderer_detail}")
             print(f"PASS: all GPU views, waveform density and transparency, persistent resources, {len(Visualizer.modes) * 8} switches, 650 ms UI stall, zero audio underruns")
         finally:

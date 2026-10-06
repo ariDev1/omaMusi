@@ -24,15 +24,18 @@ The subtle footer shows the version and short Git commit hash. A `+dirty` suffix
 
 Tested on Omarchy (Hyprland) and GNOME. Omarchy keeps the frameless window; GNOME uses native window decorations.
 
-## Seven visuals
+## Eight visuals
 
 - **Event Horizon** — a cinematic black hole with a glowing disk, gentle camera drift, bass-driven waves, orbiting hot spots, and delayed light echoes.
 - **Particle Dance** — thousands of colorful particles dancing to the music, with a faster torus drifting through the swarm.
 - **Phi Cathedral** — evolving golden-ratio patterns and spirals.
 - **Warp** — a swirling flight through colored star streams.
 - **Spectrum**, **Waveform**, and **Spectrogram** — three classic ways to see your music.
+- **Cover Art** — the track's album artwork arranged across the window as an asymmetric gallery, with one large image and smaller images at different scales. Images keep their proportions, and the layout adapts to wide or tall windows. Without readable artwork, the stage is black.
 
 Press **V** to switch visuals, or **Shift+V** to go back.
+
+Cover Art reads embedded artwork first, then `cover`, `folder`, `front`, or `album` images in the track's folder (`.jpg`, `.jpeg`, `.png`, or `.webp`, without regard to case). Artwork loads in the background when this visual is selected and never changes the music files. Start directly with `omaMusi --view "cover art"`.
 
 ## Install
 

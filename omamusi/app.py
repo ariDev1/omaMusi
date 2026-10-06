@@ -10,12 +10,14 @@ import stat
 import sys
 
 from PySide6.QtCore import QEvent, QObject, Qt, QTimer
+from PySide6.QtGui import QImage
 from PySide6.QtWidgets import (
     QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
     QListWidget, QListWidgetItem, QVBoxLayout, QWidget,
 )
 
 from .audio import AudioPlayer, probe
+from .artwork import load_artwork
 from .background import BackgroundTasks
 from . import __version__
 from .library import AUDIO_EXTENSIONS, directory_entries, discover, natural_key
@@ -70,6 +72,7 @@ class PlayerWindow(QWidget):
         self.background = BackgroundTasks(self)
         self._add_requests = []
         self._loading_track = False
+        self._artwork_path = None
         self._pause_when_ready = False
         self._browser_request = None
         self._folder_scan_pending = False
@@ -334,6 +337,9 @@ class PlayerWindow(QWidget):
         self._loading_track = True
         self._pause_when_ready = False
         path = self.tracks[index]
+        self.background.invalidate("artwork")
+        self._artwork_path = None
+        self.visualizer.set_cover_art(QImage())
         self.background.invalidate("metadata")
         self.player.stop(clear=True)
         self.duration = 0
@@ -349,6 +355,20 @@ class PlayerWindow(QWidget):
         self._show_navigation()
         self.background.submit("metadata", partial(self._probe_track, path, self.metadata.get(path)),
                                partial(self._track_ready, index, path))
+        self._ensure_artwork()
+
+    def _ensure_artwork(self):
+        if self._closed or self.visualizer.mode != 7 or not 0 <= self.current < len(self.tracks):
+            return
+        path = self.tracks[self.current]
+        if path == self._artwork_path:
+            return
+        self._artwork_path = path
+        self.background.submit("artwork", partial(load_artwork, path), self._artwork_ready)
+
+    def _artwork_ready(self, image, error):
+        if error is None:
+            self.visualizer.set_cover_art(image)
 
     @staticmethod
     def _probe_track(path, cached):
@@ -400,6 +420,7 @@ class PlayerWindow(QWidget):
 
     def cycle_view(self, step=1):
         self.visual_notice.setText(self.visualizer.cycle(step))
+        self._ensure_artwork()
         self.visual_notice.show()
         self.visual_notice_timer.start(2000)
 
@@ -609,6 +630,9 @@ class PlayerWindow(QWidget):
         self.background.invalidate("library")
         self._folder_scan_pending = False
         self.background.invalidate("metadata")
+        self.background.invalidate("artwork")
+        self._artwork_path = None
+        self.visualizer.set_cover_art(QImage())
         self._add_requests.clear()
         self._loading_track = False
         self.player.stop(clear=True)
