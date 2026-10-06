@@ -15,10 +15,10 @@ omaMusi uses one Python/PySide6 application on Linux. The Omarchy plugin is a la
 
 | Environment | Result |
 | --- | --- |
-| Python 3.14.7, PySide6/Qt 6.11.2 | All 150 development unit/integration tests pass |
-| Python 3.11.17, PySide6/Qt 6.7.0, NumPy 1.26.4, PyOpenGL 3.1.7 | All 150 development unit/integration tests pass; the previous hardening round also passed with only built-in theme colors |
+| Python 3.14.7, PySide6/Qt 6.11.2 | All 151 development unit/integration tests pass |
+| Python 3.11.17, PySide6/Qt 6.7.0, NumPy 1.26.4, PyOpenGL 3.1.7 | All 151 development unit/integration tests pass; the previous hardening round also passed with only built-in theme colors |
 | Setuptools 77.0.3 | Wheel builds with version 0.10.0, MIT license expression, license file, and all new modules |
-| Hyprland, AMD Radeon GPU, Qt 6.11.2 and Qt 6.7.0 | GPU smoke tests cover waveform alpha, color accumulation, 64 view switches, cover gallery rendering and clearing, and uninterrupted audio |
+| Hyprland, AMD Radeon GPU, Qt 6.11.2 and Qt 6.7.0 | GPU smoke tests cover waveform alpha, color accumulation, 64 view switches, cover image rendering and clearing, and uninterrupted audio |
 | GNOME configuration, offscreen renderer | Native decoration flags retained; Waveform has transparent background pixels and other visuals are opaque |
 
 The isolated Qt 6.7 environment caught and verified the fix for a lazy audio-enum alias import failure. Current builds prefer `QtAudio` and only look up the legacy `QAudio` fallback when needed.
@@ -55,4 +55,4 @@ The regression workflow in `.github/workflows/tests.yml` runs the complete suite
 
 CPU fallback checks render the original seven visuals without Omarchy theme files; Cover Art has separate rendering tests. The built-in palette includes every required color, and painter resources are released even if a drawing method raises an exception. These checks cover a missing default color that was hidden by the local Omarchy palette and first surfaced on the clean CI runner.
 
-Cover Art is additionally checked for embedded MP3/FLAC artwork, local image fallback, downscaling, aspect-preserving layouts at different window shapes, a black empty stage, and stale artwork results after changing tracks. The GPU smoke check paints an actual image, clears it to black, and verifies an identical Warp frame after returning from the gallery.
+Cover Art is additionally checked for embedded MP3/FLAC artwork, local image fallback, downscaling, one image on the right at different window shapes, music-driven scale and lighting, a black empty stage, and stale artwork results after changing tracks. The GPU smoke check paints an actual image, clears it to black, and verifies an identical Warp frame after returning from Cover Art.

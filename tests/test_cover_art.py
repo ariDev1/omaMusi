@@ -1,4 +1,4 @@
-"""Local artwork extraction and gallery rendering, with black empty stages."""
+"""Local artwork extraction and a single reactive cover on a black stage."""
 import importlib.util
 import os
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
@@ -9,6 +9,7 @@ import tempfile
 import threading
 import time
 import unittest
+import numpy as np
 from unittest.mock import patch
 
 from PySide6.QtGui import QColor, QImage
@@ -100,10 +101,10 @@ class CoverArtWindowTests(unittest.TestCase):
                      (image.width() - 2, image.height() - 2)):
             self.assertEqual(image.pixelColor(x, y), QColor("black"))
 
-    def test_gallery_preserves_aspect_and_has_different_sizes_at_window_shapes(self):
+    def test_single_cover_stays_on_right_and_preserves_aspect_at_window_shapes(self):
         window = self.window()
         self.assertIsNotNone(importlib.util.find_spec("omamusi.visual.cover"))
-        from omamusi.visual.cover import gallery_rectangles
+        from omamusi.visual.cover import cover_rectangle
         art = QImage(200, 100, QImage.Format.Format_RGB32)
         art.fill(QColor("red"))
         window.visualizer.set_cover_art(art)
@@ -112,16 +113,40 @@ class CoverArtWindowTests(unittest.TestCase):
                 window.resize(width, height)
                 visual = window.visualizer
                 image = visual.grab().toImage()
-                rectangles = gallery_rectangles(visual.width(), visual.height(), art.size())
-                self.assertGreaterEqual(len(rectangles), 4)
-                self.assertGreaterEqual(len({round(r.width()) for r in rectangles}), 3)
-                for index, rectangle in enumerate(rectangles):
+                rgba = image.convertToFormat(QImage.Format.Format_RGBA8888)
+                pixels = np.frombuffer(rgba.bits(), dtype=np.uint8).reshape(rgba.height(), rgba.width(), 4)
+                left = pixels[:, :rgba.width() // 2]
+                self.assertFalse(np.any((left[:, :, 0] == 255) & (left[:, :, 1] == 0)
+                                        & (left[:, :, 2] == 0)), "Artwork appeared on the left")
+                for bass in (0, 1):
+                    rectangle = cover_rectangle(visual.width(), visual.height(), art.size(), bass)
+                    self.assertGreaterEqual(rectangle.left(), visual.width() / 2)
                     self.assertAlmostEqual(rectangle.width() / rectangle.height(), 2)
                     self.assertTrue(visual.rect().contains(rectangle.toAlignedRect()))
-                    center = rectangle.center().toPoint()
-                    self.assertEqual(image.pixelColor(center), QColor("red"))
-                    for other in rectangles[index + 1:]:
-                        self.assertFalse(rectangle.intersects(other))
+                center = cover_rectangle(visual.width(), visual.height(), art.size()).center().toPoint()
+                self.assertEqual(image.pixelColor(center), QColor("red"))
+
+    def test_music_changes_cover_scale_and_light(self):
+        window = self.window()
+        visual = window.visualizer
+        art = QImage(200, 200, QImage.Format.Format_RGB32)
+        art.fill(QColor("red"))
+        visual.set_cover_art(art)
+        quiet = visual.grab().toImage().convertToFormat(QImage.Format.Format_RGBA8888)
+        visual.bass = visual.energy = 1.0
+        loud = visual.grab().toImage().convertToFormat(QImage.Format.Format_RGBA8888)
+        def cover_pixels(image):
+            pixels = np.frombuffer(image.bits(), dtype=np.uint8).reshape(image.height(), image.width(), 4)
+            return np.count_nonzero((pixels[:, :, 0] == 255) & (pixels[:, :, 1] == 0)
+                                    & (pixels[:, :, 2] == 0))
+        self.assertGreater(cover_pixels(loud), cover_pixels(quiet) * 1.02)
+        self.assertNotEqual(bytes(quiet.bits()), bytes(loud.bits()))
+        from omamusi.visual.cover import cover_rectangle
+        rectangle = cover_rectangle(visual.width(), visual.height(), art.size())
+        x, y = int(rectangle.left() - 30), int(rectangle.center().y())
+        self.assertGreater(loud.pixelColor(x, y).red(), quiet.pixelColor(x, y).red())
+        self.assertEqual(loud.pixelColor(x, y).green(), 0)
+        self.assertEqual(loud.pixelColor(x, y).blue(), 0)
 
     def test_cover_survives_seek_reset_and_cycles_with_other_visuals(self):
         window = self.window()

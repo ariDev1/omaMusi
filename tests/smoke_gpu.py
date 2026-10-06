@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QApplication
 
 from omamusi.app import PlayerWindow
 from omamusi.visualizer import Visualizer
-from omamusi.visual.cover import gallery_rectangles
+from omamusi.visual.cover import cover_rectangle
 
 
 def main():
@@ -104,7 +104,7 @@ def main():
             art.fill(QColor("red"))
             visual.set_cover_art(art)
             gallery = visual._gpu.grabFramebuffer()
-            center = gallery_rectangles(visual.width(), visual.height(), art.size())[0].center()
+            center = cover_rectangle(visual.width(), visual.height(), art.size(), visual.bass).center()
             ratio = visual._gpu.devicePixelRatioF()
             color = gallery.pixelColor(int(center.x() * ratio), int(center.y() * ratio))
             assert color == QColor("red"), (color.getRgb(), center, ratio, gallery.size())
