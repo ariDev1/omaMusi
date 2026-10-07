@@ -84,7 +84,7 @@ class CoverGallery:
             self.hovered = None
             return []
         gap = 18.0
-        columns = min(5, max(1, int((area.width() + gap) / 158)))
+        columns = min(3, max(1, int((area.width() + gap) / 158)))
         rows = min(2, max(1, int((area.height() + gap) / 158)))
         # Leave one cover offstage so even a small collection can keep changing.
         count = min(max(1, len(keys) - 1), columns * rows)
@@ -101,13 +101,10 @@ class CoverGallery:
                 break
             self.tiles.append(GalleryTile(random.choice(candidates)))
         count = len(self.tiles)
-        def side_for(columns, rows):
-            return min((area.width() - (columns - 1) * gap) / columns,
-                       (area.height() - (rows - 1) * gap) / rows)
-        layouts = [(cols, math.ceil(count / cols)) for cols in range(1, columns + 1)
-                   if math.ceil(count / cols) <= rows]
-        columns, rows = max(layouts, key=lambda shape: side_for(*shape))
-        side = min(side_for(columns, rows), 240.0)
+        columns = min(columns, count)
+        rows = math.ceil(count / columns)
+        side = min((area.width() - (columns - 1) * gap) / columns,
+                   (area.height() - (rows - 1) * gap) / rows, 240.0)
         left = area.center().x() - (columns * side + (columns - 1) * gap) / 2
         top = area.center().y() - (rows * side + (rows - 1) * gap) / 2
         return [QRectF(left + (index % columns) * (side + gap),

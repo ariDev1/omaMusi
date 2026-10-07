@@ -93,7 +93,6 @@ class PlayerWindow(QWidget):
         self._browser_request = None
         self._folder_scan_pending = False
         self._closed = False
-        self._navigation_hidden = False
         self.last_theme = None
         self.visualizer = Visualizer(self)
         self.visualizer.mode = mode
@@ -249,8 +248,6 @@ class PlayerWindow(QWidget):
             animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
             self._navigation_effects.append((widget, effect))
             self._navigation_animations.append(animation)
-            if widget is self.panel:
-                animation.finished.connect(self._navigation_fade_finished)
 
         application = QApplication.instance()
         if application is not None:
@@ -268,44 +265,23 @@ class PlayerWindow(QWidget):
     def _fade_navigation(self):
         if self.current < 0:
             return
-        if self.visualizer.mode == 8 and self.visualizer.gallery.hovered is not None:
-            self.navigation_idle_timer.start()
-            return
         self.panel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self._animate_navigation(0.0, 900)
 
-    def _navigation_fade_finished(self):
-        effect = self.panel.graphicsEffect()
-        if effect is not None and effect.opacity() == 0:
-            self._navigation_hidden = True
-            self.visualizer.refresh_gallery()
-
-    def _show_navigation(self, restart_timer=True, keep_gallery=False):
+    def _show_navigation(self, restart_timer=True):
         if not hasattr(self, "_navigation_animations"):
             return
-        if keep_gallery and self._navigation_hidden and self.visualizer.mode == 8:
-            return
-        if self._navigation_hidden:
-            self._navigation_hidden = False
-            self.visualizer.gallery.hovered = None
-            self.visualizer.refresh_gallery()
         self.panel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
         self._animate_navigation(1.0, 140)
         if restart_timer:
             self.navigation_idle_timer.start()
 
     def eventFilter(self, watched, event):
-        gallery_interaction = False
         if self.visualizer.mode == 8:
-            mouse_events = (QEvent.Type.MouseMove, QEvent.Type.MouseButtonPress,
-                            QEvent.Type.MouseButtonDblClick, QEvent.Type.Enter,
-                            QEvent.Type.HoverMove)
-            own_window = (watched is self.windowHandle() or
-                          isinstance(watched, QWidget) and watched.window() is self)
-            if event.type() in mouse_events and own_window and hasattr(event, 'globalPosition'):
-                point = QPointF(self.mapFromGlobal(event.globalPosition().toPoint()))
-                gallery_interaction = self._navigation_hidden and self.gallery_bounds().contains(point)
-                self.visualizer.gallery.hover(point, self.gallery_bounds())
+            if (event.type() == QEvent.Type.MouseMove and isinstance(watched, QWidget)
+                    and watched.window() is self):
+                point = self.mapFromGlobal(event.globalPosition().toPoint())
+                self.visualizer.gallery.hover(QPointF(point), self.gallery_bounds())
                 self.visualizer.refresh_gallery()
                 self.setCursor(Qt.CursorShape.PointingHandCursor if self.visualizer.gallery.hovered is not None
                                else Qt.CursorShape.ArrowCursor)
@@ -324,7 +300,7 @@ class PlayerWindow(QWidget):
                 QEvent.Type.TouchBegin,
                 QEvent.Type.WindowActivate,
             )
-            if event.type() in interaction_events and not gallery_interaction:
+            if event.type() in interaction_events:
                 self._show_navigation()
         return super().eventFilter(watched, event)
 
@@ -381,7 +357,7 @@ class PlayerWindow(QWidget):
         self._next_gallery_artwork()
 
     def gallery_bounds(self):
-        left = self.panel.geometry().right() + 24 if self.panel.isVisible() and not self._navigation_hidden else 30
+        left = self.panel.geometry().right() + 24 if self.panel.isVisible() else 30
         top = max(64, self.logo.geometry().bottom() + 24)
         for widget in (self.folder_label, self.folder_prompt):
             if widget.isVisible():
@@ -458,8 +434,7 @@ class PlayerWindow(QWidget):
         self.status.setToolTip("")
         self.status.show()
         self.update_state()
-        self._show_navigation(keep_gallery=self.visualizer.mode == 8 and
-                              self.visualizer.gallery.hovered is not None)
+        self._show_navigation()
         self.background.submit("metadata", partial(self._probe_track, path, self.metadata.get(path)),
                                partial(self._track_ready, index, path))
         self._ensure_artwork()

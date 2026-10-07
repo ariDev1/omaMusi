@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Cover Gallery keeps covers still between transitions and expands into the song list's space after navigation fades. Hovering and clicking in the expanded gallery leave navigation hidden; keyboard use or moving back to controls restores it.
+- Cover Gallery keeps covers still between transitions, without a music-driven pulse.
 - Added Cover Gallery, a separate visual with gently changing album-cover tiles. Matching artwork groups songs together; clicking a tile plays a random song from the group, and hovering keeps that tile still.
 - Gallery artwork loads in the background with bounded thumbnails and protection against results from a replaced music collection. The layout adapts to window size and leaves room for controls.
 - Added a user-local application-menu launcher and Event Horizon icon. It opens the configured Music folder recursively, or an empty player when that folder is unavailable.

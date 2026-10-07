@@ -223,10 +223,7 @@ every five seconds with a gentle fade. Hover over a cover to see its song
 name or folder and the number of songs sharing it. The tile stays still
 under your pointer, so you can click it comfortably.
 
-The covers stay at a fixed size; only the transitions animate. When the
-song list fades away, the gallery uses that space to show more covers.
-Moving over the gallery keeps it expanded. Use the keyboard or move back
-to the controls to bring navigation back.
+The covers stay still between transitions, without a music-driven pulse.
 
 Clicking a cover plays a random song with that artwork. If several songs
 share the image, omaMusi avoids picking the currently playing song when
