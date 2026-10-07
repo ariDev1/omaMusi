@@ -18,6 +18,10 @@ fi
 if [[ -L "$launcher" && $(readlink -- "$launcher") == "$install_dir/venv/bin/omaMusi" ]]; then
   rm -- "$launcher"
 fi
+if [[ -x "$install_dir/venv/bin/python" ]] &&
+   "$install_dir/venv/bin/python" -c 'import importlib.util, sys; sys.exit(importlib.util.find_spec("omamusi.desktop") is None)'; then
+  "$install_dir/venv/bin/python" -m omamusi.desktop remove
+fi
 # The directory also holds persistent user data. The marker remains so
 # subsequent setup/removal can recognize ownership without adopting other files.
 rm -rf -- "$install_dir/venv"

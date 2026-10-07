@@ -1,187 +1,243 @@
 # omaMusi
 
-Current version: **v0.10.0**.
+**A local music player for Linux, with visuals that move to your music.**
 
-Licensed under the [MIT license](LICENSE).
-
-**Your music. A little text. A whole universe of visuals.**
-
-omaMusi is a local music player for Linux with animated visuals that react to your music. Open it in your music folder, choose a song, and enjoy. The interface stays out of the way: just your playlist, track information, and playback time.
+Open your music folder, find a song, and start listening. omaMusi plays MP3,
+FLAC, WAV, Ogg, Opus, M4A, AAC, and other audio formats. You can use the
+keyboard, click a song, or drag music files into the window.
 
 ![omaMusi playing music with the Event Horizon visualization](event-horizon.png)
 
-## What it does
+Version **0.10.0** · [MIT license](LICENSE)
 
-- Plays your local music, including MP3, FLAC, WAV, Ogg, Opus, M4A, and AAC.
-- Shows song titles, artists, and albums, and advances to the next track automatically.
-- Finds music by filename or folder name across nested folders, with keyboard navigation through results.
-- Lets you browse folders, save playlists, or drag music into the window.
-- Follows your Omarchy theme and terminal font.
-- Runs music-reactive visuals on your GPU, with a simpler fallback when hardware rendering is unavailable.
-
-The visuals analyze the music without changing its sound.
-
-The muted footer groups keyboard shortcuts by function and shows the version and short Git commit hash. A `+dirty` suffix means the checkout has uncommitted changes; the hash reads `unknown` when Git information is unavailable. You can also check the version with `omaMusi --version`.
-
-Basic player and search use has been tested on Omarchy and Ubuntu. Omarchy keeps the frameless window; GNOME uses native window decorations. See [compatibility validation](docs/compatibility.md) for automated checks and the remaining desktop checks.
-
-## Eight visuals
-
-- **Event Horizon** — a cinematic black hole with a glowing disk, gentle camera drift, bass-driven waves, orbiting hot spots, and delayed light echoes.
-- **Particle Dance** — thousands of colorful particles dancing to the music, with a faster torus drifting through the swarm.
-- **Phi Cathedral** — evolving golden-ratio patterns and spirals.
-- **Warp** — a swirling flight through colored star streams.
-- **Spectrum**, **Waveform**, and **Spectrogram** — three classic ways to see your music.
-- **Cover Art** — a single album cover on the right side of the window, with a gentle bass-driven pulse against a plain black background. The image stays sharp and keeps its proportions. Without readable artwork, the stage is black.
-
-Press **V** to switch visuals, or **Shift+V** to go back.
-
-Cover Art reads embedded artwork first, then `cover`, `folder`, `front`, or `album` images in the track's folder (`.jpg`, `.jpeg`, `.png`, or `.webp`, without regard to case). Artwork loads in the background when this visual is selected and never changes the music files. Start directly with `omaMusi --view "cover art"`.
+Player and search use have been tested on **Omarchy and Ubuntu**. On
+Omarchy, the player follows your theme. On GNOME, it uses a normal window
+with title-bar controls.
 
 ## Install
 
-You need **Python 3.11+**, **FFmpeg** (including `ffprobe`), and a desktop audio output. The full visuals use **OpenGL 3.3+**.
+Choose either the standalone installation or the Omarchy plugin below.
+You need **Python 3.11 or newer**, **FFmpeg**, and an internet connection
+for installation. Ubuntu users also need the `python3-venv` package.
 
-From this project folder:
+### Ubuntu and other Linux desktops
+
+Install Python, FFmpeg, and Git using your distribution's package manager.
+Then open a terminal and run:
 
 ```bash
-python -m venv .venv
+git clone https://github.com/ariDev1/omaMusi.git
+cd omaMusi
+python3 -m venv .venv
 .venv/bin/python -m pip install -e .
 mkdir -p ~/.local/bin
 ln -s "$PWD/.venv/bin/omaMusi" ~/.local/bin/omaMusi
+.venv/bin/python -m omamusi.desktop install
 ```
 
-Make sure `~/.local/bin` is on your `PATH`. You can also run `.venv/bin/omaMusi` directly.
+Keep the `omaMusi` folder: the launcher uses the installation inside it.
+If your terminal cannot find `omaMusi`, use `~/.local/bin/omaMusi` instead.
+If the launcher already exists, check your existing installation before
+replacing it.
 
-## Omarchy plugin
+You can now open **omaMusi** from your application menu. It loads your
+Music folder, including its subfolders. If there is no Music folder, it
+opens an empty window where you can add files or browse to another folder.
+The menu launcher uses your desktop's configured Music location, even if
+the folder has a different name or is on another drive.
 
-The optional Omarchy Quattro bar widget uses an Event Horizon symbol with Omarchy's native icon sizing, a theme-colored ring, and a gold light band. Click it to open omaMusi with Event Horizon selected. It opens your Music folder recursively, or an empty playlist if that folder is missing. The player continues to work as a standalone application on GNOME and other desktops.
+If omaMusi is already installed, add the menu entry by running
+`.venv/bin/python -m omamusi.desktop install` from the project folder.
+Remove just that entry with `.venv/bin/python -m omamusi.desktop remove`.
 
-Install from the repository:
+To update this installation, close the player and run these commands from
+the `omaMusi` folder:
 
 ```bash
+git pull --ff-only
+.venv/bin/python -m pip install -e .
+.venv/bin/python -m omamusi.desktop install
+```
+
+### Omarchy
+
+The optional bar widget opens your Music folder with the Event Horizon
+visual. These commands install the widget and the player:
+
+```bash
+omarchy pkg add python ffmpeg
 omarchy plugin add https://github.com/ariDev1/omaMusi.git --enable
 bash ~/.config/omarchy/plugins/io.github.aridev1.omamusi/scripts/setup-player.sh
 ```
 
-Installing or enabling the widget does not install the player automatically. The setup script creates a dedicated Python virtual environment in `${XDG_DATA_HOME:-~/.local/share}/omamusi` and a launcher at `~/.local/bin/omaMusi`. It downloads Python packages and build dependencies using pip and installs the local plugin checkout. It needs Python 3.11+, FFmpeg/ffprobe, network access for those downloads, and desktop audio. On Omarchy, install missing system dependencies with `omarchy pkg add python ffmpeg`. The Python dependencies are PySide6, NumPy, and PyOpenGL; see [pyproject.toml](pyproject.toml) for supported versions. Full visuals require OpenGL 3.3+.
+The setup script also adds omaMusi to your application menu. You can use
+either the menu entry or the bar widget to open the player.
 
-If `~/.local/bin/omaMusi` already belongs to a development install, the widget can use it. Setup refuses to replace that launcher. To use the managed installation instead, move the old launcher yourself before running setup. The scripts do not change your desktop configuration or music files.
+If you already installed the standalone player, the widget can use it.
+Skip the setup script in that case; it will not replace an existing
+standalone launcher.
 
-Move the widget with:
-
-```bash
-omarchy bar move io.github.aridev1.omamusi --section right
-```
-
-After updating the plugin, close the player and rerun setup to update its installed copy:
+To update, close the player, then run:
 
 ```bash
 omarchy plugin update io.github.aridev1.omamusi
 bash ~/.config/omarchy/plugins/io.github.aridev1.omamusi/scripts/setup-player.sh
 ```
 
-Remove the managed player before removing the plugin checkout:
+If you use a standalone installation with the widget, update the player
+using the standalone instructions above.
+
+To remove the player installed by the setup script and the widget:
 
 ```bash
 bash ~/.config/omarchy/plugins/io.github.aridev1.omamusi/scripts/remove-player.sh
 omarchy plugin remove io.github.aridev1.omamusi
 ```
 
-Removal affects only the managed virtual environment and its launcher. Saved playlists and other user data remain in the data directory, together with the ownership marker for later reinstallation. Setup also accepts a data directory created by standalone playlist use. A separately installed development player is preserved. Git information may be unavailable in the pip-installed copy, in which case the footer shows `unknown` for the commit hash.
+Your music and saved playlists are kept.
 
-## Play
+## Open your music
+
+From a terminal, run:
 
 ```bash
 cd ~/Music
 omaMusi
 ```
 
-Playback starts automatically.
-
-Starting in a folder with `omaMusi` (or `omaMusi -all`) includes music in
-all nested subfolders. Press **/** to search filenames and folder names,
-without regard to case. A matching folder shows all loaded songs beneath
-it, including songs in deeper subfolders. Tracks display their relative
-paths so files with the same name can be distinguished. Clear the search
-to show the whole queue again. While typing a search, press **Up/Down** to
-select a matching result and leave the search field, then **Enter** to play
-it. The search stays active; press **/** to edit it again. With no matches,
-the arrow keys keep focus in the search field. Explicit directory arguments
-still require `--recursive` to include their subfolders.
-
-You can also choose a folder, files, or a starting visual:
+Music in that folder and all its subfolders is loaded. Playback starts
+automatically. To open a folder from elsewhere, use:
 
 ```bash
 omaMusi ~/Music --recursive
-omaMusi song.flac another.mp3
-omaMusi --view "event horizon"
-omaMusi --view "particle dance"
 ```
 
-Folder scans and track metadata load in the background, including the initial scan. The window stays responsive while waiting for storage. Failed scans leave the existing queue and playback intact and show an error. Escape cancels a pending folder change or folder browse; an outdated result cannot reopen it. Pressing Space while a track loads preserves the requested pause when playback starts.
+You can also open individual files:
 
-## Main controls
+```bash
+omaMusi "song.flac" "another song.mp3"
+```
 
-| Key | Action |
+Inside the player, press **O** to add files, press **C** to browse folders,
+or drag files and folders into the window. Launching omaMusi again brings
+the existing window back.
+
+## Find a song
+
+Press **/** and type part of a filename or folder name. Capitalization
+doesn't matter. For example, searching for an album folder shows all loaded
+songs inside it, including songs in its subfolders.
+
+Press **Up** or **Down** to select a result, then **Enter** to play it.
+Press **/** again to edit your search, or erase the text to show all songs.
+If nothing matches, you stay in the search field so you can change the text.
+Search uses file and folder names; it does not search artist or album tags.
+
+## Keyboard controls
+
+The footer shows the shortcuts, grouped by what they do.
+
+| Key | What it does |
 | --- | --- |
-| Space | Play / pause |
-| Up / Down (or K / J), Enter | Select and play a song |
-| N / P | Next / previous track |
-| R | Toggle random playback (off by default) |
-| A | Add highlighted track to a saved playlist (falls back to playing track) |
-| B | Browse saved playlists |
-| Left / Right | Seek backward / forward 5 seconds |
-| + / = / − | Adjust player volume |
+| Space | Play or pause |
+| Up / Down | Select a song; K / J also work |
+| Enter | Play the selected song |
+| N / P | Next / previous song |
+| R | Turn random playback on or off |
+| Left / Right | Skip backward / forward 5 seconds |
+| + or = / − | Raise / lower the volume |
+| / | Search filenames and folders |
+| O or Ctrl+O | Add music files |
+| C | Browse folders |
+| Ctrl+L | Type a folder path |
+| A | Add the selected song to a saved playlist |
+| B | Open saved playlists |
 | V / Shift+V | Next / previous visual |
-| F | Fullscreen |
-| Tab | Hide / show playlist |
-| C | Browse music folders |
-| O / Ctrl+O | Add music files |
-| Ctrl+L | Enter a folder path |
-| / | Search loaded filenames and folder names |
-| Escape | Leave text input or fullscreen |
+| F | Toggle fullscreen |
+| Tab | Hide or show the song list |
+| Escape | Leave a text field, cancel browsing, or leave fullscreen |
 | Q | Quit |
 
-While browsing folders, use the arrow keys (or **K/J**) and **Enter** to
-navigate; **Right/Enter** opens the selection, **Left/Backspace** goes to
-the parent folder, and **L** plays the current folder. Press **Escape** to
-return from text input to player shortcuts. The footer groups all player
-shortcuts by function and shows folder navigation while browsing; saved
-playlist dialogs show their own controls at the bottom.
+While browsing folders, **Right** or **Enter** opens your selection,
+**Left** or **Backspace** goes up one folder, and **L** plays the current
+folder. **Up/Down** and **K/J** select items. Press **Escape** to return to
+the song list.
 
-Random playback uses the entire loaded playlist, including tracks hidden by a search filter. When enabled, **N** and automatic advancement choose a random track, avoiding the current track when more than one is loaded. **P** keeps its usual restart/history behavior. Pressing **R** leaves the current song playing; the footer shows `random on` or `random off`.
+Random playback starts off. Press **R** to turn it on; **N** then picks a
+random song. **P** goes back through your listening history, or restarts
+the current song. Random playback includes songs hidden by your search.
 
-Waveform uses an oscilloscope-style colored persistence map. Traces fade over roughly two seconds; repeated traces build from purple/blue through cyan and green to yellow/red, with a thin bright line for the latest waveform. Empty areas reveal the desktop in Waveform mode, while the other visuals paint their usual opaque backgrounds. Track changes and seeking clear the persistence map. Use **V** to cycle to Waveform, or start with `omaMusi --view waveform`.
+## Save a playlist
 
-## Saved playlists
+Select a song and press **A**. Choose an existing playlist, or select
+**Create new playlist…**, type a name, and press **Enter**. If no song is
+selected, omaMusi uses the song that's playing. Adding a song leaves the
+music playing.
 
-Select a track with **↑/↓**, then press **A**. Choose a playlist with **↑/↓** and press **Enter** to add it, or choose **Create new playlist…**, type a name, and press **Enter**. Adding leaves playback running and prevents duplicate entries. With no highlighted track, **A** uses the playing track. It also works on audio files highlighted in the folder browser.
+Press **B** to open your saved playlists:
 
-Press **B** to browse saved playlists:
-
-| Key | Action in the playlist browser |
+| Key | What it does |
 | --- | --- |
-| ↑ / ↓ | Select a playlist or track |
-| Enter | Load the selected playlist as the play queue and start playback |
-| → / ← | Inspect playlist tracks / return to playlist names |
-| F2 | Rename the selected playlist |
-| Delete | Remove a track, or request deletion of a playlist |
-| Escape | Cancel a name/deletion prompt, or close the browser |
+| Up / Down | Select a playlist or song |
+| Enter | Play the selected playlist |
+| Right / Left | View a playlist's songs / return to the playlist list |
+| F2 | Rename a playlist |
+| Delete | Remove a song from a playlist, or delete a playlist |
+| Escape | Cancel or close |
 
-Playlist deletion asks for **Enter** to confirm; **Escape** cancels. Removing tracks or deleting playlists leaves the music files untouched. Missing files are marked `[missing]` when inspecting tracks and skipped when loading a playlist. An empty playlist, or one with no available files, leaves the current queue and playback intact. Random playback also works with loaded playlists.
+Deleting a playlist asks for confirmation. **Enter** confirms;
+**Escape** cancels. Removing a playlist or a song from it never deletes
+music files. Missing files are marked and skipped during playback.
+Playlists are saved automatically and are available the next time you open
+the player.
 
-Playlists save automatically to `${XDG_DATA_HOME:-~/.local/share}/omamusi/playlists.json` as ordered references to absolute file paths. Names are unique without regard to case. **A** and **B** keep their normal text-entry behavior while typing in a field.
+## Choose a visual
 
-## Development checks
+Press **V** to cycle through eight visuals, or **Shift+V** to go back:
+
+- **Event Horizon:** a black hole with a glowing disk.
+- **Particle Dance:** colorful particles moving to the music.
+- **Phi Cathedral:** changing geometric patterns.
+- **Warp:** a flight through colored stars.
+- **Spectrum:** frequency bars.
+- **Waveform:** glowing sound traces with a transparent background.
+- **Spectrogram:** a scrolling view of the sound's frequencies.
+- **Cover Art:** your album cover, gently pulsing on a black background.
+
+To start with a particular visual:
+
+```bash
+omaMusi ~/Music --recursive --view "cover art"
+```
+
+Cover Art uses artwork stored in the audio file, or an image named `cover`,
+`folder`, `front`, or `album` in the song's folder. JPG, JPEG, PNG, and WebP
+images work. If there is no readable cover image, the background stays
+black. Visuals do not change the sound or your music files.
+
+## Technical details and development
+
+The animated visuals use OpenGL 3.3 or newer. A simpler software renderer
+is available when hardware rendering cannot be used. Supported Python
+packages are listed in [pyproject.toml](pyproject.toml).
+
+Saved playlists are stored in `~/.local/share/omamusi/playlists.json`, or
+under `$XDG_DATA_HOME` if you have set it. They refer to your music files,
+so moving a file can leave a missing entry in a playlist.
+
+The footer includes the version and Git revision. `+dirty` means local
+changes have not been committed; `unknown` means Git information is
+unavailable. Check the version in a terminal with `omaMusi --version`.
+
+To run the tests from the project folder:
 
 ```bash
 .venv/bin/python -m unittest discover -s tests
 .venv/bin/python tests/smoke_gpu.py
 ```
 
-The GPU smoke test needs a desktop session with a hardware GPU.
-
-GitHub Actions runs the full regression suite and a wheel build on pushes to `development` and `main`, and on pull requests. It tests Python 3.11 with the minimum supported dependencies and Python 3.14 with current dependencies, using a virtual audio output. Hardware GPU/audio checks and a real GNOME session remain release checks; hosted CI does not validate either desktop compositor.
-
-See [compatibility validation](docs/compatibility.md) for tested Python/Qt versions and the GNOME desktop checks.
+The full suite needs access to an audio service; the GPU check also needs
+a desktop session and a hardware GPU. GitHub Actions runs regression tests
+and checks the package build. See [compatibility notes](docs/compatibility.md)
+for tested dependency versions and detailed desktop checks, and the
+[changelog](CHANGELOG.md) for changes between versions.

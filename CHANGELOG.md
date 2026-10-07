@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added a user-local application-menu launcher and Event Horizon icon. It opens the configured Music folder recursively, or an empty player when that folder is unavailable.
+- Omarchy setup and removal manage the menu entry automatically; standalone installations can add or remove it with `python -m omamusi.desktop install` or `remove`.
+
 ## 0.10.0
 
 - Starting in a music folder includes all nested subfolders. Search matches filenames and folder names without regard to case; Up/Down moves from search to matching results, and Enter plays the selection.

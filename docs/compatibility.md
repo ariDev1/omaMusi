@@ -15,7 +15,7 @@ omaMusi uses one Python/PySide6 application on Linux. The Omarchy plugin is a la
 
 | Environment | Result |
 | --- | --- |
-| Python 3.14.7, PySide6/Qt 6.11.2 | All 154 unit/integration tests pass, including recursive search and keyboard result navigation |
+| Python 3.14.7, PySide6/Qt 6.11.2 | All 163 development unit/integration tests pass, including recursive search, keyboard result navigation, and application-menu installation/removal |
 | Python 3.11.17, PySide6/Qt 6.7.0, NumPy 1.26.4, PyOpenGL 3.1.7 | All 151 development unit/integration tests pass; the previous hardening round also passed with only built-in theme colors |
 | Setuptools 77.0.3 | Wheel builds with version 0.10.0, MIT license expression, license file, and all new modules |
 | Hyprland, AMD Radeon GPU, Qt 6.11.2 and Qt 6.7.0 | GPU smoke tests cover waveform alpha, color accumulation, 64 view switches, cover image rendering and clearing, and uninterrupted audio |
@@ -52,6 +52,13 @@ The full suite runs GUI tests offscreen but needs access to the desktop audio se
 ```
 
 ## Regression coverage
+
+Application-menu checks cover user-local installation, repeated setup,
+removal, preservation of other launchers and music, paths with spaces,
+configured Music folders, and an empty player when Music is unavailable.
+The generated entry passes `desktop-file-validate`; the SVG icon is included
+in the wheel. These checks do not replace opening the launcher in a real
+desktop session.
 
 The regression suite also covers slow metadata reads, slow or unreadable folders, missing tracks, cancellation, shutdown during a pending read, repeated additions with different recursion settings, and pause requests during metadata loading. Worker queues retain at most one running and one pending operation per category. Cancellation discards pending results; it cannot interrupt a filesystem call already blocked in the operating system.
 

@@ -1021,11 +1021,12 @@ def _shader_tag():
         return "unknown"
 
 
-def main():
+def main(argv=None):
     cli = parser()
-    args = cli.parse_args()
+    args = cli.parse_args(argv)
     app = QApplication(sys.argv[:1])
     app.setApplicationName("omaMusi")
+    app.setDesktopFileName("io.github.aridev1.omamusi")
     instance = SingleInstance(app)
     try:
         if not instance.start_or_activate():

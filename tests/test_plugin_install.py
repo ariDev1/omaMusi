@@ -23,6 +23,7 @@ class PluginInstallTests(unittest.TestCase):
         self.fakebin.mkdir()
         self.env["PATH"] = f"{self.fakebin}:/usr/bin:/bin"
         self.env["LAUNCH_LOG"] = str(self.home / "launch.json")
+        self.env["PYTHONPATH"] = str(ROOT)
         for name in ("ffmpeg", "ffprobe", "xdg-user-dir"):
             self.executable(self.fakebin / name, "#!/bin/sh\nexit 0\n")
         self.executable(self.fakebin / "python", '''#!/usr/bin/python3
@@ -32,7 +33,7 @@ if sys.argv[1:] == ['--version']:
 elif sys.argv[1:3] == ['-m', 'venv']:
     target = pathlib.Path(sys.argv[3]) / 'bin'
     target.mkdir(parents=True, exist_ok=True)
-    (target / 'python').write_text('#!/bin/sh\\nexit 0\\n')
+    (target / 'python').write_text('#!/usr/bin/python3\\nimport runpy, sys\\nif sys.argv[1:3] == ["-m", "omamusi.desktop"]:\\n    sys.executable = sys.argv[0]\\n    sys.argv = sys.argv[2:]\\n    runpy.run_module("omamusi.desktop", run_name="__main__")\\n')
     (target / 'python').chmod(0o755)
     (target / 'omaMusi').write_text("#!/usr/bin/python3\\nimport json, os, sys, pathlib\\nassert pathlib.Path(sys.argv[3]).is_dir()\\nassert not list(pathlib.Path(sys.argv[3]).iterdir())\\nopen(os.environ['LAUNCH_LOG'], 'w').write(json.dumps(sys.argv[1:]))\\n")
     (target / 'omaMusi').chmod(0o755)
@@ -60,6 +61,31 @@ else:
         self.assertFalse(launcher.exists())
         self.assertEqual(unrelated.read_text(), "keep")
         self.assertEqual(self.run_script("remove-player.sh").returncode, 0)
+
+    def test_setup_installs_menu_entry_and_removal_cleans_it(self):
+        result = self.run_script("setup-player.sh")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        entry = self.home / 'data folder/applications/io.github.aridev1.omamusi.desktop'
+        icon = self.home / 'data folder/icons/hicolor/scalable/apps/io.github.aridev1.omamusi.svg'
+        self.assertTrue(entry.is_file())
+        self.assertIn(str(self.home / 'data folder/omamusi/venv/bin/python'), entry.read_text())
+        self.assertTrue(icon.is_file())
+        result = self.run_script('remove-player.sh')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(entry.exists())
+        self.assertFalse(icon.exists())
+
+    def test_removal_accepts_older_player_without_desktop_module(self):
+        result = self.run_script('setup-player.sh')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # Older installations have neither the menu module nor a menu entry.
+        entry = self.home / 'data folder/applications/io.github.aridev1.omamusi.desktop'
+        entry.unlink()
+        self.executable(self.home / 'data folder/omamusi/venv/bin/python',
+                        '#!/bin/sh\nexit 1\n')
+        result = self.run_script('remove-player.sh')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse((self.home / 'data folder/omamusi/venv').exists())
 
     def test_setup_refuses_unrelated_launcher(self):
         launcher = self.home / ".local/bin/omaMusi"

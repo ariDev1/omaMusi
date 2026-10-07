@@ -34,4 +34,5 @@ python -m venv "$install_dir/venv"
 "$install_dir/venv/bin/python" -m pip install --upgrade "$source_dir"
 [[ -x "$install_dir/venv/bin/omaMusi" ]] || fail "Installation did not produce the player executable."
 ln -sfn -- "$install_dir/venv/bin/omaMusi" "$launcher"
+"$install_dir/venv/bin/python" -m omamusi.desktop install
 printf 'Installed omaMusi. Launch with %s\n' "$launcher"

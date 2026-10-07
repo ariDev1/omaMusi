@@ -16,3 +16,6 @@ omaMusi = "omamusi.app:main"
 
 [tool.setuptools.packages.find]
 include = ["omamusi*"]
+
+[tool.setuptools.package-data]
+omamusi = ["icon.svg"]
