@@ -125,6 +125,13 @@ def main():
             gallery_image = visual._gpu.grabFramebuffer()
             color = gallery_image.pixelColor(int(center.x() * ratio), int(center.y() * ratio))
             assert color in (QColor("red"), QColor("blue")), color.getRgb()
+            saved_bass = visual.bass
+            visual.bass = 0
+            quiet_gallery = visual._gpu.grabFramebuffer()
+            visual.bass = 1
+            loud_gallery = visual._gpu.grabFramebuffer()
+            assert bytes(quiet_gallery.bits()) == bytes(loud_gallery.bits()), "Gallery covers pulse with music"
+            visual.bass = saved_bass
             visual.gallery.tick(6)
             visual.gallery.tiles[0].fade = .5
             midpoint = visual._gpu.grabFramebuffer()

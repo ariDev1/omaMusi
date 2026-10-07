@@ -131,7 +131,7 @@ class Visualizer(QWidget):
         parent = self.parentWidget()
         area = (parent.gallery_bounds() if hasattr(parent, 'gallery_bounds') else
                 QRectF(width * .38, 50, width * .58, max(40, height * .6)))
-        paint_gallery(painter, self.gallery, width, height, area, self.bass)
+        paint_gallery(painter, self.gallery, width, height, area)
 
     def reset(self):
         self.buffer.fill(0)

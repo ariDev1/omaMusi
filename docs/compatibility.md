@@ -15,7 +15,7 @@ omaMusi uses one Python/PySide6 application on Linux. The Omarchy plugin is a la
 
 | Environment | Result |
 | --- | --- |
-| Python 3.14.7, PySide6/Qt 6.11.2 | All 173 development unit/integration tests pass, including recursive search, keyboard result navigation, application-menu installation/removal, and Cover Gallery |
+| Python 3.14.7, PySide6/Qt 6.11.2 | All 177 development unit/integration tests pass, including recursive search, keyboard result navigation, application-menu installation/removal, and Cover Gallery |
 | Python 3.11.17, PySide6/Qt 6.7.0, NumPy 1.26.4, PyOpenGL 3.1.7 | All 151 development unit/integration tests pass; the previous hardening round also passed with only built-in theme colors |
 | Setuptools 77.0.3 | Wheel builds with version 0.10.0, MIT license expression, license file, and all new modules |
 | Hyprland, AMD Radeon GPU, Qt 6.11.2 and Qt 6.7.0 | GPU smoke tests cover waveform alpha, color accumulation, 64 view switches, cover image rendering and clearing, and uninterrupted audio |
@@ -73,5 +73,8 @@ Cover Art is additionally checked for embedded MP3/FLAC artwork, local image fal
 Cover Gallery tests check shared-art song groups, random selection avoiding
 the current song, bounded thumbnails, gradual rotation, stable hover targets,
 balanced crossfades, clicks, responsive layout, and late results after changing
-folders. The GPU smoke check also paints gallery thumbnails and a crossfade
-midpoint, then verifies the original Warp frame is unchanged.
+folders, fixed cover size despite bass changes, and using the faded list's
+space while keeping expanded-gallery hover and clicks stable. The GPU smoke
+check also paints gallery thumbnails, verifies that bass changes leave them
+unchanged, and checks a crossfade midpoint before verifying the original
+Warp frame is unchanged.

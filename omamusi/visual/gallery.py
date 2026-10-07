@@ -13,7 +13,7 @@ def _draw_cover(painter, image, rectangle, opacity):
     painter.drawImage(target, image, QRectF(image.rect()))
 
 
-def paint_gallery(painter, gallery, width, height, area, bass=0.0):
+def paint_gallery(painter, gallery, width, height, area):
     painter.fillRect(QRectF(0, 0, width, height), Qt.GlobalColor.black)
     rectangles = gallery.layout(area)
     painter.save()
@@ -27,8 +27,7 @@ def paint_gallery(painter, gallery, width, height, area, bass=0.0):
             painter.drawText(area, Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap, message)
             return
         for index, (tile, rectangle) in enumerate(zip(gallery.tiles, rectangles)):
-            # The cover breathes inside a fixed tile, keeping its hit area still.
-            inset = rectangle.width() * (.025 - .012 * min(1, max(0, bass)))
+            inset = rectangle.width() * .025
             image_rectangle = rectangle.adjusted(inset, inset, -inset, -inset)
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QColor('#111114'))
