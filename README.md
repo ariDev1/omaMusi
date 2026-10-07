@@ -98,6 +98,17 @@ omaMusi
 
 Playback starts automatically. You can also choose a folder, files, or a starting visual:
 
+Starting in a folder with `omaMusi` (or `omaMusi -all`) includes music in
+all nested subfolders. Press **/** to search filenames and folder names,
+without regard to case. A matching folder shows all loaded songs beneath
+it, including songs in deeper subfolders. Tracks display their relative
+paths so files with the same name can be distinguished. Clear the search
+to show the whole queue again. While typing a search, press **Up/Down** to
+select a matching result and leave the search field, then **Enter** to play
+it. The search stays active; press **/** to edit it again. With no matches,
+the arrow keys keep focus in the search field. Explicit directory arguments still require
+`--recursive` to include their subfolders.
+
 ```bash
 omaMusi ~/Music --recursive
 omaMusi song.flac another.mp3
@@ -112,23 +123,29 @@ Folder scans and track metadata load in the background, including the initial sc
 | Key | Action |
 | --- | --- |
 | Space | Play / pause |
-| Up / Down, Enter | Select and play a song |
+| Up / Down (or K / J), Enter | Select and play a song |
 | N / P | Next / previous track |
 | R | Toggle random playback (off by default) |
 | A | Add highlighted track to a saved playlist (falls back to playing track) |
 | B | Browse saved playlists |
 | Left / Right | Seek backward / forward 5 seconds |
-| + / − | Adjust player volume |
+| + / = / − | Adjust player volume |
 | V / Shift+V | Next / previous visual |
 | F | Fullscreen |
 | Tab | Hide / show playlist |
 | C | Browse music folders |
-| O | Add music files |
-| / | Filter the playlist |
+| O / Ctrl+O | Add music files |
+| Ctrl+L | Enter a folder path |
+| / | Search loaded filenames and folder names |
 | Escape | Leave text input or fullscreen |
 | Q | Quit |
 
-While browsing folders, use the arrow keys and Enter to navigate; press **L** to play the current folder. Press **Escape** to return from text input to player shortcuts.
+While browsing folders, use the arrow keys (or **K/J**) and **Enter** to
+navigate; **Right/Enter** opens the selection, **Left/Backspace** goes to
+the parent folder, and **L** plays the current folder. Press **Escape** to
+return from text input to player shortcuts. The footer groups all player
+shortcuts by function and shows folder navigation while browsing; saved
+playlist dialogs show their own controls at the bottom.
 
 Random playback uses the entire loaded playlist, including tracks hidden by a search filter. When enabled, **N** and automatic advancement choose a random track, avoiding the current track when more than one is loaded. **P** keeps its usual restart/history behavior. Pressing **R** leaves the current song playing; the footer shows `random on` or `random off`.
 

@@ -37,6 +37,15 @@ def clock(seconds):
 
 class SearchFilter(QObject):
     def eventFilter(self, watched, event):
+        if (event.type() == QEvent.Type.KeyPress
+                and event.key() in (Qt.Key.Key_Up, Qt.Key.Key_Down)
+                and event.modifiers() == Qt.KeyboardModifier.NoModifier):
+            window = watched.window()
+            if any(not window.playlist.item(i).isHidden()
+                   for i in range(window.playlist.count())):
+                window.select_relative(1 if event.key() == Qt.Key.Key_Down else -1)
+                window.setFocus()
+            return True
         if event.type() == QEvent.Type.ShortcutOverride:
             if event.key() != Qt.Key.Key_Escape and not event.modifiers() & (
                     Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.AltModifier):
@@ -62,6 +71,7 @@ class PlayerWindow(QWidget):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.tracks = list(tracks)
         self.current_folder = self.tracks[0].parent if self.tracks else Path.cwd()
+        self.library_root = self.current_folder
         self.browser_folder = None
         self.current = -1
         self.duration = 0
@@ -152,7 +162,7 @@ class PlayerWindow(QWidget):
         self.count = self.label("", "muted")
         panel_layout.addWidget(self.count)
         self.search = QLineEdit()
-        self.search.setPlaceholderText("/ type to filter")
+        self.search.setPlaceholderText("/ search files and folders")
         self.search.setClearButtonEnabled(False)
         self.search.setAttribute(Qt.WidgetAttribute.WA_MacShowFocusRect, False)
         self.search.textChanged.connect(self.filter_tracks)
@@ -303,11 +313,16 @@ class PlayerWindow(QWidget):
     def update_markers(self):
         for i, path in enumerate(self.tracks):
             marker = "› " if i == self.current else "  "
-            self.playlist.item(i).setText(f"{marker}{path.stem}")
+            try:
+                relative = path.relative_to(self.library_root)
+            except ValueError:
+                relative = path
+            self.playlist.item(i).setText(f"{marker}{relative.with_suffix('')}")
 
     def filter_tracks(self, text):
+        query = text.casefold()
         for i, path in enumerate(self.tracks):
-            self.playlist.item(i).setHidden(text.casefold() not in path.name.casefold())
+            self.playlist.item(i).setHidden(query not in str(path).casefold())
         self.fit_list()
 
     def fit_list(self):
@@ -454,10 +469,16 @@ class PlayerWindow(QWidget):
             self.play_track(index)
 
     def update_hint(self):
-        controls = ("↑↓ select · →/enter open/play · ← parent · v visuals · esc back"
-                    if self.browser_folder is not None else
-                    "space pause · ↑↓ select · enter play · c folders · v visuals · +/− volume")
-        self.hint.setText(f"{controls} · r random {'on' if self.random_playback else 'off'} · a add · b playlists")
+        playback = ("playback: space play/pause · n next · p previous · "
+                    f"r random {'on' if self.random_playback else 'off'} · +/= louder · − quieter")
+        navigation = ("browse: ↑↓ select (k/j) · →/enter open/play · ←/backspace parent · l play folder"
+                      if self.browser_folder is not None else
+                      "select: ↑↓ select (k/j) · enter play · ←/→ seek 5s")
+        self.hint.setText(
+            f"{playback}\n{navigation}\n"
+            "music: / search files & folders · c folders · o/ctrl+o add files · ctrl+l folder path\n"
+            "playlists: a add track · b saved playlists\n"
+            "view: v/shift+v next/previous visual · f fullscreen · tab hide/show playlist · esc back/cancel · q quit")
 
     def toggle_random(self):
         self.random_playback = not self.random_playback
@@ -637,6 +658,7 @@ class PlayerWindow(QWidget):
         self._loading_track = False
         self.player.stop(clear=True)
         self.current_folder = folder
+        self.library_root = folder
         self.tracks = tracks
         self.current = -1
         self.duration = 0
@@ -1038,7 +1060,7 @@ def run_player(app, instance, cli, args):
         print("omaMusi: PARTICLE CANARY on — swarm forced to giant red dots in Particle Dance",
               file=sys.stderr)
     window.show()
-    window.add_paths(paths or [str(Path.cwd())], recursive=args.recursive)
+    window.add_paths(paths or [str(Path.cwd())], recursive=args.recursive or not args.paths)
     return app.exec()
 
 
