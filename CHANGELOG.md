@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added Cover Gallery, a separate visual with gently changing album-cover tiles. Matching artwork groups songs together; clicking a tile plays a random song from the group, and hovering keeps that tile still.
+- Gallery artwork loads in the background with bounded thumbnails and protection against results from a replaced music collection. The layout adapts to window size and leaves room for controls.
 - Added a user-local application-menu launcher and Event Horizon icon. It opens the configured Music folder recursively, or an empty player when that folder is unavailable.
 - Omarchy setup and removal manage the menu entry automatically; standalone installations can add or remove it with `python -m omamusi.desktop install` or `remove`.
 

@@ -17,12 +17,14 @@ from .visual.director import VisualDirector
 from .visual.horizon import HorizonHotspots
 from .visual.waveform import WaveformPersistence
 from .visual.cover import paint_cover
+from .gallery import CoverGallery
+from .visual.gallery import paint_gallery
 
 
 class Visualizer(QWidget):
     PARTICLE_COUNT = 384  # Conservative fallback; GPU draws 4,096 streaks.
     modes = ("Warp", "Spectrum", "Waveform", "Spectrogram", "Phi Cathedral", "Event Horizon",
-               "Particle Dance", "Cover Art")
+               "Particle Dance", "Cover Art", "Cover Gallery")
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -31,6 +33,7 @@ class Visualizer(QWidget):
         self.active = False
         self.mode = 0
         self.cover_art = QImage()
+        self.gallery = CoverGallery()
         self.sample_rate = SAMPLE_RATE
         self.buffer = np.zeros(4096, dtype=np.float32)
         self.wave_persistence = WaveformPersistence()
@@ -119,6 +122,17 @@ class Visualizer(QWidget):
     def paint_cover_art(self, painter, width, height):
         paint_cover(painter, self.cover_art, width, height, self.bass)
 
+    def refresh_gallery(self):
+        if self._gpu:
+            self._gpu.update()
+        self.update()
+
+    def paint_cover_gallery(self, painter, width, height):
+        parent = self.parentWidget()
+        area = (parent.gallery_bounds() if hasattr(parent, 'gallery_bounds') else
+                QRectF(width * .38, 50, width * .58, max(40, height * .6)))
+        paint_gallery(painter, self.gallery, width, height, area, self.bass)
+
     def reset(self):
         self.buffer.fill(0)
         self.wave_persistence.reset()
@@ -158,6 +172,8 @@ class Visualizer(QWidget):
         elapsed = max(0.001, self.clock.nsecsElapsed() / 1e9)
         dt = min(0.05, elapsed)
         self.clock.restart()
+        if self.mode == 8:
+            self.gallery.tick(elapsed)
         fresh_wave = self.active and self.mode == 2 and self._wave_seen_revision != self._wave_audio_revision
         self._wave_exposure = min(0.1, self._wave_exposure + elapsed)
         self.wave_persistence.step(elapsed, self.waveform() if fresh_wave else None,
@@ -320,6 +336,9 @@ class Visualizer(QWidget):
             w, h = self.width(), self.height()
             if self.mode == 7:
                 self.paint_cover_art(p, w, h)
+                return
+            if self.mode == 8:
+                self.paint_cover_gallery(p, w, h)
                 return
             if self.mode != 2:
                 p.fillRect(self.rect(), QColor(self.colors["background"]))

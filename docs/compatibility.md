@@ -15,7 +15,7 @@ omaMusi uses one Python/PySide6 application on Linux. The Omarchy plugin is a la
 
 | Environment | Result |
 | --- | --- |
-| Python 3.14.7, PySide6/Qt 6.11.2 | All 163 development unit/integration tests pass, including recursive search, keyboard result navigation, and application-menu installation/removal |
+| Python 3.14.7, PySide6/Qt 6.11.2 | All 173 development unit/integration tests pass, including recursive search, keyboard result navigation, application-menu installation/removal, and Cover Gallery |
 | Python 3.11.17, PySide6/Qt 6.7.0, NumPy 1.26.4, PyOpenGL 3.1.7 | All 151 development unit/integration tests pass; the previous hardening round also passed with only built-in theme colors |
 | Setuptools 77.0.3 | Wheel builds with version 0.10.0, MIT license expression, license file, and all new modules |
 | Hyprland, AMD Radeon GPU, Qt 6.11.2 and Qt 6.7.0 | GPU smoke tests cover waveform alpha, color accumulation, 64 view switches, cover image rendering and clearing, and uninterrupted audio |
@@ -69,3 +69,9 @@ The regression workflow in `.github/workflows/tests.yml` runs the complete suite
 CPU fallback checks render the original seven visuals without Omarchy theme files; Cover Art has separate rendering tests. The built-in palette includes every required color, and painter resources are released even if a drawing method raises an exception. These checks cover a missing default color that was hidden by the local Omarchy palette and first surfaced on the clean CI runner.
 
 Cover Art is additionally checked for embedded MP3/FLAC artwork, local image fallback, downscaling, one image on the right at different window shapes, music-driven scale on a plain black background, a black empty stage, and stale artwork results after changing tracks. The GPU smoke check paints an actual image, clears it to black, and verifies an identical Warp frame after returning from Cover Art.
+
+Cover Gallery tests check shared-art song groups, random selection avoiding
+the current song, bounded thumbnails, gradual rotation, stable hover targets,
+balanced crossfades, clicks, responsive layout, and late results after changing
+folders. The GPU smoke check also paints gallery thumbnails and a crossfade
+midpoint, then verifies the original Warp frame is unchanged.

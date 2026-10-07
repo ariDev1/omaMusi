@@ -1471,13 +1471,16 @@ class GpuCanvas(QOpenGLWidget):
             return
         try:
             state = self.owner
-            if state.mode == 7:
+            if state.mode in (7, 8):
                 # Native visuals leave the waveform texture on unit 2;
                 # Qt's image painter expects texture unit 0 on entry.
                 GL.glActiveTexture(GL.GL_TEXTURE0)
                 painter = QPainter(self)
                 try:
-                    state.paint_cover_art(painter, self.width(), self.height())
+                    if state.mode == 7:
+                        state.paint_cover_art(painter, self.width(), self.height())
+                    else:
+                        state.paint_cover_gallery(painter, self.width(), self.height())
                 finally:
                     painter.end()
                 return

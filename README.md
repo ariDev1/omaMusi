@@ -193,7 +193,7 @@ the player.
 
 ## Choose a visual
 
-Press **V** to cycle through eight visuals, or **Shift+V** to go back:
+Press **V** to cycle through nine visuals, or **Shift+V** to go back:
 
 - **Event Horizon:** a black hole with a glowing disk.
 - **Particle Dance:** colorful particles moving to the music.
@@ -203,6 +203,7 @@ Press **V** to cycle through eight visuals, or **Shift+V** to go back:
 - **Waveform:** glowing sound traces with a transparent background.
 - **Spectrogram:** a scrolling view of the sound's frequencies.
 - **Cover Art:** your album cover, gently pulsing on a black background.
+- **Cover Gallery:** a changing mosaic of album covers. Click one to play a song.
 
 To start with a particular visual:
 
@@ -214,6 +215,28 @@ Cover Art uses artwork stored in the audio file, or an image named `cover`,
 `folder`, `front`, or `album` in the song's folder. JPG, JPEG, PNG, and WebP
 images work. If there is no readable cover image, the background stays
 black. Visuals do not change the sound or your music files.
+
+### Cover Gallery
+
+The gallery shows covers from your loaded music. One tile changes about
+every five seconds with a gentle fade. Hover over a cover to see its song
+name or folder and the number of songs sharing it. The tile stays still
+under your pointer, so you can click it comfortably.
+
+Clicking a cover plays a random song with that artwork. If several songs
+share the image, omaMusi avoids picking the currently playing song when
+there is another choice. With only one cover available, it stays visible.
+
+Covers appear as they are found in the background. Music files without
+artwork are skipped. For large collections, the gallery uses a random sample
+of up to 128 different covers. You can hide the song list with **Tab** to
+give the gallery more room.
+
+Start directly in the gallery with:
+
+```bash
+omaMusi ~/Music --recursive --view "cover gallery"
+```
 
 ## Technical details and development
 

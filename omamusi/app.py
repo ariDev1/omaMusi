@@ -1,6 +1,7 @@
 """A text-only, keyboard-first overlay on the live audio visualization."""
 
 import argparse
+from collections import deque
 from functools import partial
 import os
 from pathlib import Path
@@ -9,7 +10,7 @@ import shutil
 import stat
 import sys
 
-from PySide6.QtCore import QEvent, QObject, Qt, QTimer
+from PySide6.QtCore import QEvent, QObject, QPointF, QRectF, Qt, QTimer
 from PySide6.QtGui import QImage
 from PySide6.QtWidgets import (
     QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
@@ -18,6 +19,7 @@ from PySide6.QtWidgets import (
 
 from .audio import AudioPlayer, probe
 from .artwork import load_artwork
+from .gallery import load_gallery_artwork
 from .background import BackgroundTasks
 from . import __version__
 from .library import AUDIO_EXTENSIONS, directory_entries, discover, natural_key
@@ -68,6 +70,7 @@ class PlayerWindow(QWidget):
         self.resize(1060, 680)
         self.setMinimumSize(640, 420)
         self.setAcceptDrops(True)
+        self.setMouseTracking(True)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.tracks = list(tracks)
         self.current_folder = self.tracks[0].parent if self.tracks else Path.cwd()
@@ -83,6 +86,9 @@ class PlayerWindow(QWidget):
         self._add_requests = []
         self._loading_track = False
         self._artwork_path = None
+        self._gallery_queue = deque()
+        self._gallery_seen = set()
+        self._gallery_busy = False
         self._pause_when_ready = False
         self._browser_request = None
         self._folder_scan_pending = False
@@ -271,6 +277,17 @@ class PlayerWindow(QWidget):
             self.navigation_idle_timer.start()
 
     def eventFilter(self, watched, event):
+        if self.visualizer.mode == 8:
+            if (event.type() == QEvent.Type.MouseMove and isinstance(watched, QWidget)
+                    and watched.window() is self):
+                point = self.mapFromGlobal(event.globalPosition().toPoint())
+                self.visualizer.gallery.hover(QPointF(point), self.gallery_bounds())
+                self.visualizer.refresh_gallery()
+                self.setCursor(Qt.CursorShape.PointingHandCursor if self.visualizer.gallery.hovered is not None
+                               else Qt.CursorShape.ArrowCursor)
+            elif event.type() == QEvent.Type.Leave and watched is self:
+                self.visualizer.gallery.hover(None, self.gallery_bounds())
+                self.unsetCursor()
         if hasattr(self, "navigation_idle_timer"):
             interaction_events = (
                 QEvent.Type.KeyPress,
@@ -309,6 +326,56 @@ class PlayerWindow(QWidget):
             self.playlist.setCurrentRow(self.current)
         self.filter_tracks(self.search.text())
         self.fit_list()
+        self._ensure_gallery()
+
+    def _ensure_gallery(self):
+        if self._closed or self.visualizer.mode != 8:
+            return
+        added = [path for path in self.tracks if path not in self._gallery_seen]
+        random.shuffle(added)
+        self._gallery_seen.update(added)
+        self._gallery_queue.extend(added)
+        self._next_gallery_artwork()
+
+    def _next_gallery_artwork(self):
+        if self._closed or self._gallery_busy or self.visualizer.mode != 8:
+            return
+        self.visualizer.gallery.scanning = bool(self._gallery_queue)
+        if self._gallery_queue:
+            path = self._gallery_queue.popleft()
+            self._gallery_busy = True
+            self.background.submit('gallery', partial(load_gallery_artwork, path),
+                                   partial(self._gallery_artwork_ready, path))
+        self.visualizer.refresh_gallery()
+
+    def _gallery_artwork_ready(self, path, image, error):
+        self._gallery_busy = False
+        if error is None:
+            self.visualizer.gallery.add(path, image)
+        self.visualizer.gallery.scanning = bool(self._gallery_queue)
+        self.visualizer.refresh_gallery()
+        self._next_gallery_artwork()
+
+    def gallery_bounds(self):
+        left = self.panel.geometry().right() + 24 if self.panel.isVisible() else 30
+        top = max(64, self.logo.geometry().bottom() + 24)
+        for widget in (self.folder_label, self.folder_prompt):
+            if widget.isVisible():
+                top = max(top, widget.geometry().bottom() + 16)
+        bottom = self.title.geometry().top() - 16
+        return QRectF(left, top, max(0, self.width() - left - 30), max(0, bottom - top))
+
+    def mousePressEvent(self, event):
+        if self.visualizer.mode == 8 and event.button() == Qt.MouseButton.LeftButton:
+            cover = self.visualizer.gallery.hit(event.position(), self.gallery_bounds())
+            if cover is not None:
+                current = self.tracks[self.current] if 0 <= self.current < len(self.tracks) else None
+                path = cover.pick(current)
+                if path in self.tracks:
+                    self.play_track(self.tracks.index(path))
+                event.accept()
+                return
+        super().mousePressEvent(event)
 
     def update_markers(self):
         for i, path in enumerate(self.tracks):
@@ -436,6 +503,10 @@ class PlayerWindow(QWidget):
     def cycle_view(self, step=1):
         self.visual_notice.setText(self.visualizer.cycle(step))
         self._ensure_artwork()
+        self._ensure_gallery()
+        if self.visualizer.mode != 8:
+            self.visualizer.gallery.hovered = None
+            self.unsetCursor()
         self.visual_notice.show()
         self.visual_notice_timer.start(2000)
 
@@ -654,6 +725,11 @@ class PlayerWindow(QWidget):
         self.background.invalidate("artwork")
         self._artwork_path = None
         self.visualizer.set_cover_art(QImage())
+        self.background.invalidate('gallery')
+        self._gallery_queue.clear()
+        self._gallery_seen.clear()
+        self._gallery_busy = False
+        self.visualizer.gallery.clear()
         self._add_requests.clear()
         self._loading_track = False
         self.player.stop(clear=True)

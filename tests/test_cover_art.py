@@ -155,7 +155,7 @@ class CoverArtWindowTests(unittest.TestCase):
         window.visualizer.reset()
         self.assertFalse(window.visualizer.cover_art.isNull())
         window.cycle_view()
-        self.assertEqual(window.visualizer.mode, 0)
+        self.assertEqual(window.visualizer.mode, Visualizer.modes.index("Cover Gallery"))
         window.cycle_view(-1)
         self.assertEqual(window.visualizer.mode, Visualizer.modes.index("Cover Art"))
         self.assertEqual(parser().parse_args(["--view", "cover art"]).view, "cover art")

@@ -112,11 +112,30 @@ def main():
             visual.set_cover_art(QImage())
             empty = visual._gpu.grabFramebuffer()
             assert empty.pixelColor(empty.width() // 2, empty.height() // 2) == QColor("black")
+            # Real gallery thumbnails and the transition compositor must work
+            # on the GPU canvas, including an opaque, balanced midpoint.
+            visual.mode = Visualizer.modes.index("Cover Gallery")
+            visual.gallery.clear()
+            visual.gallery.add(path, art)
+            blue = QImage(200, 100, QImage.Format.Format_RGB32)
+            blue.fill(QColor("blue"))
+            visual.gallery.add(path.with_name('other.wav'), blue)
+            rectangle = visual.gallery.layout(window.gallery_bounds())[0]
+            center = rectangle.center()
+            gallery_image = visual._gpu.grabFramebuffer()
+            color = gallery_image.pixelColor(int(center.x() * ratio), int(center.y() * ratio))
+            assert color in (QColor("red"), QColor("blue")), color.getRgb()
+            visual.gallery.tick(6)
+            visual.gallery.tiles[0].fade = .5
+            midpoint = visual._gpu.grabFramebuffer()
+            color = midpoint.pixelColor(int(center.x() * ratio), int(center.y() * ratio))
+            assert abs(color.red() - 128) <= 2 and abs(color.blue() - 128) <= 2, color.getRgb()
+            assert color.alpha() == 255
             visual.mode = 0
             restored = visual._gpu.grabFramebuffer()
-            assert bytes(restored.bits()) == frames[0], "Cover Art changed the Warp rendering state"
+            assert bytes(restored.bits()) == frames[0], "Cover visuals changed the Warp rendering state"
             print(f"GPU: {visual.renderer_detail}")
-            print(f"PASS: all GPU views, waveform density and transparency, persistent resources, {len(Visualizer.modes) * 8} switches, 650 ms UI stall, zero audio underruns")
+            print(f"PASS: all GPU views, gallery thumbnails and crossfade, waveform density and transparency, persistent resources, {len(Visualizer.modes) * 8} switches, 650 ms UI stall, zero audio underruns")
         finally:
             window.close()
     return 0
