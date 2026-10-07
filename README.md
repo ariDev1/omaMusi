@@ -14,15 +14,16 @@ omaMusi is a local music player for Linux with animated visuals that react to yo
 
 - Plays your local music, including MP3, FLAC, WAV, Ogg, Opus, M4A, and AAC.
 - Shows song titles, artists, and albums, and advances to the next track automatically.
-- Lets you browse folders, filter your playlist, or drag music into the window.
+- Finds music by filename or folder name across nested folders, with keyboard navigation through results.
+- Lets you browse folders, save playlists, or drag music into the window.
 - Follows your Omarchy theme and terminal font.
 - Runs music-reactive visuals on your GPU, with a simpler fallback when hardware rendering is unavailable.
 
 The visuals analyze the music without changing its sound.
 
-The subtle footer shows the version and short Git commit hash. A `+dirty` suffix means the checkout has uncommitted changes; the hash reads `unknown` when Git information is unavailable. You can also check the version with `omaMusi --version`.
+The muted footer groups keyboard shortcuts by function and shows the version and short Git commit hash. A `+dirty` suffix means the checkout has uncommitted changes; the hash reads `unknown` when Git information is unavailable. You can also check the version with `omaMusi --version`.
 
-Tested on Omarchy (Hyprland) and GNOME. Omarchy keeps the frameless window; GNOME uses native window decorations.
+Basic player and search use has been tested on Omarchy and Ubuntu. Omarchy keeps the frameless window; GNOME uses native window decorations. See [compatibility validation](docs/compatibility.md) for automated checks and the remaining desktop checks.
 
 ## Eight visuals
 
@@ -54,7 +55,7 @@ Make sure `~/.local/bin` is on your `PATH`. You can also run `.venv/bin/omaMusi`
 
 ## Omarchy plugin
 
-The optional Omarchy Quattro bar widget uses a monochrome Event Horizon symbol with Omarchy's native icon sizing and theme color. Click it to open omaMusi with Event Horizon selected. It opens your Music folder recursively, or an empty playlist if that folder is missing. The player continues to work as a standalone application on GNOME and other desktops.
+The optional Omarchy Quattro bar widget uses an Event Horizon symbol with Omarchy's native icon sizing, a theme-colored ring, and a gold light band. Click it to open omaMusi with Event Horizon selected. It opens your Music folder recursively, or an empty playlist if that folder is missing. The player continues to work as a standalone application on GNOME and other desktops.
 
 Install from the repository:
 
@@ -96,7 +97,7 @@ cd ~/Music
 omaMusi
 ```
 
-Playback starts automatically. You can also choose a folder, files, or a starting visual:
+Playback starts automatically.
 
 Starting in a folder with `omaMusi` (or `omaMusi -all`) includes music in
 all nested subfolders. Press **/** to search filenames and folder names,
@@ -106,8 +107,10 @@ paths so files with the same name can be distinguished. Clear the search
 to show the whole queue again. While typing a search, press **Up/Down** to
 select a matching result and leave the search field, then **Enter** to play
 it. The search stays active; press **/** to edit it again. With no matches,
-the arrow keys keep focus in the search field. Explicit directory arguments still require
-`--recursive` to include their subfolders.
+the arrow keys keep focus in the search field. Explicit directory arguments
+still require `--recursive` to include their subfolders.
+
+You can also choose a folder, files, or a starting visual:
 
 ```bash
 omaMusi ~/Music --recursive

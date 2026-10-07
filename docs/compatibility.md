@@ -15,7 +15,7 @@ omaMusi uses one Python/PySide6 application on Linux. The Omarchy plugin is a la
 
 | Environment | Result |
 | --- | --- |
-| Python 3.14.7, PySide6/Qt 6.11.2 | All 151 development unit/integration tests pass |
+| Python 3.14.7, PySide6/Qt 6.11.2 | All 154 unit/integration tests pass, including recursive search and keyboard result navigation |
 | Python 3.11.17, PySide6/Qt 6.7.0, NumPy 1.26.4, PyOpenGL 3.1.7 | All 151 development unit/integration tests pass; the previous hardening round also passed with only built-in theme colors |
 | Setuptools 77.0.3 | Wheel builds with version 0.10.0, MIT license expression, license file, and all new modules |
 | Hyprland, AMD Radeon GPU, Qt 6.11.2 and Qt 6.7.0 | GPU smoke tests cover waveform alpha, color accumulation, 64 view switches, cover image rendering and clearing, and uninterrupted audio |
@@ -23,9 +23,15 @@ omaMusi uses one Python/PySide6 application on Linux. The Omarchy plugin is a la
 
 The isolated Qt 6.7 environment caught and verified the fix for a lazy audio-enum alias import failure. Current builds prefer `QtAudio` and only look up the legacy `QAudio` fallback when needed.
 
-## GNOME desktop validation still required
+## User-reported desktop validation
 
-GNOME Shell is not installed on the development machine. Offscreen checks verify application configuration and rendering, but do not verify GNOME's compositor or focus policy. Run these checks on a real GNOME session before describing 0.10.0 as fully validated there:
+Basic player and recursive search use has been reported working on Omarchy
+and Ubuntu. This confirms those workflows; the detailed GNOME compositor,
+artwork, playlist, and focus checks below remain a separate checklist.
+
+## Detailed GNOME desktop validation
+
+GNOME Shell is not installed on the development machine. Offscreen checks verify application configuration and rendering, but do not verify GNOME's compositor or focus policy. Run these checks on a real GNOME session to complete desktop validation:
 
 1. Start omaMusi and confirm native title-bar controls, moving, resizing, and fullscreen work.
 2. Select Waveform with **V**. Confirm the desktop is visible through empty areas and text remains visible. Cycle through the other visuals and confirm their backgrounds are opaque.
@@ -45,9 +51,9 @@ The full suite runs GUI tests offscreen but needs access to the desktop audio se
 .venv/bin/python -m unittest discover -s tests
 ```
 
-## Development hardening checks
+## Regression coverage
 
-The development branch also covers slow metadata reads, slow or unreadable folders, missing tracks, cancellation, shutdown during a pending read, repeated additions with different recursion settings, and pause requests during metadata loading. Worker queues retain at most one running and one pending operation per category. Cancellation discards pending results; it cannot interrupt a filesystem call already blocked in the operating system.
+The regression suite also covers slow metadata reads, slow or unreadable folders, missing tracks, cancellation, shutdown during a pending read, repeated additions with different recursion settings, and pause requests during metadata loading. Worker queues retain at most one running and one pending operation per category. Cancellation discards pending results; it cannot interrupt a filesystem call already blocked in the operating system.
 
 Audio teardown uses `QAudioSink.reset()` to discard buffered samples when seeking, switching tracks, or closing. Qt documents that `stop()` drains buffers synchronously on Linux; this produced a long stall when seeking a suspended Qt 6.7 sink during compatibility testing. See [Qt audio sink buffer behavior](https://doc.qt.io/qt-6/qaudiosink.html#stop).
 

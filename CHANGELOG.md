@@ -2,6 +2,12 @@
 
 ## 0.10.0
 
+- Starting in a music folder includes all nested subfolders. Search matches filenames and folder names without regard to case; Up/Down moves from search to matching results, and Enter plays the selection.
+- Track paths distinguish duplicate filenames, and the footer groups all keyboard shortcuts by function.
+- Cover Art shows one sharp, music-reactive album cover on the right against a black background, using embedded artwork or local cover images.
+- Folder discovery, metadata, and artwork load in the background, with cancellation and stale-result protection.
+- Fixed playlist preservation after failed scans, stale audio events, GPU cleanup, and CPU rendering without an Omarchy theme.
+- Added regression and wheel-build CI for minimum supported and current Python/Qt dependencies.
 - Repeat launches restore and focus the running player instead of opening another instance.
 - **R** toggles random playback while preserving previous-track history.
 - **A** adds tracks to named saved playlists; **B** browses and manages playlists.
