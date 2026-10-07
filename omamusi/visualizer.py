@@ -578,10 +578,10 @@ class Visualizer(QWidget):
                 + self.phi_impulse * 1.6 + self.phi_event * 1.8)
         drive = 1.0 - math.exp(-boom * 0.9)
         center = QPointF(w * 0.5, h * 0.5)
-        scale = min(w, h) * 0.42
+        scale = min(w, h) * 0.42 / (1.0 + .20 * min(1.0, max(0.0, self.energy)))
         p.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
         p.setPen(Qt.PenStyle.NoPen)
-        count = 500
+        count = 1500
         for i in range(count):
             group = i % 13
             seed = (i * 0.61803398875) % 1.0
@@ -600,31 +600,27 @@ class Visualizer(QWidget):
             y = center.y() + cy + math.sin(ang) * rad * 0.35 + jiggle * math.cos(i * 2.3)
             band = float(self.bands[(i * 13) % 96])
             band_sat = 1.0 - math.exp(-band * 2.5)
-            grow = 1.0 + drive * 0.45 + band_sat * 0.35
-            size = (2.0 + band * 3.0 + self.bass * 2.5 + self.energy * 2.0
-                    + self.phi_impulse * 2.5 + self.aether_beat_pulse * 2.5 + self.phi_event * 3.0) * grow * 0.55
-            size = max(1.5, min(14.0, size))
-            alpha = int(50 + band * 110 + self.aether_beat_pulse * 60 + self.phi_impulse * 60
-                        + self.phi_event * 50)
-            # Torus riders: every 6th dot runs a fast tilted ring at ~3x speed.
-            # The ring drifts through space and stays dimmer than the shells.
-            if i % 6 == 0:
-                u = seed * math.tau + dance * 3.1 * (0.8 + drive * 0.6) + beat_kick * 0.3
+            size = 1.3
+            alpha = int(52 + band_sat * 18 + drive * 16)
+            rider = i % 10 < 3
+            if rider:
+                u = seed * math.tau + dance * .38 * (0.7 + drive * .6 + self.phi_velocity * .2) + beat_kick * .1
                 v = (seed * 7.77 % 1.0) * math.tau * 3.0 + dance * 1.2
-                ring_r = scale * 0.55 * (1.0 + drive * 0.22)
-                tube_r = scale * 0.13 * (1.0 + drive * 0.45)
+                ring_r = scale * 0.86 * (1.0 + drive * 0.14)
+                tube_r = scale * 0.075 * (1.0 + drive * 0.45)
                 tilt = 0.42 + 0.16 * math.sin(dance * 0.09 + 1.0)
                 lx = (ring_r + tube_r * math.cos(v)) * math.cos(u)
                 ly = (ring_r + tube_r * math.cos(v)) * math.sin(u)
                 lz = tube_r * math.sin(v)
-                drift_x = scale * 0.28 * math.sin(dance * 0.11 + self.aether_world_turn * 0.4)
-                drift_y = scale * 0.22 * math.cos(dance * 0.083 + 1.2)
+                drift_x = scale * 0.05 * math.sin(dance * 0.11 + self.aether_world_turn * 0.4)
+                drift_y = scale * 0.04 * math.cos(dance * 0.083 + 1.2)
                 x = center.x() + drift_x + lx
                 y = center.y() + drift_y + (ly * math.cos(tilt) - lz * math.sin(tilt)) * 0.9
-                size = min(16.0, size * 1.15)
-                alpha = max(10, alpha - 50)
-            hue = (seed + self.time * 0.03 + drive * 0.30 + band_sat * 0.45) % 1.0
-            tint = QColor.fromHsvF(hue, 0.85, min(0.96, 0.78 + drive * 0.12))
+            if rider:
+                tint = QColor.fromRgbF(1.0, .68, .20)
+            else:
+                shade = group / 13.0
+                tint = QColor.fromRgbF(.12 + .30 * shade, .56 - .34 * shade, .94 - .16 * shade)
             tint.setAlpha(max(10, min(170, alpha)))
             p.setBrush(tint)
             p.drawEllipse(QPointF(x, y), size, size)

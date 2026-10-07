@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Refined Particle Dance with a larger, more centered gold ring and a blue/violet surrounding swarm. Particle size stays small during loud passages, and the simpler palette avoids washed-out overlapping colors. The software renderer follows the same visual direction.
 - Cover Gallery keeps covers still between transitions, without a music-driven pulse.
 - Added Cover Gallery, a separate visual with gently changing album-cover tiles. Matching artwork groups songs together; clicking a tile plays a random song from the group, and hovering keeps that tile still.
 - Gallery artwork loads in the background with bounded thumbnails and protection against results from a replaced music collection. The layout adapts to window size and leaves room for controls.

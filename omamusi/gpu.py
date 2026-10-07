@@ -513,14 +513,13 @@ void main() {
                + drift
                + beatKick;
 
-    // Torus riders: ~18% of the flock leaves the shells and runs a fast
-    // tilted ring at ~3x flock speed. Membership is a stable per-particle
-    // hash so the render shader can highlight the same riders.
-    float torusMask = step(hash1(id*0.37 + 5.0), 0.18);
-    float uT = seed*TAU + phase*(1.10*(0.7 + drive*0.6 + phiVelocity*0.20)) + beatCycle*groove*0.10;
+    // A broad ring anchors the scene. Stable membership keeps its gold
+    // particles separate from the blue/violet surrounding swarm.
+    float torusMask = step(hash1(id*0.37 + 5.0), 0.30);
+    float uT = seed*TAU + phase*(0.38*(0.7 + drive*0.6 + phiVelocity*0.20)) + beatCycle*groove*0.10;
     float vT = fract(seed*7.77)*TAU*3.0 + phase*(1.10 + drive*0.80) + g*2.20;
-    float ringR = 1.15*(1.0 + drive*0.22 + beatCycle*groove*0.05);
-    float tubeR = 0.30*(1.0 + drive*0.45);
+    float ringR = 1.90*(1.0 + drive*0.14 + beatCycle*groove*0.05);
+    float tubeR = 0.16*(1.0 + drive*0.45);
     float cuT = cos(uT), suT = sin(uT), cvT = cos(vT), svT = sin(vT);
     vec3 torusLocal = vec3((ringR + tubeR*cvT)*cuT, (ringR + tubeR*cvT)*suT, tubeR*svT);
     float tiltT = 0.42 + 0.16*sin(phase*0.09 + 1.0);
@@ -529,11 +528,11 @@ void main() {
                           torusLocal.y*sTilt + torusLocal.z*cTilt);
     float yawT = aetherWorldTurn*0.6 + phase*0.06;
     float cYaw = cos(yawT), sYaw = sin(yawT);
-    // The ring itself travels: slow Lissajous drift through the volume so
-    // it is never stuck at the center; hits add a small extra wander.
-    vec3 torusCenter = vec3(0.85*sin(phase*0.11 + aetherWorldTurn*0.40),
-                            0.65*cos(phase*0.083 + 1.2) + drive*0.15*sin(phase*0.9),
-                            0.70*sin(phase*0.067 + 2.1) + drive*0.20*sin(phase*1.1));
+    // Restrained drift leaves the ring near the center and makes its
+    // music-driven bend readable instead of wandering out of view.
+    vec3 torusCenter = vec3(0.15*sin(phase*0.11 + aetherWorldTurn*0.40),
+                            0.12*cos(phase*0.083 + 1.2) + drive*0.15*sin(phase*0.9),
+                            0.12*sin(phase*0.067 + 2.1) + drive*0.20*sin(phase*1.1));
     vec3 torusTarget = vec3(torusTilt.x*cYaw - torusTilt.y*sYaw,
                             torusTilt.x*sYaw + torusTilt.y*cYaw,
                             torusTilt.z)
@@ -544,7 +543,7 @@ void main() {
     vec3 torusTangent = normalize(vec3(torusTanTilt.x*cYaw - torusTanTilt.y*sYaw,
                                        torusTanTilt.x*sYaw + torusTanTilt.y*cYaw,
                                        torusTanTilt.z) + vec3(0.0001));
-    vec3 torusAccel = (torusTarget - p)*3.0 + torusTangent*(1.10 + drive*2.20 + phiVelocity*0.40);
+    vec3 torusAccel = (torusTarget - p)*3.8 + torusTangent*(1.10 + drive*1.20 + phiVelocity*0.40);
     accel = mix(flockAccel, torusAccel + shellForce*0.25 + curl*0.5, torusMask);
 
     v += accel * dt;
@@ -623,10 +622,12 @@ void main() {
     vec2 projected = p.xy / safeDepth;
     projected.x /= resolution.x / resolution.y;
 
-    gl_Position = vec4(projected*2.45, 0.0, 1.0);
+    // Ease the framing back slightly during energetic passages so the
+    // ring can bend without crowding the edges. Dots keep their size.
+    float framing = 2.45/(1.0 + 0.20*clamp(energy, 0.0, 1.0));
+    gl_Position = vec4(projected*framing, 0.0, 1.0);
 
     float speed = length(vel);
-    float nearFactor = clamp(2.9/safeDepth, 0.70, 2.5);
     // Per-particle spectrum band: neighbours dance to different parts
     // of the music instead of all pulsing on the global smoothed level.
     int bandIdx = int(mod(float(gl_VertexID)*13.0, 96.0));
@@ -640,15 +641,9 @@ void main() {
     // Same saturating drive as the physics: loud music compresses toward
     // 1 instead of stacking linearly into big white blobs.
     float drive = 1.0 - exp(-dance*0.9);
-    float bandSat = 1.0 - exp(-band*2.5);
-    float pop = drive*4.5 + bandSat*4.0;
-    float sizeVar = 0.70 + 0.60*fract(float(gl_VertexID)*0.754877666);
-    float grow = 1.0 + drive*0.45 + bandSat*0.35;
-    // Sized for 25k additive dots: quiet ~2-5px texture, hits ~8-18px.
-    gl_PointSize = clamp((2.0 + speed*3.5 + bass*2.5 + energy*2.0 + treble*1.5 + pop
-                   + wave*(0.6 + 2.0*aetherBeatConfidence*aetherBeatPulse + drive*0.8))
-                   * sizeVar * grow * pixelRatio * nearFactor,
-                   1.5, 18.0*pixelRatio);
+    // Music moves the shape, not the dot size. Small points keep packed
+    // areas detailed instead of turning into large overlapping blobs.
+    gl_PointSize = 2.6*pixelRatio;
 
     vec2 dir = vel.xy;
     float dirLen = length(dir);
@@ -656,50 +651,19 @@ void main() {
     streakMix = clamp(speed*1.4 + aetherBeatPulse*0.9 + aetherOnset*0.45 + phiImpulse*0.6 + phiEvent*0.5 + band*0.5, 0.0, 1.0);
 
     float id = float(gl_VertexID);
-    // Flashes rotate hue instead of washing to one color: dance/band terms
-    // shift each particle to a different part of the spectrum on hits.
-    float huePick = fract(id*0.61803398875 + energy*0.15 + aetherBeatPhase*0.10 + phase*0.03
-                          + drive*0.30 + bandSat*0.45 + beatWave*0.15*aetherBeatConfidence);
-
-    vec3 cyan = vec3(0.20,0.92,1.00);
-    vec3 green = vec3(0.25,1.00,0.45);
-    vec3 gold = vec3(1.00,0.72,0.24);
-    vec3 orange = vec3(1.00,0.38,0.08);
-    vec3 magenta = vec3(1.00,0.20,0.78);
-    vec3 violet = vec3(0.46,0.30,1.00);
-
-    // Seven-stop rainbow so the flock is never two-colour: low picks go
-    // teal/green, mids gold/orange, highs magenta/violet.
-    vec3 base = mix(cyan, green, smoothstep(0.0, 0.22, huePick));
-    base = mix(base, gold, smoothstep(0.22, 0.42, huePick));
-    base = mix(base, orange, smoothstep(0.42, 0.55, huePick));
-    base = mix(base, magenta, smoothstep(0.55, 0.74, huePick));
-    base = mix(base, violet, smoothstep(0.74, 1.0, huePick));
-    base = mix(base, violet, 0.20*sin(id*0.07 + phase*0.2));
-    // Music changes hue rather than bleaching every note toward white.
-    base = mix(base, green, clamp(treble*0.9*(0.4 + 0.6*huePick), 0.0, 0.35));
-    base = mix(base, orange, clamp(bass*0.8*(0.4 + 0.6*(1.0 - huePick)), 0.0, 0.30));
-    base = mix(base, gold, clamp(aetherOnset*0.18 + aetherBeatPulse*0.12 + bandSat*0.12, 0.0, 0.25));
-    base = clamp(base, 0.0, 1.0);
-    base /= max(max(base.r, base.g), max(base.b, 0.001));
-    base = pow(base, vec3(1.35));
+    float torusSeed = id*0.37 + 5.0;
+    float torusMask = step(fract(sin(torusSeed*12.9898 + 78.233)*43758.5453), 0.30);
+    float groupShade = mod(id,13.0)/13.0;
+    vec3 surroundingColor = mix(vec3(0.12,0.56,0.94), vec3(0.42,0.22,0.78), groupShade);
+    vec3 base = mix(surroundingColor, vec3(1.00,0.68,0.20), torusMask);
 
     float nearGlow = clamp(1.6/safeDepth, 0.0, 1.0);
-    // Bounded light output: music primarily drives motion, hue and size.
-    // A bright source must never exceed framebuffer range and clip white.
+    // Bounded light output adds depth and a gentle musical shimmer while
+    // the palette stays coherent and particle size stays fixed.
     float brightness = clamp(0.72 + energy*0.08 + min(speed,2.0)*0.06
                              + nearGlow*0.10 + drive*0.12 + wave*0.03, 0.65, 0.96);
     tint = base * brightness;
-    opacity = clamp(0.18 + min(speed,2.0)*0.08 + aetherDensity*0.06
-                    + drive*0.12 + bandSat*0.08, 0.0, 0.65);
-    // Torus riders (same hash as the physics): readable ring shape, but
-    // deliberately dimmer than the main shell stream.
-    float torusSeed = float(gl_VertexID)*0.37 + 5.0;
-    float torusMask = step(fract(sin(torusSeed*12.9898 + 78.233)*43758.5453), 0.18);
-    gl_PointSize *= (1.0 + torusMask*0.15);
-    streakMix = clamp(streakMix + torusMask*0.10, 0.0, 1.0);
-    tint *= (1.0 - torusMask*0.38);
-    opacity = clamp(opacity - torusMask*0.10, 0.0, 0.90);
+    opacity = clamp(0.10 + min(speed,2.0)*0.04 + drive*0.04, 0.10, 0.24);
     // Debug canary (OMA_PARTICLE_CANARY=1): unmistakable giant red dots.
     // Proves the live shader is on screen. No-op when canary is 0.
     gl_PointSize = max(gl_PointSize, canary*26.0*pixelRatio);
@@ -1430,8 +1394,8 @@ class GpuCanvas(QOpenGLWidget):
                 GL.glUniform1f(loc, value)
 
         GL.glEnable(GL.GL_BLEND)
-        # Source-over keeps overlapping colors bounded instead of summing
-        # 25k growing particles into a white sheet during loud passages.
+        # Source-over keeps the overlapping gold and blue/violet points
+        # bounded instead of adding their light into a white sheet.
         GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
         GL.glBindVertexArray(self.swarm_vaos[self.swarm_index])
         GL.glDrawArrays(GL.GL_POINTS, 0, AETHER_SWARM_COUNT)

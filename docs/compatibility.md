@@ -15,7 +15,7 @@ omaMusi uses one Python/PySide6 application on Linux. The Omarchy plugin is a la
 
 | Environment | Result |
 | --- | --- |
-| Python 3.14.7, PySide6/Qt 6.11.2 | All 174 development unit/integration tests pass, including recursive search, keyboard result navigation, application-menu installation/removal, and Cover Gallery |
+| Python 3.14.7, PySide6/Qt 6.11.2 | All 175 development unit/integration tests pass, including recursive search, keyboard result navigation, application-menu installation/removal, Cover Gallery, and the refined Particle Dance |
 | Python 3.11.17, PySide6/Qt 6.7.0, NumPy 1.26.4, PyOpenGL 3.1.7 | All 151 development unit/integration tests pass; the previous hardening round also passed with only built-in theme colors |
 | Setuptools 77.0.3 | Wheel builds with version 0.10.0, MIT license expression, license file, and all new modules |
 | Hyprland, AMD Radeon GPU, Qt 6.11.2 and Qt 6.7.0 | GPU smoke tests cover waveform alpha, color accumulation, 64 view switches, cover image rendering and clearing, and uninterrupted audio |
@@ -77,3 +77,14 @@ folders and fixed cover size despite bass changes. The GPU smoke
 check also paints gallery thumbnails, verifies that bass changes leave them
 unchanged, and checks a crossfade midpoint before verifying the original
 Warp frame is unchanged.
+
+Particle Dance checks cover small dots under quiet and loud input and a
+prominent gold ring near the center in the software renderer. The hardware
+color check verifies that both quiet and maximum-audio frames retain color
+without white-out, isolates one GPU particle to check that it stays small,
+and settles the physics under sustained maximum input to check ring visibility
+and framing:
+
+```bash
+.venv/bin/python tests/smoke_particle_colors.py
+```
