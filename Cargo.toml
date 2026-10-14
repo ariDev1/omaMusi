@@ -19,6 +19,20 @@ rustfft = "6.4"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
 sha2 = "0.10"
 fastrand = "2"
+gtk = { package = "gtk4", version = "0.11.4", features = ["v4_6"] }
+cairo-rs = { version = "0.22", features = ["png"] }
+gl = "0.14"
+libloading = "0.8"
+
+[profile.dev]
+debug = 0
+
+[profile.test]
+debug = 0
+
+[[test]]
+name = "render"
+path = "tests/rust/render.rs"
 
 [[test]]
 name = "artwork"

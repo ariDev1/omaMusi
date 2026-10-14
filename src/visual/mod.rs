@@ -65,6 +65,8 @@ impl VisualMode {
 
 #[derive(Clone)]
 pub struct VisualFrame {
+    pub green: [f32; 3],
+    pub magenta: [f32; 3],
     pub mode: VisualMode,
     pub active: bool,
     pub sample_rate: u32,
@@ -111,6 +113,8 @@ impl VisualFrame {
             })
             .collect();
         Self {
+            green: [158.0 / 255.0, 206.0 / 255.0, 106.0 / 255.0],
+            magenta: [187.0 / 255.0, 154.0 / 255.0, 247.0 / 255.0],
             mode: VisualMode::Warp,
             active: false,
             sample_rate: 48000,
@@ -238,10 +242,14 @@ impl VisualState {
         let phase = self.frame.time;
         let history_revision = self.frame.history_revision + 1;
         let colors = self.frame.colors;
+        let green = self.frame.green;
+        let magenta = self.frame.magenta;
         self.frame = VisualFrame::new();
         self.frame.time = phase;
         self.frame.history_revision = history_revision;
         self.frame.colors = colors;
+        self.frame.green = green;
+        self.frame.magenta = magenta;
         self.buffer.fill(0.0);
         self.waveform.reset();
         self.seen_revision = self.audio_revision;
@@ -379,6 +387,8 @@ impl VisualState {
         } else {
             (0.0, 0.0, 0.0)
         };
+        let ambient_trace =
+            matches!(self.mode, VisualMode::Warp | VisualMode::PhiCathedral).then(|| self.trace());
         let f = &mut self.frame;
         f.active = active;
         f.mode = self.mode;
@@ -457,7 +467,7 @@ impl VisualState {
                 f.history_revision += 1;
             }
         }
-        if let Some(trace) = trace {
+        if let Some(trace) = trace.or(ambient_trace) {
             f.waveform = trace;
         }
         f.wave_alpha = self.waveform.latest_alpha;

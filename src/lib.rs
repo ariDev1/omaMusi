@@ -7,4 +7,5 @@ pub mod library;
 pub mod player;
 pub mod playlists;
 pub mod process;
+pub mod render;
 pub mod visual;

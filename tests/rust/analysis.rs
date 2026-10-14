@@ -302,3 +302,19 @@ fn horizon_slots_preserve_identities_when_old_hits_expire() {
     assert_eq!(waves[1], [0.2, 0.3]);
     assert!(waves[2..].iter().all(|w| w[0] < 0.0));
 }
+
+#[test]
+fn warp_and_phi_receive_live_waveform_data_without_visiting_waveform_mode() {
+    for mode in [VisualMode::Warp, VisualMode::PhiCathedral] {
+        let mut visual = VisualState::new();
+        visual.mode = mode;
+        visual.feed(&PcmSnapshot {
+            samples: std::array::from_fn(|i| (0.2 * (i as f64 * 0.1).sin()) as f32),
+            sample_rate: 48000,
+            revision: 1,
+            generation: 1,
+        });
+        visual.tick(0.016, true);
+        assert!(visual.frame().waveform.iter().any(|v| v.abs() > 0.1));
+    }
+}
