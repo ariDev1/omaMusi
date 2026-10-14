@@ -416,7 +416,7 @@ impl PlayerState {
                     generation: self.library_generation,
                     requests: vec![ScanRequest {
                         paths: vec![folder],
-                        recursive: true,
+                        recursive: false,
                     }],
                 }]
             }

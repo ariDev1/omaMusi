@@ -15,6 +15,13 @@ fn player() -> PlayerState {
 }
 
 #[test]
+fn folder_navigation_scans_only_the_chosen_folder() {
+    let mut state = player();
+    let effects = state.dispatch(Action::ScanFolder(PathBuf::from("/music/Album")));
+    assert!(effects.iter().any(|effect| matches!(effect, Effect::Scan {requests,..} if requests.len() == 1 && !requests[0].recursive)));
+}
+
+#[test]
 fn next_wraps_manually_and_stops_automatically_at_end() {
     let mut state = player();
     assert_eq!(state.current, Some(0));

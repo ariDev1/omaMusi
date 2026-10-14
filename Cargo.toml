@@ -7,6 +7,14 @@ description = "A local Linux music player with live audio visuals"
 repository = "https://github.com/ariDev1/omaMusi"
 autotests = false
 
+[[bin]]
+name = "omaMusi"
+path = "src/main.rs"
+
+[[test]]
+name = "desktop"
+path = "tests/rust/desktop.rs"
+
 [dependencies]
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
@@ -23,6 +31,16 @@ gtk = { package = "gtk4", version = "0.11.4", features = ["v4_6"] }
 cairo-rs = { version = "0.22", features = ["png"] }
 gl = "0.14"
 libloading = "0.8"
+clap = { version = "4.5", features = ["derive"] }
+toml = "1"
+
+[[test]]
+name = "cli"
+path = "tests/rust/cli.rs"
+
+[[test]]
+name = "theme"
+path = "tests/rust/theme.rs"
 
 [profile.dev]
 debug = 0

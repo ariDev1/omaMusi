@@ -270,6 +270,11 @@ impl VisualState {
     pub fn set_colors(&mut self, colors: [[f32; 3]; 4]) {
         self.frame.colors = colors;
     }
+    pub fn set_palette(&mut self, colors: [[f32; 3]; 6]) {
+        self.frame.colors = colors[..4].try_into().unwrap();
+        self.frame.green = colors[4];
+        self.frame.magenta = colors[5];
+    }
     pub fn frame(&self) -> &VisualFrame {
         &self.frame
     }
