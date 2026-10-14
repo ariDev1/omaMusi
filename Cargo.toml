@@ -17,3 +17,11 @@ tempfile = "3"
 [[test]]
 name = "core"
 path = "tests/rust/core.rs"
+
+[[test]]
+name = "state"
+path = "tests/rust/state.rs"
+
+[[test]]
+name = "background"
+path = "tests/rust/background.rs"
