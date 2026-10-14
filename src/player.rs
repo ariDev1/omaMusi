@@ -106,6 +106,7 @@ pub struct PlayerState {
     pub query: String,
     pub search_focus: bool,
     pub loading: bool,
+    pub has_stream: bool,
     pub paused: bool,
     pub generation: u64,
     pub library_generation: u64,
@@ -140,6 +141,7 @@ impl Default for PlayerState {
             query: String::new(),
             search_focus: false,
             loading: false,
+            has_stream: false,
             paused: false,
             generation: 0,
             library_generation: 0,
@@ -181,6 +183,7 @@ impl PlayerState {
         self.selected = Some(index);
         self.generation += 1;
         self.loading = true;
+        self.has_stream = false;
         self.pause_when_ready = false;
         self.paused = false;
         self.duration = 0.0;
@@ -214,6 +217,7 @@ impl PlayerState {
         self.query.clear();
         self.search_focus = false;
         self.loading = false;
+        self.has_stream = false;
         self.paused = false;
         self.duration = 0.0;
         self.browser_folder = None;
@@ -311,11 +315,11 @@ impl PlayerState {
                     }
                     .into();
                     Vec::new()
-                } else if self.current.is_some() {
+                } else if self.has_stream {
                     self.paused = !self.paused;
                     vec![Effect::AudioTogglePause]
                 } else if !self.tracks.is_empty() {
-                    self.play(0, true)
+                    self.play(self.current.unwrap_or(0), true)
                 } else {
                     Vec::new()
                 }
@@ -342,6 +346,7 @@ impl PlayerState {
             }
             Action::Finished(generation) => {
                 if generation == self.generation {
+                    self.has_stream = false;
                     self.next(true)
                 } else {
                     Vec::new()
@@ -354,6 +359,7 @@ impl PlayerState {
                 if generation == self.generation {
                     self.status = format!("error: {message}");
                     self.loading = false;
+                    self.has_stream = false;
                 }
                 Vec::new()
             }
@@ -364,6 +370,7 @@ impl PlayerState {
                 self.loading = false;
                 match result {
                     Ok(info) => {
+                        self.has_stream = true;
                         self.duration = info.duration;
                         self.title = info.title;
                         self.artist = info.artist;
@@ -438,8 +445,7 @@ impl PlayerState {
                                     self.tracks.push(path);
                                 }
                             }
-                            if self.tracks.len() > start && self.current.is_none() && !self.loading
-                            {
+                            if self.tracks.len() > start && !self.has_stream && !self.loading {
                                 self.play(start, true)
                             } else {
                                 Vec::new()

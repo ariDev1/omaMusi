@@ -50,7 +50,7 @@ fn discovery_preserves_unicode_metacharacters_and_non_utf8_paths() {
         assert!(tracks.contains(&root.path().join(name)));
     }
     assert!(matches(
-        &tracks
+        tracks
             .iter()
             .find(|p| p.to_string_lossy().contains("Straße"))
             .unwrap(),
@@ -73,7 +73,7 @@ fn discovery_does_not_follow_recursive_symlink_loops_and_reports_permissions() {
     assert_eq!(discover(&[root.path().into()], true).unwrap().len(), 1);
     let blocked = root.path().join("blocked");
     fs::create_dir(&blocked).unwrap();
-    fs::set_permissions(&blocked, fs::Permissions::from_mode(0)).unwrap();
+    fs::set_permissions(&blocked, fs::Permissions::from_mode(0o0)).unwrap();
     let result = discover(&[root.path().into()], true);
     fs::set_permissions(&blocked, fs::Permissions::from_mode(0o700)).unwrap();
     assert!(result.is_err());
@@ -104,7 +104,7 @@ fn playlists_persist_order_deduplicate_and_leave_music_untouched() {
     assert_eq!(store.tracks("Evening").unwrap(), [two.clone(), one.clone()]);
     store.rename("Evening", "Morning").unwrap();
     store.remove("Morning", &two).unwrap();
-    assert_eq!(store.tracks("Morning").unwrap(), [one.clone()]);
+    assert_eq!(store.tracks("Morning").unwrap(), std::slice::from_ref(&one));
     store.delete("Morning").unwrap();
     assert!(PlaylistStore::open(data).unwrap().names().is_empty());
     assert_eq!(fs::read(one).unwrap(), b"music");

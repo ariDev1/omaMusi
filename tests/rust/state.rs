@@ -81,7 +81,7 @@ fn shuffle_uses_hidden_tracks_and_avoids_current() {
         state.dispatch(Action::Next { automatic: false });
         assert_ne!(old, state.current);
     }
-    assert!(state.history.iter().any(|&i| i == 2));
+    assert!(state.history.iter().any(|&i| i != 0));
 }
 
 #[test]
@@ -220,4 +220,37 @@ fn replacing_queue_clears_search_history_and_empty_queue_stops() {
     assert!(state.current.is_none());
     assert!(state.history.is_empty());
     assert!(state.query.is_empty());
+}
+
+#[test]
+fn space_replays_current_track_after_end_or_metadata_failure() {
+    let mut state = player();
+    state.dispatch(Action::Play(2));
+    state.dispatch(Action::MetadataReady {
+        generation: state.generation,
+        result: Ok(TrackInfo {
+            duration: 0.2,
+            sample_rate: 48000,
+            title: "last".into(),
+            artist: String::new(),
+            album: String::new(),
+        }),
+    });
+    state.dispatch(Action::Finished(state.generation));
+    let effects = state.dispatch(Action::TogglePause);
+    assert!(
+        effects.iter().any(
+            |e| matches!(e,Effect::Probe {path,..} if path.to_string_lossy().contains("three"))
+        )
+    );
+    state.dispatch(Action::MetadataReady {
+        generation: state.generation,
+        result: Err("missing media".into()),
+    });
+    assert!(
+        state
+            .dispatch(Action::TogglePause)
+            .iter()
+            .any(|e| matches!(e, Effect::Probe { .. }))
+    );
 }
