@@ -1,0 +1,3002 @@
+[
+  {
+    "onset": 0.5323335729900908,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.029432126472786185,
+    "low_transient": 1.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.4446423760527509,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.027607481778294175,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.37139653144799156,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.02589595593249345,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.31021645933997705,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.02429053613230631,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.2591145675761589,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.022784644333385146,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.21643067963907858,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.02137211029724477,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.18077809953801846,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.02004714630933778,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.15099856141964865,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.01880432346448285,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.12612460031978787,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.01763854942247792,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.10534812157327139,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.01654504754275415,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.08799414777828678,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.015519337312577004,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.07349889041772431,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.014557215988601024,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.0613914337377065,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.013654741376556432,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.051278435836935206,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.012808215678509047,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.04283134994235622,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.01201417034150936,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.03577575072138205,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.01126935184554959,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.029882418868445754,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.010570708372596369,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.02495989432572687,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.009915377302076735,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.02084825621025289,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.009300673481581492,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.017413927372294295,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.008724078224726315,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.014545334797756793,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.008183228991090455,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.012149284871570049,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.007675909705947654,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.010147935743172083,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.007200041680125351,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.00847626843358735,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.006753675092787213,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.007079974526501198,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.006334981002240569,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.5356446393802208,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.035374370324820034,
+    "low_transient": 1.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.4474080111764316,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.03318133621993267,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.37370658408243473,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.03112425926540692,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.31214597749231954,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.02919471079764232,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.2607262366111879,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.027384784688042264,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.21777685877469222,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.025687064948456212,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.1819025228692199,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.024094595344922486,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.15193775873321705,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.022600850895207133,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.12690908385844904,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.021199711133352853,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.10600337730445758,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.019885435031692242,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.08854146337140312,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.018652637477570833,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.07395604682889528,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.017496267208395696,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.06177328286991329,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.016411586114600724,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.05159738304232078,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.015394149825724578,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.04309775704202766,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.014439789500054763,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.03599827263584608,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.0135445947432227,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.030068284794983764,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.01270489758576053,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.025115142597480423,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.011917257453969272,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.020977930467021715,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.011178447072518029,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.01752224041616019,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.010485439241011559,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.014635805456805257,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.00983539443034454,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.012224852318079975,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.00922564914801987,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.010211054980194239,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.008653705024759052,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.008528990052038964,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.008117218577688186,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.007124011323891221,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.007613991608155236,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.5356652339119131,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.03657408866762082,
+    "low_transient": 1.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.4474252131752721,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.03430667802350852,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.373720952399643,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.032179835503342,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.31215797891967173,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.03018484658621126,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.2607362610459496,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.028313537007934236,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.21778523188643492,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.026558239267840646,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.18190951668003538,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.024911761211967868,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.15194360045505548,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.023367356563941566,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.12691396327468404,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.021918697282794396,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.10600745293548776,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.02055984763446176,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.08854486762459533,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.019285239870715173,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.07395889030017884,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.01808965141588019,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.061775657936773455,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.016968183467863756,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.051599366864919186,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.015916240925810874,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.043099414069948834,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.014929513562146206,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.03599965670190811,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.014003958361854972,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.030069440864136005,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.013135782956640127,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.025116108227605623,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.012321430086078985,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.02097873702910054,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.011557563022110435,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.017522914113438287,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.010841051897131075,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.01463636817607316,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.010168960879681048,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.012225322340721842,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.009538536145173228,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.010211447576105679,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.00894719459237706,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.008529317975708911,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.008392513259423988,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.0071242852287643444,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.0,
+    "bpm": 0.0,
+    "density": 0.007872219395967639,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.5356653620080264,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.03681630762360661,
+    "low_transient": 1.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.44742532017013975,
+    "beat_phase": 0.040000000000000036,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.03453388061520431,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.3737210417692687,
+    "beat_phase": 0.08000000000000007,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.03239295267025898,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.31215805356745785,
+    "beat_phase": 0.1200000000000001,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.03038475155426522,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.2607363233970217,
+    "beat_phase": 0.16000000000000014,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.02850104886739988,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.2177852839664281,
+    "beat_phase": 0.20000000000000018,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.02673412632949072,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.18190956018090232,
+    "beat_phase": 0.2400000000000002,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.025076744155148406,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.15194363679003378,
+    "beat_phase": 0.28000000000000025,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.023522111389482202,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.12691399362420905,
+    "beat_phase": 0.3200000000000003,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.02206385808285302,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.10600747828554191,
+    "beat_phase": 0.3600000000000003,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.020696009190652627,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.08854488879874042,
+    "beat_phase": 0.40000000000000036,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.01941296009116609,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.07395890798631148,
+    "beat_phase": 0.4400000000000004,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.018209453621204318,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.061775672709473206,
+    "beat_phase": 0.4800000000000004,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.017080558535412595,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.05159937920411523,
+    "beat_phase": 0.5200000000000005,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.016021649300994287,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.04309942437651172,
+    "beat_phase": 0.5600000000000005,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.015028387145060659,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.03599966531067308,
+    "beat_phase": 0.6000000000000005,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.014096702276950243,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.030069448054780935,
+    "beat_phase": 0.6400000000000006,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.013222777212675545,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.025116114233737132,
+    "beat_phase": 0.6800000000000006,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.012403031133170666,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.020978742045843272,
+    "beat_phase": 0.7200000000000006,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.011634105212249373,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.01752291830377405,
+    "beat_phase": 0.7600000000000007,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.01091284885415643,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.014636371676135799,
+    "beat_phase": 0.8000000000000007,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.010236306784321924,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.012225325264219902,
+    "beat_phase": 0.8400000000000007,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.009601706940424289,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.010211450018016523,
+    "beat_phase": 0.8800000000000008,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.009006449114146886,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.008529320015364298,
+    "beat_phase": 0.9200000000000008,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.008448094297088888,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.007124286932427731,
+    "beat_phase": 0.9600000000000009,
+    "beat_confidence": 0.375,
+    "bpm": 120.0,
+    "density": 0.007924354687176421,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.5356653628047726,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.036865210787412436,
+    "low_transient": 1.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.44742532083563813,
+    "beat_phase": 0.040000000000000036,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.03457975202734705,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.37372104232513964,
+    "beat_phase": 0.08000000000000007,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.03243598028418441,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.31215805403176033,
+    "beat_phase": 0.1200000000000001,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.030425111671245147,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.26073632378483974,
+    "beat_phase": 0.16000000000000014,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.028538906858908697,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.21778528429036095,
+    "beat_phase": 0.20000000000000018,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.026769637314798183,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.18190956045147377,
+    "beat_phase": 0.2400000000000002,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.025110053636905067,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.15194363701603406,
+    "beat_phase": 0.28000000000000025,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.02355335584990173,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.12691399381298035,
+    "beat_phase": 0.3200000000000003,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.022093165542934178,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.10600747844321697,
+    "beat_phase": 0.3600000000000003,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.020723499734732302,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.0885448889304417,
+    "beat_phase": 0.40000000000000036,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.019438746358952645,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.07395890809631764,
+    "beat_phase": 0.4400000000000004,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.018233641269307346,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.06177567280135807,
+    "beat_phase": 0.4800000000000004,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.017103246670260128,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.051599379280863916,
+    "beat_phase": 0.5200000000000005,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.0160429308849113,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.04309942444061761,
+    "beat_phase": 0.5600000000000005,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.01504834937717275,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.035999665364218815,
+    "beat_phase": 0.6000000000000005,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.01411542695047318,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.030069448099506096,
+    "beat_phase": 0.6400000000000006,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.01324034105005464,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.02511611427109473,
+    "beat_phase": 0.6800000000000006,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.012419506100443201,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.02097874207704696,
+    "beat_phase": 0.7200000000000006,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.011649558813918116,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.017522918329837562,
+    "beat_phase": 0.7600000000000007,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.010927344409782467,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.014636371697905874,
+    "beat_phase": 0.8000000000000007,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.010249903687970123,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.012225325282403797,
+    "beat_phase": 0.8400000000000007,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.009614460904024437,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.010211450033204988,
+    "beat_phase": 0.8800000000000008,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.009018412395767658,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.00852932002805077,
+    "beat_phase": 0.9200000000000008,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.008459315915059967,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.007124286943024363,
+    "beat_phase": 0.9600000000000009,
+    "beat_confidence": 0.5,
+    "bpm": 120.0,
+    "density": 0.007934880620936117,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.5356653628097283,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.036875084165903765,
+    "low_transient": 1.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.4474253208397775,
+    "beat_phase": 0.040000000000000036,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.03458901330573417,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.37372104232859715,
+    "beat_phase": 0.08000000000000007,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.032444667409613576,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.3121580540346483,
+    "beat_phase": 0.1200000000000001,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.030433260238329256,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.260736323787252,
+    "beat_phase": 0.16000000000000014,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.0285465502555726,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.21778528429237584,
+    "beat_phase": 0.20000000000000018,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.026776806859082323,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.18190956045315673,
+    "beat_phase": 0.2400000000000002,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.02511677870528795,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.1519436370174398,
+    "beat_phase": 0.28000000000000025,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.023559663997667058,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.1269139938141545,
+    "beat_phase": 0.3200000000000003,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.022099082617075834,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.1060074784441977,
+    "beat_phase": 0.3600000000000003,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.02072904997985977,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.08854488893126086,
+    "beat_phase": 0.40000000000000036,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.01944395251663083,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.07395890809700185,
+    "beat_phase": 0.4400000000000004,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.018238524671237828,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.061775672801929575,
+    "beat_phase": 0.4800000000000004,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.017107827325685637,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.051599379281341284,
+    "beat_phase": 0.5200000000000005,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.016047227562601556,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.043099424441016346,
+    "beat_phase": 0.5600000000000005,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.015052379682327581,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.03599966536455187,
+    "beat_phase": 0.6000000000000005,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.014119207396858045,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.030069448099784284,
+    "beat_phase": 0.6400000000000006,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.013243887127664103,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.02511611427132709,
+    "beat_phase": 0.6800000000000006,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.0124228323389696,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.020978742077241045,
+    "beat_phase": 0.7200000000000006,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.011652678842285512,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.017522918329999675,
+    "beat_phase": 0.7600000000000007,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.010930271011989763,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.014636371698041281,
+    "beat_phase": 0.8000000000000007,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.010252648855472203,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.0122253252825169,
+    "beat_phase": 0.8400000000000007,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.009617035884865939,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.010211450033299459,
+    "beat_phase": 0.8800000000000008,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.009020827740670683,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.008529320028129679,
+    "beat_phase": 0.9200000000000008,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.008461581520654595,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.007124286943090274,
+    "beat_phase": 0.9600000000000009,
+    "beat_confidence": 0.625,
+    "bpm": 120.0,
+    "density": 0.007937005770310843,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.5356653628097592,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.036877077566642005,
+    "low_transient": 1.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.4474253208398033,
+    "beat_phase": 0.040000000000000036,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.034590883125592706,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.3737210423286187,
+    "beat_phase": 0.08000000000000007,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.03244642130998911,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.3121580540346663,
+    "beat_phase": 0.1200000000000001,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.030434905405650182,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.26073632378726697,
+    "beat_phase": 0.16000000000000014,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.028548093430744693,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.21778528429238836,
+    "beat_phase": 0.20000000000000018,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.026778254365108896,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.1819095604531672,
+    "beat_phase": 0.2400000000000002,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.025118136473177725,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.15194363701744854,
+    "beat_phase": 0.28000000000000025,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.02356093759073587,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.12691399381416182,
+    "beat_phase": 0.3200000000000003,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.022100277253741748,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.10600747844420381,
+    "beat_phase": 0.3600000000000003,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.020730170555025018,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.08854488893126598,
+    "beat_phase": 0.40000000000000036,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.019445003621738184,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.07395890809700613,
+    "beat_phase": 0.4400000000000004,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.018239510613083557,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.06177567280193315,
+    "beat_phase": 0.4800000000000004,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.017108752144066177,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.05159937928134427,
+    "beat_phase": 0.5200000000000005,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.016048095046866162,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.04309942444101884,
+    "beat_phase": 0.5600000000000005,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.015053193386904796,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.03599966536455395,
+    "beat_phase": 0.6000000000000005,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.014119970655819613,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.030069448099786025,
+    "beat_phase": 0.6400000000000006,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.01324460306838599,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.025116114271328545,
+    "beat_phase": 0.6800000000000006,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.012423503894946099,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.02097874207724226,
+    "beat_phase": 0.7200000000000006,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.011653308765148931,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.01752291833000069,
+    "beat_phase": 0.7600000000000007,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.010930861882784968,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.014636371698042128,
+    "beat_phase": 0.8000000000000007,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.010253203095232182,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.012225325282517607,
+    "beat_phase": 0.8400000000000007,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.009617555764531736,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.01021145003330005,
+    "beat_phase": 0.8800000000000008,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.009021315390396356,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.008529320028130173,
+    "beat_phase": 0.9200000000000008,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.008462038938535296,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.007124286943090687,
+    "beat_phase": 0.9600000000000009,
+    "beat_confidence": 0.75,
+    "bpm": 120.0,
+    "density": 0.007937434830569814,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.5356653628097593,
+    "beat_phase": 0.0,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.03687748002731002,
+    "low_transient": 1.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.44742532083980335,
+    "beat_phase": 0.040000000000000036,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.03459126063571142,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.37372104232861875,
+    "beat_phase": 0.08000000000000007,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.03244677541636783,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.3121580540346663,
+    "beat_phase": 0.1200000000000001,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.030435237559203795,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.26073632378726697,
+    "beat_phase": 0.16000000000000014,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.028548404992438596,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.21778528429238836,
+    "beat_phase": 0.20000000000000018,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.02677854661153544,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.1819095604531672,
+    "beat_phase": 0.2400000000000002,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.02511841060178692,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.15194363701744854,
+    "beat_phase": 0.28000000000000025,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.02356119472474181,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.12691399381416182,
+    "beat_phase": 0.3200000000000003,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.022100518446724865,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.10600747844420381,
+    "beat_phase": 0.3600000000000003,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.020730396795249035,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.08854488893126598,
+    "beat_phase": 0.40000000000000036,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.019445215836199407,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.07395890809700613,
+    "beat_phase": 0.4400000000000004,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.018239709671309157,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.06177567280193315,
+    "beat_phase": 0.4800000000000004,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.017108938861676987,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.05159937928134427,
+    "beat_phase": 0.5200000000000005,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.016048270188918603,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.04309942444101884,
+    "beat_phase": 0.5600000000000005,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.015053357671025613,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.03599966536455395,
+    "beat_phase": 0.6000000000000005,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.014120124755146284,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.030069448099786025,
+    "beat_phase": 0.6400000000000006,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.013244747614324832,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.025116114271328545,
+    "beat_phase": 0.6800000000000006,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.012423639479759394,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.02097874207724226,
+    "beat_phase": 0.7200000000000006,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.011653435944381662,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.01752291833000069,
+    "beat_phase": 0.7600000000000007,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.010930981177541106,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.014636371698042128,
+    "beat_phase": 0.8000000000000007,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.010253314994309858,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.012225325282517607,
+    "beat_phase": 0.8400000000000007,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.00961766072642604,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.01021145003330005,
+    "beat_phase": 0.8800000000000008,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.009021413845177972,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.008529320028130173,
+    "beat_phase": 0.9200000000000008,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.008462131289612679,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.007124286943090687,
+    "beat_phase": 0.96,
+    "beat_confidence": 0.875,
+    "bpm": 120.0,
+    "density": 0.007937521456342111,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.5356653628097593,
+    "beat_phase": 0.0,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.03687756128271752,
+    "low_transient": 1.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.44742532083980335,
+    "beat_phase": 0.03999999999999915,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.0345913368536899,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.37372104232861875,
+    "beat_phase": 0.0799999999999983,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.0324468469092127,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.3121580540346663,
+    "beat_phase": 0.11999999999999744,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.03043530461984971,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.26073632378726697,
+    "beat_phase": 0.1599999999999966,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.028548467895659735,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.21778528429238836,
+    "beat_phase": 0.19999999999999574,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.026778605615071355,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.1819095604531672,
+    "beat_phase": 0.23999999999999488,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.025118465947398597,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.15194363701744854,
+    "beat_phase": 0.27999999999999403,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.023561246639202265,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.12691399381416182,
+    "beat_phase": 0.3199999999999932,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.02210056714274832,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.10600747844420381,
+    "beat_phase": 0.3599999999999923,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.020730442472362495,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.08854488893126598,
+    "beat_phase": 0.3999999999999915,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.019445258681560197,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.07395890809700613,
+    "beat_phase": 0.4399999999999906,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.018239749860471787,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.06177567280193315,
+    "beat_phase": 0.47999999999998977,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.017108976559312462,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.05159937928134427,
+    "beat_phase": 0.5199999999999889,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.016048305549489147,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.04309942444101884,
+    "beat_phase": 0.5599999999999881,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.01505339083941757,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.03599966536455395,
+    "beat_phase": 0.5999999999999872,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.014120155867263765,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.030069448099786025,
+    "beat_phase": 0.6399999999999864,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.013244776797646575,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.025116114271328545,
+    "beat_phase": 0.6799999999999855,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.012423666853861093,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.02097874207724226,
+    "beat_phase": 0.7199999999999847,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.011653461621425913,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.01752291833000069,
+    "beat_phase": 0.7599999999999838,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.010931005262736987,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.014636371698042128,
+    "beat_phase": 0.799999999999983,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.01025333758634401,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.012225325282517607,
+    "beat_phase": 0.8399999999999821,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.009617681917867023,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.01021145003330005,
+    "beat_phase": 0.8799999999999812,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.009021433722855562,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.008529320028130173,
+    "beat_phase": 0.9199999999999804,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.008462149934973639,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.007124286943090687,
+    "beat_phase": 0.9599999999999795,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.00793753894578391,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.5356653628097593,
+    "beat_phase": 0.0,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.03687757768790137,
+    "low_transient": 1.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.44742532083980335,
+    "beat_phase": 0.03999999999999915,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.034591352241834364,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.37372104232861875,
+    "beat_phase": 0.0799999999999983,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.03244686134336914,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.3121580540346663,
+    "beat_phase": 0.11999999999999744,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.030435318159160615,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.26073632378726697,
+    "beat_phase": 0.1599999999999966,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.028548480595601056,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.21778528429238836,
+    "beat_phase": 0.19999999999999574,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.026778617527679807,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.1819095604531672,
+    "beat_phase": 0.23999999999999488,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.02511847712148488,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.15194363701744854,
+    "beat_phase": 0.27999999999999403,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.023561257120551064,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.12691399381416182,
+    "beat_phase": 0.3199999999999932,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.022100576974305897,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.10600747844420381,
+    "beat_phase": 0.3599999999999923,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.020730451694412653,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.08854488893126598,
+    "beat_phase": 0.3999999999999915,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.01944526733188935,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.07395890809700613,
+    "beat_phase": 0.4399999999999906,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.01823975797452378,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.06177567280193315,
+    "beat_phase": 0.47999999999998977,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.017108984170333796,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.05159937928134427,
+    "beat_phase": 0.5199999999999889,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.01604831268866521,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.04309942444101884,
+    "beat_phase": 0.5599999999999881,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.01505339753600041,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.03599966536455395,
+    "beat_phase": 0.5999999999999872,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.01412016214869195,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.030069448099786025,
+    "beat_phase": 0.6399999999999864,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.013244782689657616,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.025116114271328545,
+    "beat_phase": 0.6799999999999855,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.012423672380596905,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.02097874207724226,
+    "beat_phase": 0.7199999999999847,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.011653466805531736,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.01752291833000069,
+    "beat_phase": 0.7599999999999838,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.010931010125454168,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.014636371698042128,
+    "beat_phase": 0.799999999999983,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.010253342147597036,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.012225325282517607,
+    "beat_phase": 0.8399999999999821,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.009617686196345166,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.01021145003330005,
+    "beat_phase": 0.8799999999999812,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.00902143773608945,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.008529320028130173,
+    "beat_phase": 0.9199999999999804,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.00846215369940709,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.007124286943090687,
+    "beat_phase": 0.9599999999999795,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.007937542476841308,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.5356653628097593,
+    "beat_phase": 0.0,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.03687758100005086,
+    "low_transient": 1.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.44742532083980335,
+    "beat_phase": 0.03999999999999915,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.03459135534864714,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.37372104232861875,
+    "beat_phase": 0.0799999999999983,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.03244686425757506,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.3121580540346663,
+    "beat_phase": 0.11999999999999744,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.030435320892700336,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.26073632378726697,
+    "beat_phase": 0.1599999999999966,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.028548483159674978,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.21778528429238836,
+    "beat_phase": 0.19999999999999574,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.026778619932793964,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.1819095604531672,
+    "beat_phase": 0.23999999999999488,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.025118479377493983,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.15194363701744854,
+    "beat_phase": 0.27999999999999403,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.02356125923669888,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.12691399381416182,
+    "beat_phase": 0.3199999999999932,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.02210057895926313,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.10600747844420381,
+    "beat_phase": 0.3599999999999923,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.02073045355631246,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.08854488893126598,
+    "beat_phase": 0.3999999999999915,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.01944526907836068,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.07395890809700613,
+    "beat_phase": 0.4399999999999906,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.018239759612722617,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.06177567280193315,
+    "beat_phase": 0.47999999999998977,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.017108985706972498,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.05159937928134427,
+    "beat_phase": 0.5199999999999889,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.016048314130039994,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.04309942444101884,
+    "beat_phase": 0.5599999999999881,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.015053398888017164,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.03599966536455395,
+    "beat_phase": 0.5999999999999872,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.014120163416890423,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.030069448099786025,
+    "beat_phase": 0.6399999999999864,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.013244783879234124,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.025116114271328545,
+    "beat_phase": 0.6799999999999855,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.012423673496425617,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.02097874207724226,
+    "beat_phase": 0.7199999999999847,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.011653467852184646,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.01752291833000069,
+    "beat_phase": 0.7599999999999838,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.010931011107219831,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.014636371698042128,
+    "beat_phase": 0.799999999999983,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.010253343068498136,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.012225325282517607,
+    "beat_phase": 0.8399999999999821,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.009617687060155002,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.01021145003330005,
+    "beat_phase": 0.8799999999999812,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.009021438546347396,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.008529320028130173,
+    "beat_phase": 0.9199999999999804,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.008462154459433094,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.007124286943090687,
+    "beat_phase": 0.9599999999999795,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.007937543189749499,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.5356653628097593,
+    "beat_phase": 0.0,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.036877581668762316,
+    "low_transient": 1.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.44742532083980335,
+    "beat_phase": 0.03999999999999915,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.034591355975901836,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.37372104232861875,
+    "beat_phase": 0.0799999999999983,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.0324468648459431,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.3121580540346663,
+    "beat_phase": 0.11999999999999744,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.0304353214445925,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.26073632378726697,
+    "beat_phase": 0.1599999999999966,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.028548483677352587,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.21778528429238836,
+    "beat_phase": 0.19999999999999574,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.02677862041837815,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.1819095604531672,
+    "beat_phase": 0.23999999999999488,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.02511847983297438,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.15194363701744854,
+    "beat_phase": 0.27999999999999403,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.02356125966394177,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.12691399381416182,
+    "beat_phase": 0.3199999999999932,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.022100579360019097,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.10600747844420381,
+    "beat_phase": 0.3599999999999923,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.02073045393222356,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.08854488893126598,
+    "beat_phase": 0.3999999999999915,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.01944526943096717,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.07395890809700613,
+    "beat_phase": 0.4399999999999906,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.01823975994346927,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.06177567280193315,
+    "beat_phase": 0.47999999999998977,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.01710898601721451,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.05159937928134427,
+    "beat_phase": 0.5199999999999889,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.016048314421048555,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.04309942444101884,
+    "beat_phase": 0.5599999999999881,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.015053399160984648,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.03599966536455395,
+    "beat_phase": 0.5999999999999872,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.014120163672935287,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.030069448099786025,
+    "beat_phase": 0.6399999999999864,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.013244784119405488,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.025116114271328545,
+    "beat_phase": 0.6799999999999855,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.012423673721707558,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.02097874207724226,
+    "beat_phase": 0.7199999999999847,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.011653468063500233,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.01752291833000069,
+    "beat_phase": 0.7599999999999838,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.010931011305434907,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.014636371698042128,
+    "beat_phase": 0.799999999999983,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.010253343254424868,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.012225325282517607,
+    "beat_phase": 0.8399999999999821,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.009617687234555207,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.01021145003330005,
+    "beat_phase": 0.8799999999999812,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.009021438709935659,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.008529320028130173,
+    "beat_phase": 0.9199999999999804,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.008462154612879701,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  },
+  {
+    "onset": 0.007124286943090687,
+    "beat_phase": 0.9599999999999795,
+    "beat_confidence": 1.0,
+    "bpm": 120.0,
+    "density": 0.007937543333683184,
+    "low_transient": 0.0,
+    "mid_transient": 0.0,
+    "high_transient": 0.0
+  }
+]

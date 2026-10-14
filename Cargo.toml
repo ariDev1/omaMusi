@@ -15,6 +15,11 @@ unicode-casefold = "0.2"
 tempfile = "3"
 cpal = { version = "0.18.2", features = ["pulseaudio"] }
 rtrb = "0.3"
+rustfft = "6.4"
+
+[[test]]
+name = "analysis"
+path = "tests/rust/analysis.rs"
 
 [[test]]
 name = "audio"
