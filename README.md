@@ -8,7 +8,7 @@ keyboard, click a song, or drag music files into the window.
 
 ![omaMusi playing music with the Event Horizon visualization](event-horizon.png)
 
-Version **0.10.0** · [MIT license](LICENSE)
+Version **0.11.0** · [MIT license](LICENSE)
 
 Player and search use have been tested on **Omarchy and Ubuntu**. On
 Omarchy, the player follows your theme. On GNOME, it uses a normal window
@@ -16,78 +16,68 @@ with title-bar controls.
 
 ## Install
 
-Choose either the standalone installation or the Omarchy plugin below.
-You need **Python 3.11 or newer**, **FFmpeg**, and an internet connection
-for installation. Ubuntu users also need the `python3-venv` package.
+omaMusi is a native Rust application. Building it needs **Rust 1.92 or
+newer**, GTK 4 development libraries, an audio backend and FFmpeg. Running
+an installed binary needs GTK 4.6 or newer, FFmpeg and your desktop audio
+service. Hardware visuals use OpenGL 3.3; software rendering is available.
 
 ### Ubuntu and other Linux desktops
 
-Install Python, FFmpeg, and Git using your distribution's package manager.
-Then open a terminal and run:
+On Ubuntu, install the system build dependencies:
+
+```bash
+sudo apt-get install build-essential pkg-config libgtk-4-dev libasound2-dev libpulse-dev libepoxy-dev ffmpeg git desktop-file-utils
+```
+
+Install a current [Rust toolchain](https://rustup.rs), then build and install:
 
 ```bash
 git clone https://github.com/ariDev1/omaMusi.git
 cd omaMusi
-python3 -m venv .venv
-.venv/bin/python -m pip install -e .
-mkdir -p ~/.local/bin
-ln -s "$PWD/.venv/bin/omaMusi" ~/.local/bin/omaMusi
-.venv/bin/python -m omamusi.desktop install
+bash scripts/setup-player.sh
 ```
 
-Keep the `omaMusi` folder: the launcher uses the installation inside it.
-If your terminal cannot find `omaMusi`, use `~/.local/bin/omaMusi` instead.
-If the launcher already exists, check your existing installation before
-replacing it.
+The installer copies the executable into your user data directory and adds
+`~/.local/bin/omaMusi` and an application-menu entry. It preserves music and
+saved playlists, including those from the previously managed Python player.
+It refuses unrelated launchers, icons and unmanaged installation directories.
+The source checkout is not needed to run the installed executable.
 
-You can now open **omaMusi** from your application menu. It loads your
-Music folder, including its subfolders. If there is no Music folder, it
-opens an empty window where you can add files or browse to another folder.
-The menu launcher uses your desktop's configured Music location, even if
-the folder has a different name or is on another drive.
+Open **omaMusi** from your application menu to load your configured Music
+folder recursively. If that folder is unavailable, an empty player opens.
+If your terminal cannot find the command, use `~/.local/bin/omaMusi`.
 
-If omaMusi is already installed, add the menu entry by running
-`.venv/bin/python -m omamusi.desktop install` from the project folder.
-Remove just that entry with `.venv/bin/python -m omamusi.desktop remove`.
-
-To update this installation, close the player and run these commands from
-the `omaMusi` folder:
+To update, close the player, pull the changes and run setup again:
 
 ```bash
 git pull --ff-only
-.venv/bin/python -m pip install -e .
-.venv/bin/python -m omamusi.desktop install
+bash scripts/setup-player.sh
 ```
+
+Remove the managed player with `bash scripts/remove-player.sh`. Music and
+saved playlists are kept. Manage only the menu entry with
+`omaMusi --desktop install` or `omaMusi --desktop remove`.
 
 ### Omarchy
 
-The optional bar widget opens your Music folder with the Event Horizon
-visual. These commands install the widget and the player:
+The optional bar widget opens the same native player. Install Rust, GTK 4,
+ALSA/PulseAudio development libraries, pkg-config and FFmpeg through your
+distribution, then install the widget and build the player:
 
 ```bash
-omarchy pkg add python ffmpeg
 omarchy plugin add https://github.com/ariDev1/omaMusi.git --enable
 bash ~/.config/omarchy/plugins/io.github.aridev1.omamusi/scripts/setup-player.sh
 ```
 
-The setup script also adds omaMusi to your application menu. You can use
-either the menu entry or the bar widget to open the player.
-
-If you already installed the standalone player, the widget can use it.
-Skip the setup script in that case; it will not replace an existing
-standalone launcher.
-
-To update, close the player, then run:
+An existing native standalone installation can be used by the widget. To
+update, close the player, update the plugin and run setup again:
 
 ```bash
 omarchy plugin update io.github.aridev1.omamusi
 bash ~/.config/omarchy/plugins/io.github.aridev1.omamusi/scripts/setup-player.sh
 ```
 
-If you use a standalone installation with the widget, update the player
-using the standalone instructions above.
-
-To remove the player installed by the setup script and the widget:
+Remove the player and widget with:
 
 ```bash
 bash ~/.config/omarchy/plugins/io.github.aridev1.omamusi/scripts/remove-player.sh
@@ -243,8 +233,7 @@ omaMusi ~/Music --recursive --view "cover gallery"
 ## Technical details and development
 
 The animated visuals use OpenGL 3.3 or newer. A simpler software renderer
-is available when hardware rendering cannot be used. Supported Python
-packages are listed in [pyproject.toml](pyproject.toml).
+is available when hardware rendering cannot be used. Native dependencies are listed in [Cargo.toml](Cargo.toml).
 
 Saved playlists are stored in `~/.local/share/omamusi/playlists.json`, or
 under `$XDG_DATA_HOME` if you have set it. They refer to your music files,
@@ -257,12 +246,16 @@ unavailable. Check the version in a terminal with `omaMusi --version`.
 To run the tests from the project folder:
 
 ```bash
-.venv/bin/python -m unittest discover -s tests
-.venv/bin/python tests/smoke_gpu.py
+cargo fmt --all --check
+cargo clippy --locked --all-targets -- -D warnings
+cargo test --locked
+cargo test --locked --test audio -- --include-ignored --test-threads=1
+cargo run --locked --bin render-smoke
+cargo run --locked --bin player-smoke
 ```
 
 The full suite needs access to an audio service; the GPU check also needs
 a desktop session and a hardware GPU. GitHub Actions runs regression tests
-and checks the package build. See [compatibility notes](docs/compatibility.md)
+and builds native release archives. See [compatibility notes](docs/compatibility.md)
 for tested dependency versions and detailed desktop checks, and the
 [changelog](CHANGELOG.md) for changes between versions.

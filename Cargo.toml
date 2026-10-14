@@ -2,6 +2,7 @@
 name = "omamusi"
 version = "0.11.0"
 edition = "2024"
+rust-version = "1.92"
 license = "MIT"
 description = "A local Linux music player with live audio visuals"
 repository = "https://github.com/ariDev1/omaMusi"
@@ -14,6 +15,10 @@ path = "src/main.rs"
 [[test]]
 name = "desktop"
 path = "tests/rust/desktop.rs"
+
+[[test]]
+name = "install"
+path = "tests/rust/install.rs"
 
 [dependencies]
 anyhow = "1"

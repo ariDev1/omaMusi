@@ -1,13 +1,18 @@
 # Changelog
 
-## Unreleased
+## 0.11.0 (development)
+
+- Replaced the Python player with a native Rust/GTK application, retaining the text-first interface, keyboard workflows, saved-playlist schema and all nine visuals.
+- Added native audio streaming, bounded background workers, OpenGL rendering and Cairo fallback.
+- Replaced Python packaging with a native installer, recognized managed-install migration and Rust CI.
+
 
 - Refined Particle Dance with a larger, more centered gold ring and a blue/violet surrounding swarm. Particle size stays small during loud passages, and the simpler palette avoids washed-out overlapping colors. The software renderer follows the same visual direction.
 - Cover Gallery keeps covers still between transitions, without a music-driven pulse.
 - Added Cover Gallery, a separate visual with gently changing album-cover tiles. Matching artwork groups songs together; clicking a tile plays a random song from the group, and hovering keeps that tile still.
 - Gallery artwork loads in the background with bounded thumbnails and protection against results from a replaced music collection. The layout adapts to window size and leaves room for controls.
 - Added a user-local application-menu launcher and Event Horizon icon. It opens the configured Music folder recursively, or an empty player when that folder is unavailable.
-- Omarchy setup and removal manage the menu entry automatically; standalone installations can add or remove it with `python -m omamusi.desktop install` or `remove`.
+- Omarchy setup and removal manage the menu entry automatically; standalone installations can add or remove it with `omaMusi --desktop install` or `omaMusi --desktop remove`.
 
 ## 0.10.0
 

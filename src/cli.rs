@@ -36,6 +36,12 @@ pub struct Cli {
     /// Manage the native application-menu launcher.
     #[arg(long, value_enum)]
     pub desktop: Option<DesktopAction>,
+    /// Install this native executable and its menu launcher for the current user.
+    #[arg(long, conflicts_with_all = ["uninstall", "desktop"])]
+    pub install: bool,
+    /// Remove the managed executable and launchers while preserving playlists.
+    #[arg(long, conflicts_with = "desktop")]
+    pub uninstall: bool,
     #[arg(skip)]
     pub empty_start: bool,
 }
@@ -82,6 +88,8 @@ impl Cli {
             all: false,
             view: VisualMode::EventHorizon,
             desktop: None,
+            install: false,
+            uninstall: false,
             empty_start,
         }
     }

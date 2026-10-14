@@ -9,6 +9,17 @@ use omamusi::{
 };
 fn run() -> Result<()> {
     let cli = Cli::parse_from(std::env::args_os()).unwrap_or_else(|error| error.exit());
+    if cli.install {
+        omamusi::install::check_dependencies()?;
+        omamusi::install::Installation::current().install(&std::env::current_exe()?)?;
+        println!("Installed omaMusi for this user.");
+        return Ok(());
+    }
+    if cli.uninstall {
+        omamusi::install::Installation::current().remove()?;
+        println!("Removed managed player installation. Music and playlists are kept.");
+        return Ok(());
+    }
     match cli.desktop {
         Some(DesktopAction::Install) => {
             println!("Installed {}", Desktop::current()?.install()?.display());

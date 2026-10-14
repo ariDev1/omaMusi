@@ -49,6 +49,19 @@ fn make_tone(path: &Path) {
 #[ignore = "requires a desktop, audio service and GPU; cargo run --bin player-smoke"]
 fn desktop_workflows() {
     gtk::init().unwrap();
+    eprintln!(
+        "GTK runtime {}.{}.{}",
+        gtk::major_version(),
+        gtk::minor_version(),
+        gtk::micro_version()
+    );
+    if let Ok(expected) = std::env::var("OMAMUSI_TEST_GTK_MINOR") {
+        assert_eq!(
+            gtk::minor_version(),
+            expected.parse::<u32>().unwrap(),
+            "Compatibility test loaded the wrong GTK runtime"
+        );
+    }
     let root = tempfile::tempdir().unwrap();
     let album = root.path().join("Music/Artist/Album");
     std::fs::create_dir_all(&album).unwrap();

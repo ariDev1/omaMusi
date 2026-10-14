@@ -1,4 +1,4 @@
-name: Regression tests
+name: Rust verification
 
 on:
   push:
@@ -11,43 +11,44 @@ permissions:
 
 jobs:
   tests:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
         include:
-          - python: '3.11'
-            dependencies: 'PySide6==6.7.0 numpy==1.26.4 PyOpenGL==3.1.7'
-          - python: '3.14'
-            dependencies: ''
-    env:
-      QT_QPA_PLATFORM: offscreen
-      QT_QPA_PLATFORMTHEME: ''
-      QT_STYLE_OVERRIDE: Fusion
-      PYTHONFAULTHANDLER: '1'
+          - os: ubuntu-22.04
+            rust: '1.92.0'
+          - os: ubuntu-24.04
+            rust: stable
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python }}
-          cache: pip
-      - name: Install system dependencies
+      - name: Install native dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg pulseaudio libegl1 libgl1 libopengl0 libxkbcommon0
-      - name: Install player and test dependency versions
-        env:
-          TEST_DEPENDENCIES: ${{ matrix.dependencies }}
-        run: python -m pip install -e . $TEST_DEPENDENCIES
-      - name: Run regression suite with a virtual audio output
+          sudo apt-get install -y libgtk-4-dev libasound2-dev libpulse-dev libepoxy-dev pkg-config ffmpeg pulseaudio xvfb openbox libgl1-mesa-dri desktop-file-utils
+      - name: Select compiler
         run: |
-          export XDG_RUNTIME_DIR="$RUNNER_TEMP/omamusi-runtime"
-          mkdir -p "$XDG_RUNTIME_DIR"
-          chmod 700 "$XDG_RUNTIME_DIR"
-          pulseaudio --start --exit-idle-time=-1
-          pactl load-module module-null-sink sink_name=omamusi_test rate=48000
-          pactl set-default-sink omamusi_test
-          python -m unittest discover -v -s tests
-      - name: Verify packaging
-        run: python -m pip wheel --no-deps . --wheel-dir dist
+          rustup toolchain install "${{ matrix.rust }}" --profile minimal --component rustfmt --component clippy
+          rustup override set "${{ matrix.rust }}"
+          rustc --version
+          pkg-config --modversion gtk4
+      - name: Format and lint
+        run: |
+          cargo fmt --all --check
+          cargo clippy --locked --all-targets -- -D warnings
+      - name: Core, rendering and isolated installation tests
+        run: cargo test --locked
+      - name: Native audio and desktop workflows
+        run: xvfb-run -a dbus-run-session bash scripts/test-desktop.sh
+      - name: Package native release
+        run: |
+          cargo build --locked --release --bin omaMusi
+          mkdir -p dist/omaMusi
+          cp target/release/omaMusi LICENSE README.md dist/omaMusi/
+          tar -C dist -czf dist/omaMusi-${{ matrix.os }}-${{ matrix.rust }}.tar.gz omaMusi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: native-${{ matrix.os }}-${{ matrix.rust }}
+          path: dist/*.tar.gz
+          if-no-files-found: error

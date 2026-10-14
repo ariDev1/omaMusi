@@ -1094,17 +1094,7 @@ impl PlayerWindow {
 }
 
 pub fn run(cli: Cli) -> Result<()> {
-    for executable in ["ffmpeg", "ffprobe"] {
-        if std::process::Command::new(executable)
-            .arg("-version")
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
-            .is_err()
-        {
-            bail!("Missing {executable}. Install FFmpeg first.");
-        }
-    }
+    crate::install::check_dependencies()?;
     glib::set_prgname(Some("omaMusi"));
     glib::set_application_name("omaMusi");
     let app = gtk::Application::builder()

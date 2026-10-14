@@ -5,6 +5,7 @@ pub mod background;
 pub mod cli;
 pub mod desktop;
 pub mod gallery;
+pub mod install;
 pub mod library;
 pub mod player;
 pub mod playlists;

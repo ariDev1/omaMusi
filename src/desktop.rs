@@ -30,28 +30,15 @@ impl Desktop {
             .join(format!("icons/hicolor/scalable/apps/{APP_ID}.svg"))
     }
     fn command(&self) -> Result<String> {
-        let path = self
-            .executable
-            .to_str()
-            .context("Desktop executable path is not UTF-8")?;
-        if !self.executable.is_absolute()
-            || path.chars().any(|c| matches!(c, '\n' | '\r' | '\t' | '='))
-        {
-            bail!("Invalid desktop executable path");
-        }
-        let mut quoted = String::new();
-        for c in path.chars() {
-            if matches!(c, '\\' | '"' | '`' | '$') {
-                quoted.push('\\');
-            }
-            quoted.push(c);
-        }
         Ok(format!(
-            "\"{}\" --desktop launch",
-            quoted.replace('\\', "\\\\").replace('%', "%%")
+            "{} --desktop launch",
+            quote_executable(&self.executable)?
         ))
     }
     fn owned(&self) -> Result<bool> {
+        self.owned_command(&self.command()?)
+    }
+    fn owned_command(&self, command: &str) -> Result<bool> {
         let path = self.entry();
         let Ok(metadata) = fs::symlink_metadata(&path) else {
             return Ok(false);
@@ -60,14 +47,23 @@ impl Desktop {
             return Ok(false);
         }
         let text = fs::read_to_string(path)?;
-        let command = format!("Exec={}", self.command()?);
+        let command = format!("Exec={command}");
         Ok(text.lines().any(|line| line == "X-omaMusi-Managed=true")
             && text.lines().any(|line| line == command))
     }
-    pub fn install(&self) -> Result<PathBuf> {
+    fn legacy_owned(&self, legacy: Option<&Path>) -> Result<bool> {
+        match legacy {
+            Some(path) => self.owned_command(&format!(
+                "{} -m omamusi.desktop launch",
+                quote_executable(path)?
+            )),
+            None => Ok(false),
+        }
+    }
+    pub(crate) fn check_install(&self, legacy: Option<&Path>) -> Result<()> {
         let entry = self.entry();
         let icon = self.icon();
-        if fs::symlink_metadata(&entry).is_ok() && !self.owned()? {
+        if fs::symlink_metadata(&entry).is_ok() && !self.owned()? && !self.legacy_owned(legacy)? {
             bail!("Another launcher already exists at {}", entry.display());
         }
         if let Ok(metadata) = fs::symlink_metadata(&icon)
@@ -77,13 +73,26 @@ impl Desktop {
         {
             bail!("An unrelated icon already exists at {}", icon.display());
         }
+        self.command()?;
+        Ok(())
+    }
+    pub fn install(&self) -> Result<PathBuf> {
+        self.install_with_legacy(None)
+    }
+    pub(crate) fn install_with_legacy(&self, legacy: Option<&Path>) -> Result<PathBuf> {
+        self.check_install(legacy)?;
+        let entry = self.entry();
+        let icon = self.icon();
         let command = self.command()?;
         atomic(&icon, ICON)?;
         atomic(&entry, format!("[Desktop Entry]\nType=Application\nName=omaMusi\nComment=Play your music with animated visuals\nExec={command}\nIcon={APP_ID}\nTerminal=false\nCategories=AudioVideo;Audio;Player;\nKeywords=Music;Songs;Playlist;Visualizer;\nStartupNotify=false\nStartupWMClass=omaMusi\nX-omaMusi-Managed=true\n").as_bytes())?;
         Ok(entry)
     }
     pub fn remove(&self) -> Result<()> {
-        if !self.owned()? {
+        self.remove_with_legacy(None)
+    }
+    pub(crate) fn remove_with_legacy(&self, legacy: Option<&Path>) -> Result<()> {
+        if !self.owned()? && !self.legacy_owned(legacy)? {
             return Ok(());
         }
         fs::remove_file(self.entry())?;
@@ -96,7 +105,26 @@ impl Desktop {
         Ok(())
     }
 }
-fn atomic(path: &Path, contents: &[u8]) -> Result<()> {
+fn quote_executable(executable: &Path) -> Result<String> {
+    let path = executable
+        .to_str()
+        .context("Desktop executable path is not UTF-8")?;
+    if !executable.is_absolute() || path.chars().any(|c| matches!(c, '\n' | '\r' | '\t' | '=')) {
+        bail!("Invalid desktop executable path");
+    }
+    let mut quoted = String::new();
+    for c in path.chars() {
+        if matches!(c, '\\' | '"' | '`' | '$') {
+            quoted.push('\\');
+        }
+        quoted.push(c);
+    }
+    Ok(format!(
+        "\"{}\"",
+        quoted.replace('\\', "\\\\").replace('%', "%%")
+    ))
+}
+pub(crate) fn atomic(path: &Path, contents: &[u8]) -> Result<()> {
     let parent = path.parent().context("No destination directory")?;
     fs::create_dir_all(parent)?;
     let mut file = tempfile::NamedTempFile::new_in(parent)?;

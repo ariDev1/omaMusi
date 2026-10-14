@@ -1,90 +1,68 @@
-# Compatibility validation for 0.10.0
+# Compatibility validation for 0.11.0
 
-omaMusi uses one Python/PySide6 application on Linux. The Omarchy plugin is a launcher for that application; GNOME uses its native window decorations.
+omaMusi uses one Rust/GTK player on Linux. The optional Omarchy QML widget
+launches that executable. Python is not needed to build or run the native player.
 
 ## Requirements
 
-- Python 3.11 or newer.
-- PySide6/Qt 6.7 or newer, below 7.
-- NumPy 1.26 or newer, below 3; PyOpenGL 3.1.7 or newer, below 4.
-- FFmpeg and ffprobe, plus a desktop audio service.
-- OpenGL 3.3 or newer for hardware visuals; a CPU fallback is available.
-- Setuptools 77.0.3 or newer when building the package.
+- Rust 1.92 or newer for source builds; the installed executable needs no Rust toolchain.
+- GTK 4.6 or newer, Cairo, GLib and a Linux audio service (PipeWire/PulseAudio or ALSA).
+- FFmpeg and ffprobe for decoding and metadata.
+- OpenGL 3.3 for GPU rendering; Cairo fallback handles every visual.
+- Source builds also need pkg-config, GTK/ALSA/PulseAudio development libraries and libepoxy.
 
-## Validation on this machine
+## Recorded local checks
 
-| Environment | Result |
+| Environment | Evidence |
 | --- | --- |
-| Python 3.14.7, PySide6/Qt 6.11.2 | All 175 development unit/integration tests pass, including recursive search, keyboard result navigation, application-menu installation/removal, Cover Gallery, and the refined Particle Dance |
-| Python 3.11.17, PySide6/Qt 6.7.0, NumPy 1.26.4, PyOpenGL 3.1.7 | All 151 development unit/integration tests pass; the previous hardening round also passed with only built-in theme colors |
-| Setuptools 77.0.3 | Wheel builds with version 0.10.0, MIT license expression, license file, and all new modules |
-| Hyprland, AMD Radeon GPU, Qt 6.11.2 and Qt 6.7.0 | GPU smoke tests cover waveform alpha, color accumulation, 64 view switches, cover image rendering and clearing, and uninterrupted audio |
-| GNOME configuration, offscreen renderer | Native decoration flags retained; Waveform has transparent background pixels and other visuals are opaque |
+| Rust 1.99, GTK 4.22.4 | Core and isolated-install tests, strict Clippy and formatting pass; production GTK workflows pass |
+| Rust 1.92.0 | All targets compile; core and isolated-install tests pass |
+| GTK 4.6.9 from Ubuntu Jammy, Rust 1.92 | All targets build against its pkg-config files; player workflows pass with an assertion confirming the loaded GTK version |
+| Hyprland / AMD Radeon (radeonsi, renoir) | Real GPU tests cover nine modes, 64 switches, alpha/color, cover clearing, sustained particle input, context-safe cleanup and forced Cairo fallback |
+| Temporary HOME/XDG directories | Native installation, recognized Python-managed upgrade, idempotency, removal, missing dependencies, failed-copy preservation and desktop-file validation pass |
 
-The isolated Qt 6.7 environment caught and verified the fix for a lazy audio-enum alias import failure. Current builds prefer `QtAudio` and only look up the legacy `QAudio` fallback when needed.
+The isolated GTK 4.6 test loads Ubuntu GTK alongside this host's newer GLib
+and other libraries. Its workflows pass, but that mixed stack emits GTK
+focus and GObject finalization diagnostics. This does not establish a clean
+full Ubuntu 22.04 runtime. CI is configured to test the complete Ubuntu
+22.04 stack with Rust 1.92, and Ubuntu 24.04 with stable Rust; those hosted
+jobs have not been run from this unpushed checkout.
 
-## User-reported desktop validation
-
-Basic player and recursive search use has been reported working on Omarchy
-and Ubuntu. This confirms those workflows; the detailed GNOME compositor,
-artwork, playlist, and focus checks below remain a separate checklist.
-
-## Detailed GNOME desktop validation
-
-GNOME Shell is not installed on the development machine. Offscreen checks verify application configuration and rendering, but do not verify GNOME's compositor or focus policy. Run these checks on a real GNOME session to complete desktop validation:
-
-1. Start omaMusi and confirm native title-bar controls, moving, resizing, and fullscreen work.
-2. Select Waveform with **V**. Confirm the desktop is visible through empty areas and text remains visible. Cycle through the other visuals and confirm their backgrounds are opaque.
-3. Minimize omaMusi, then launch it again using its launcher. Confirm the existing window is restored and receives focus without restarting playback or creating another player. Repeat while it is on another workspace.
-4. Use **A** to create and add to a playlist; use **B** to browse, rename, remove tracks, and load it. Confirm focus returns to the player when the dialog closes and text-entry shortcuts behave normally.
-5. Close and reopen the player; confirm saved playlists persist and **R** still toggles random playback.
-
-For the automated desktop GPU/audio check, run:
+## Running verification
 
 ```bash
-.venv/bin/python tests/smoke_gpu.py
+cargo fmt --all --check
+cargo clippy --locked --all-targets -- -D warnings
+cargo test --locked
+cargo test --locked --test audio -- --include-ignored --test-threads=1
+cargo run --locked --bin render-smoke
+cargo run --locked --bin player-smoke
+cargo build --locked --release --bin omaMusi
 ```
 
-The full suite runs GUI tests offscreen but needs access to the desktop audio service:
+The audio tests need a native or virtual output. Renderer and player smoke
+checks need a desktop; each uses a separate process because GTK initialization
+belongs to one thread. The drivers reject missing test registration instead
+of treating an empty selection as a pass. For CI, `scripts/test-desktop.sh`
+runs under Xvfb, a private D-Bus session, Openbox and virtual PulseAudio.
+Software GL checks in CI do not substitute for hardware GPU evidence.
 
-```bash
-.venv/bin/python -m unittest discover -s tests
-```
+Filesystem jobs retain one running and one replaceable pending operation per
+category. Cancellation rejects late results and shutdown does not wait for a
+filesystem call already blocked in the kernel. FFmpeg children have bounded
+capture or cancellation/reaping, and audio callbacks use preallocated rings.
 
-## Regression coverage
+## Real GNOME checklist
 
-Application-menu checks cover user-local installation, repeated setup,
-removal, preservation of other launchers and music, paths with spaces,
-configured Music folders, and an empty player when Music is unavailable.
-The generated entry passes `desktop-file-validate`; the SVG icon is included
-in the wheel. These checks do not replace opening the launcher in a real
-desktop session.
+GNOME Shell is unavailable on this machine. Actual GNOME focus policy and
+compositor transparency remain unverified; the previous application's user
+reports do not establish Rust desktop parity. Check on a GNOME session:
 
-The regression suite also covers slow metadata reads, slow or unreadable folders, missing tracks, cancellation, shutdown during a pending read, repeated additions with different recursion settings, and pause requests during metadata loading. Worker queues retain at most one running and one pending operation per category. Cancellation discards pending results; it cannot interrupt a filesystem call already blocked in the operating system.
+1. Verify native decorations, move/resize, fullscreen and return from fullscreen.
+2. In Waveform, verify the desktop is visible through empty pixels and text remains readable; other visuals have opaque backgrounds.
+3. Minimize and launch again, including across workspaces. Verify one restored, focused window and uninterrupted audio.
+4. Create/add/rename/remove/load saved playlists, cancel deletion, and verify text fields suppress playback shortcuts.
+5. Close/reopen and verify playlist persistence and shuffle behavior.
 
-Audio teardown uses `QAudioSink.reset()` to discard buffered samples when seeking, switching tracks, or closing. Qt documents that `stop()` drains buffers synchronously on Linux; this produced a long stall when seeking a suspended Qt 6.7 sink during compatibility testing. See [Qt audio sink buffer behavior](https://doc.qt.io/qt-6/qaudiosink.html#stop).
-
-The regression workflow in `.github/workflows/tests.yml` runs the complete suite and builds a wheel under Python 3.11 / Qt 6.7.0 / NumPy 1.26.4 / PyOpenGL 3.1.7, and Python 3.14 with current dependency versions. Its virtual PulseAudio output exercises playback without desktop speakers. A hosted CI pass does not replace the real GPU/audio smoke test or the GNOME checklist above.
-
-CPU fallback checks render the original seven visuals without Omarchy theme files; Cover Art has separate rendering tests. The built-in palette includes every required color, and painter resources are released even if a drawing method raises an exception. These checks cover a missing default color that was hidden by the local Omarchy palette and first surfaced on the clean CI runner.
-
-Cover Art is additionally checked for embedded MP3/FLAC artwork, local image fallback, downscaling, one image on the right at different window shapes, music-driven scale on a plain black background, a black empty stage, and stale artwork results after changing tracks. The GPU smoke check paints an actual image, clears it to black, and verifies an identical Warp frame after returning from Cover Art.
-
-Cover Gallery tests check shared-art song groups, random selection avoiding
-the current song, bounded thumbnails, gradual rotation, stable hover targets,
-balanced crossfades, clicks, responsive layout, and late results after changing
-folders and fixed cover size despite bass changes. The GPU smoke
-check also paints gallery thumbnails, verifies that bass changes leave them
-unchanged, and checks a crossfade midpoint before verifying the original
-Warp frame is unchanged.
-
-Particle Dance checks cover small dots under quiet and loud input and a
-prominent gold ring near the center in the software renderer. The hardware
-color check verifies that both quiet and maximum-audio frames retain color
-without white-out, isolates one GPU particle to check that it stays small,
-and settles the physics under sustained maximum input to check ring visibility
-and framing:
-
-```bash
-.venv/bin/python tests/smoke_particle_colors.py
-```
+The final migration audit and any outstanding observations are recorded in
+`docs/rust-parity.md` when that audit is completed.
