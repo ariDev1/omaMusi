@@ -16,6 +16,17 @@ tempfile = "3"
 cpal = { version = "0.18.2", features = ["pulseaudio"] }
 rtrb = "0.3"
 rustfft = "6.4"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+sha2 = "0.10"
+fastrand = "2"
+
+[[test]]
+name = "artwork"
+path = "tests/rust/artwork.rs"
+
+[[test]]
+name = "gallery"
+path = "tests/rust/gallery.rs"
 
 [[test]]
 name = "analysis"
