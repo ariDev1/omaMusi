@@ -185,6 +185,13 @@ tests must confirm user data and unrelated files survive install/remove/upgrade.
 
 ## Design status
 
-Prepared for user review. Product implementation has not begun. An isolated
+Baseline verification at `fd64193`: the full existing Python regression suite
+passed, 175 tests in 22.825 seconds, using offscreen Qt with desktop audio access.
+Command: `QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME= .venv/bin/python -m unittest discover -s tests`.
+The sandbox-only attempt could not connect to PipeWire/PulseAudio and was
+interrupted; the successful run used approved unrestricted execution. This
+establishes the behavioral baseline, not Rust implementation or GPU validation.
+
+Approved by the user on 2026-10-14. Product implementation has not begun. An isolated
 Rust 1.99.0 toolchain was installed under `/tmp` with user approval to support
 subsequent builds; no shell setup or active player installation was changed.
