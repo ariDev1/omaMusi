@@ -105,6 +105,10 @@ impl Installation {
         if !source.metadata()?.is_file() {
             bail!("The source executable is not a regular file");
         }
+        // Establish ownership before creating installation artifacts. A failed or
+        // interrupted first copy/menu write then remains safe to retry. The
+        // checks above permit adoption only of an empty or playlists-only directory.
+        atomic(&self.marker(), format!("{APP_ID}\n").as_bytes())?;
         let bin = self.directory().join("bin");
         fs::create_dir_all(&bin)?;
         let mut staged = tempfile::NamedTempFile::new_in(&bin)?;
@@ -115,7 +119,6 @@ impl Installation {
         staged.as_file().sync_all()?;
         staged.persist(self.binary())?;
         desktop.install_with_legacy(legacy)?;
-        atomic(&self.marker(), format!("{APP_ID}\n").as_bytes())?;
         let launcher = self.launcher();
         let parent = launcher.parent().context("Launcher has no directory")?;
         fs::create_dir_all(parent)?;

@@ -27,6 +27,16 @@ pub struct Decoder {
     pid: u32,
 }
 
+impl DecodeState {
+    pub(super) fn new() -> Self {
+        Self {
+            done: AtomicBool::new(false),
+            cancelled: AtomicBool::new(false),
+            error: Mutex::new(None),
+        }
+    }
+}
+
 impl Decoder {
     pub fn spawn(path: &Path, offset: f64, rate: u32, channels: u16) -> Result<Self> {
         if !offset.is_finite() || offset < 0.0 || rate == 0 || channels == 0 || channels > 32 {
@@ -55,11 +65,7 @@ impl Decoder {
         let pid = child.id();
         let process = Arc::new(Mutex::new(child));
         let (mut producer, consumer) = RingBuffer::new(PCM_CAPACITY);
-        let state = Arc::new(DecodeState {
-            done: AtomicBool::new(false),
-            cancelled: AtomicBool::new(false),
-            error: Mutex::new(None),
-        });
+        let state = Arc::new(DecodeState::new());
         let worker_state = state.clone();
         let worker_process = process.clone();
         let worker = thread::spawn(move || {

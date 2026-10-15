@@ -15,8 +15,8 @@ launches that executable. Python is not needed to build or run the native player
 
 | Environment | Evidence |
 | --- | --- |
-| Rust 1.99, GTK 4.22.4 | Core and isolated-install tests, strict Clippy and formatting pass; production GTK workflows pass |
-| Rust 1.92.0 | All targets compile; core and isolated-install tests pass |
+| Rust 1.99, GTK 4.22.4 | 80 ordinary tests, native audio, strict Clippy and formatting pass; production GTK workflows pass |
+| Rust 1.92.0 | All targets compile; 80 ordinary tests pass |
 | GTK 4.6.9 from Ubuntu Jammy, Rust 1.92 | All targets build against its pkg-config files; player workflows pass with an assertion confirming the loaded GTK version |
 | Hyprland / AMD Radeon (radeonsi, renoir) | Real GPU tests cover nine modes, 64 switches, alpha/color, cover clearing, sustained particle input, context-safe cleanup and forced Cairo fallback |
 | Temporary HOME/XDG directories | Native installation, recognized Python-managed upgrade, idempotency, removal, missing dependencies, failed-copy preservation and desktop-file validation pass |

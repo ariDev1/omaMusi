@@ -219,3 +219,25 @@ fn baseline_version_one_json_is_read_without_migration() {
         ]
     );
 }
+
+#[test]
+fn natural_order_matches_unicode_decimal_tokens_and_stable_ties() {
+    use omamusi::library::natural_cmp;
+    use std::{cmp::Ordering, path::Path};
+    for (left, right) in [
+        ("song٢.flac", "song١٠.flac"),
+        ("song２.flac", "song１０.flac"),
+        ("song२.flac", "song1०.flac"),
+        ("song1.flac", "song-.flac"),
+    ] {
+        assert_eq!(
+            natural_cmp(Path::new(left), Path::new(right)),
+            Ordering::Less,
+            "{left} / {right}"
+        );
+    }
+    assert_eq!(
+        natural_cmp(Path::new("SONG٠٢.flac"), Path::new("song2.flac")),
+        Ordering::Equal
+    );
+}

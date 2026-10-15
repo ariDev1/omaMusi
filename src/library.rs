@@ -52,39 +52,64 @@ pub fn absolute(path: &Path) -> Result<PathBuf> {
     Ok(resolved)
 }
 
-/// Natural comparison without converting arbitrary-size numeric components to integers.
-pub fn natural_cmp(left: &Path, right: &Path) -> Ordering {
-    let a = casefold(&left.to_string_lossy());
-    let b = casefold(&right.to_string_lossy());
-    let mut a = a.as_bytes();
-    let mut b = b.as_bytes();
-    while !a.is_empty() && !b.is_empty() {
-        let numeric = a[0].is_ascii_digit() && b[0].is_ascii_digit();
-        if numeric {
-            let alen = a.iter().take_while(|c| c.is_ascii_digit()).count();
-            let blen = b.iter().take_while(|c| c.is_ascii_digit()).count();
-            let anum = &a[..alen];
-            let bnum = &b[..blen];
-            let anum = &anum[anum.iter().take_while(|&&c| c == b'0').count()..];
-            let bnum = &bnum[bnum.iter().take_while(|&&c| c == b'0').count()..];
-            let order = anum.len().cmp(&bnum.len()).then_with(|| anum.cmp(bnum));
-            if order != Ordering::Equal {
-                return order;
-            }
-            a = &a[alen..];
-            b = &b[blen..];
-        } else {
-            let order = a[0].cmp(&b[0]);
-            if order != Ordering::Equal {
-                return order;
-            }
-            a = &a[1..];
-            b = &b[1..];
+/// Unicode 16 decimal digits, matching the reference's Python regex/int pair.
+/// Each entry begins a ten-codepoint Nd range; data shares assets/UNICODE-LICENSE.txt.
+fn decimal(c: char) -> Option<u8> {
+    const ZEROS: &[u32] = &[
+        0x30, 0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66, 0xae6, 0xb66, 0xbe6, 0xc66, 0xce6, 0xd66,
+        0xde6, 0xe50, 0xed0, 0xf20, 0x1040, 0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90,
+        0x1b50, 0x1bb0, 0x1c40, 0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xa9f0, 0xaa50, 0xabf0,
+        0xff10, 0x104a0, 0x10d30, 0x10d40, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x112f0, 0x11450,
+        0x114d0, 0x11650, 0x116c0, 0x116d0, 0x116da, 0x11730, 0x118e0, 0x11950, 0x11bf0, 0x11c50,
+        0x11d50, 0x11da0, 0x11f50, 0x16130, 0x16a60, 0x16ac0, 0x16b50, 0x16d70, 0x1ccf0, 0x1d7ce,
+        0x1d7d8, 0x1d7e2, 0x1d7ec, 0x1d7f6, 0x1e140, 0x1e2f0, 0x1e4f0, 0x1e5f1, 0x1e950, 0x1fbf0,
+    ];
+    let code = c as u32;
+    let index = ZEROS.partition_point(|zero| *zero <= code).checked_sub(1)?;
+    let digit = code - ZEROS[index];
+    (digit < 10).then_some(digit as u8)
+}
+
+/// Alternating case-folded text and normalized decimal runs. Retain the final
+/// text part so "song" precedes "song0", and compare numeric runs without overflow.
+fn natural_parts(text: &str) -> Vec<(String, Vec<u8>)> {
+    let mut chars = text.chars().peekable();
+    let mut parts = Vec::new();
+    loop {
+        let mut text = String::new();
+        while chars.peek().is_some_and(|c| decimal(*c).is_none()) {
+            text.push(chars.next().unwrap());
+        }
+        let at_end = chars.peek().is_none();
+        let mut digits = Vec::new();
+        while let Some(digit) = chars.peek().and_then(|c| decimal(*c)) {
+            digits.push(digit);
+            chars.next();
+        }
+        let zeros = digits.iter().take_while(|n| **n == 0).count();
+        digits.drain(..zeros);
+        parts.push((casefold(&text), digits));
+        if at_end {
+            break;
         }
     }
-    a.len()
-        .cmp(&b.len())
-        .then_with(|| left.as_os_str().cmp(right.as_os_str()))
+    parts
+}
+
+/// Natural comparison preserving stable ties across scripts, case and leading zeros.
+pub fn natural_cmp(left: &Path, right: &Path) -> Ordering {
+    let a = natural_parts(&left.to_string_lossy());
+    let b = natural_parts(&right.to_string_lossy());
+    for ((atext, anum), (btext, bnum)) in a.iter().zip(&b) {
+        let order = atext
+            .cmp(btext)
+            .then_with(|| anum.len().cmp(&bnum.len()))
+            .then_with(|| anum.cmp(bnum));
+        if order != Ordering::Equal {
+            return order;
+        }
+    }
+    a.len().cmp(&b.len())
 }
 
 pub fn is_audio(path: &Path) -> bool {

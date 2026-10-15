@@ -222,3 +222,41 @@ fn relative_xdg_data_home_uses_standard_absolute_user_directory() {
     );
     assert!(!root.path().join("relative-data").exists());
 }
+
+#[test]
+fn failed_first_install_and_interrupted_copy_remain_retryable() {
+    for fail_copy in [false, true] {
+        let root = tempfile::tempdir().unwrap();
+        let data = root.path().join("data");
+        let install = Installation::new(root.path().to_owned(), data.clone());
+        let source = root.path().join("source");
+        fs::write(&source, "native").unwrap();
+        fs::create_dir_all(install.directory()).unwrap();
+        let playlists = install.directory().join("playlists.json");
+        fs::write(&playlists, "preserve playlists").unwrap();
+        let obstacle = data.join("icons");
+        if !fail_copy {
+            fs::write(&obstacle, "unrelated").unwrap();
+        }
+        let first_source = if fail_copy {
+            std::path::Path::new("/proc/self/mem")
+        } else {
+            source.as_path()
+        };
+        assert!(install.install(first_source).is_err());
+        if !fail_copy {
+            assert_eq!(fs::read_to_string(&obstacle).unwrap(), "unrelated");
+            fs::remove_file(&obstacle).unwrap();
+        }
+        install
+            .install(&source)
+            .expect("failed initial installation must allow a safe retry");
+        assert_eq!(fs::read_to_string(install.binary()).unwrap(), "native");
+        assert_eq!(
+            fs::read_to_string(&playlists).unwrap(),
+            "preserve playlists"
+        );
+        install.remove().unwrap();
+        assert_eq!(fs::read_to_string(playlists).unwrap(), "preserve playlists");
+    }
+}

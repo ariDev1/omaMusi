@@ -82,17 +82,16 @@ pub fn build(
         _ => bail!("Unsupported audio sample format"),
     }
 }
-fn build_typed<T: cpal::SizedSample + FromSample<f32>>(
+fn build_typed<T: cpal::SizedSample + FromSample<f32> + 'static>(
     device: &cpal::Device,
     config: &SupportedStreamConfig,
-    mut pcm: Consumer<f32>,
+    pcm: Consumer<f32>,
     decode: Arc<DecodeState>,
     shared: Arc<SharedOutput>,
 ) -> Result<Stream> {
     let channels = config.channels() as usize;
     let rate = config.sample_rate();
     let failure = shared.clone();
-    let mut silence = 0u64;
     let mut stream_config = config.config();
     let desired = (rate / 50).max(1);
     if let cpal::SupportedBufferSize::Range { min, max } = *config.buffer_size() {
@@ -100,56 +99,124 @@ fn build_typed<T: cpal::SizedSample + FromSample<f32>>(
     }
     Ok(device.build_output_stream(
         stream_config,
-        move |data: &mut [T], info| {
-            let zero = T::from_sample(0.0);
-            data.fill(zero);
-            if shared.paused.load(Ordering::Acquire)
-                || shared.failed.load(Ordering::Acquire)
-                || shared.ended.load(Ordering::Acquire)
-            {
-                return;
-            }
-            let timestamp = info.timestamp();
-            let latency = (timestamp
-                .playback
-                .duration_since(timestamp.callback)
-                .as_secs_f64()
-                * rate as f64) as u64;
-            shared.latency_frames.store(latency, Ordering::Release);
-            let volume = f32::from_bits(shared.volume.load(Ordering::Relaxed));
-            let mut frames = 0u64;
-            let mut head = shared.analysis_head.load(Ordering::Relaxed) as usize;
-            shared.sequence.fetch_add(1, Ordering::AcqRel);
-            for frame in data.chunks_exact_mut(channels) {
-                if pcm.slots() >= channels {
-                    let mut mono = 0.0;
-                    for sample in frame {
-                        let raw = pcm.pop().unwrap();
-                        mono += raw;
-                        *sample = T::from_sample((raw * volume).clamp(-1.0, 1.0));
-                    }
-                    shared.analysis[head]
-                        .store((mono / channels as f32).to_bits(), Ordering::Relaxed);
-                    head = (head + 1) % 4096;
-                    frames += 1;
-                    silence = 0;
-                } else if decode.done.load(Ordering::Acquire) {
-                    silence += 1;
-                    if silence >= latency.max(1) {
-                        shared.ended.store(true, Ordering::Release);
-                    }
-                }
-            }
-            shared.analysis_head.store(head as u64, Ordering::Relaxed);
-            shared.frames.fetch_add(frames, Ordering::Release);
-            if frames > 0 {
-                shared.revision.fetch_add(1, Ordering::Relaxed);
-            }
-            shared.sequence.fetch_add(1, Ordering::Release);
+        {
+            let mut consume = consumer_callback(pcm, decode, shared, channels, rate);
+            move |data: &mut [T], info| consume(data, info.timestamp())
         },
         move |_error| {
             failure.failed.store(true, Ordering::Release);
         },
         Some(std::time::Duration::from_secs(3)),
     )?)
+}
+
+fn consumer_callback<T: cpal::SizedSample + FromSample<f32>>(
+    mut pcm: Consumer<f32>,
+    decode: Arc<DecodeState>,
+    shared: Arc<SharedOutput>,
+    channels: usize,
+    rate: u32,
+) -> impl FnMut(&mut [T], cpal::OutputStreamTimestamp) {
+    let mut last_playback_end = None;
+    move |data: &mut [T], timestamp: cpal::OutputStreamTimestamp| {
+        let zero = T::from_sample(0.0);
+        data.fill(zero);
+        if shared.paused.load(Ordering::Acquire)
+            || shared.failed.load(Ordering::Acquire)
+            || shared.ended.load(Ordering::Acquire)
+        {
+            return;
+        }
+        let latency = (timestamp
+            .playback
+            .duration_since(timestamp.callback)
+            .as_secs_f64()
+            * rate as f64) as u64;
+        shared.latency_frames.store(latency, Ordering::Release);
+        let volume = f32::from_bits(shared.volume.load(Ordering::Relaxed));
+        let mut frames = 0u64;
+        let mut head = shared.analysis_head.load(Ordering::Relaxed) as usize;
+        shared.sequence.fetch_add(1, Ordering::AcqRel);
+        for (index, frame) in data.chunks_exact_mut(channels).enumerate() {
+            if pcm.slots() >= channels {
+                let mut mono = 0.0;
+                for sample in frame {
+                    let raw = pcm.pop().unwrap();
+                    mono += raw;
+                    *sample = T::from_sample((raw * volume).clamp(-1.0, 1.0));
+                }
+                shared.analysis[head].store((mono / channels as f32).to_bits(), Ordering::Relaxed);
+                head = (head + 1) % 4096;
+                frames += 1;
+                last_playback_end =
+                    timestamp
+                        .playback
+                        .checked_add(std::time::Duration::from_secs_f64(
+                            (index + 1) as f64 / rate as f64,
+                        ));
+            }
+        }
+        // Silence in this buffer is scheduled in the future. Only the callback
+        // clock can prove the final queued PCM frame has reached the device.
+        if decode.done.load(Ordering::Acquire)
+            && pcm.slots() < channels
+            && last_playback_end.is_none_or(|end| timestamp.callback >= end)
+        {
+            shared.ended.store(true, Ordering::Release);
+        }
+        shared.analysis_head.store(head as u64, Ordering::Relaxed);
+        shared.frames.fetch_add(frames, Ordering::Release);
+        if frames > 0 {
+            shared.revision.fetch_add(1, Ordering::Relaxed);
+        }
+        shared.sequence.fetch_add(1, Ordering::Release);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn eof_waits_for_scheduled_last_pcm_in_partial_and_ahead_buffers() {
+        use cpal::{OutputStreamTimestamp, StreamInstant};
+        use std::time::Duration;
+        // A 10-ms final tone in a 20-ms callback, varied device latency.
+        for latency_ms in [0, 5, 40, 100] {
+            let (mut producer, pcm) = rtrb::RingBuffer::new(40);
+            for _ in 0..20 {
+                producer.push(0.5).unwrap();
+            }
+            let decode = Arc::new(DecodeState::new());
+            decode.done.store(true, Ordering::Release);
+            let shared = Arc::new(SharedOutput::new(1.0, false));
+            let mut callback = consumer_callback(pcm, decode, shared.clone(), 2, 1000);
+            let base = StreamInstant::from_millis(1000);
+            let mut data = [0f32; 40];
+            // Several callbacks can be requested ahead of actual device time.
+            for (callback_ms, playback_ms) in
+                [(0, latency_ms), (0, latency_ms + 20), (1, latency_ms + 40)]
+            {
+                callback(
+                    &mut data,
+                    OutputStreamTimestamp {
+                        callback: base + Duration::from_millis(callback_ms),
+                        playback: base + Duration::from_millis(playback_ms),
+                    },
+                );
+                assert!(
+                    !shared.ended.load(Ordering::Acquire),
+                    "latency {latency_ms}: future silence must not finish queued audio"
+                );
+            }
+            callback(
+                &mut data,
+                OutputStreamTimestamp {
+                    callback: base + Duration::from_millis(latency_ms + 10),
+                    playback: base + Duration::from_millis(latency_ms + 60),
+                },
+            );
+            assert!(shared.ended.load(Ordering::Acquire));
+            assert_eq!(shared.frames.load(Ordering::Acquire), 10);
+        }
+    }
 }

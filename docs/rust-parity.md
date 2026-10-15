@@ -4,9 +4,12 @@ Reference: development `d00010374b4c0ef09f3be56472f96f095d70a948` (0.10.0).
 Target: native Rust/GTK 0.11.0. The optional QML launcher and original GLSL
 remain ordinary assets; the player does not import or execute Python.
 
-Status: 63 tracked reference/packaging/test files have been retired from the active tree. Final-tree verification and independent
-whole-branch review are being completed. This report does not
-claim a real GNOME session or an unrun hosted CI job has passed.
+Status: the active player, build, installation and CI paths are native Rust.
+63 tracked Python/reference packaging and test files were retired in `0a66652`.
+Final-tree verification has passed. The independent whole-branch review
+identified three issues; all three have reproducing regressions and fixes.
+This report does not claim a real GNOME session or an unrun hosted CI job
+has passed.
 
 ## Reference evidence
 
@@ -84,7 +87,7 @@ they include a `ui::` or `render::gl::` prefix.
 | GNOME decorations | Native HeaderBar/decorated branch implemented; real GNOME compositor/focus checks remain explicitly unverified |
 | Localized/missing Music location | `configured_localized_music_is_recursive_and_missing_or_home_opens_empty`, plus empty native window assertion |
 | Read-only themes, defaults and live reload | Three theme tests plus GUI palette reload without audio-generation change; startup and periodic reads run on a bounded worker |
-| Native install/update/remove and path escaping | Seven isolated installer tests plus desktop ownership/escaping tests and actual setup/remove scripts in a temporary home |
+| Native install/update/remove and path escaping | Eight isolated installer tests plus desktop ownership/escaping tests and actual setup/remove scripts in a temporary home |
 | Safe recognized Python-managed upgrade | `recognized_python_installation_upgrades_without_running_python`; old venv removed only after successful native install |
 | Unmanaged data/launchers/icons retained | Negative desktop/installer tests; removal script rejects an unmanaged executable before running it; README explains manual migration |
 | Interrupted copy and dependency failure | procfs EIO copy fixture preserves prior executable; missing FFmpeg creates no installation |
@@ -133,6 +136,69 @@ compatibility documentation rather than silently waived.
 
 ## Review and final tree
 
-Pending: final tracked-source retirement verification, complete Rust checks
-from that tree and the independent whole-branch review. The goal remains
-active until that evidence is recorded.
+Retirement commit `0a66652` passed the full checks. The final review fixes
+were then verified again, with these results:
+
+| Check | Result |
+| --- | --- |
+| Tracked Python application/build files | `git ls-files '*.py' pyproject.toml` is empty; no interpreter invocation in Cargo, native source, setup/launch/remove scripts or CI. Legacy names identify managed installations only. |
+| Formatting and lint | `cargo fmt --all --check` and strict all-target Clippy pass. |
+| Ordinary suite | 80 passed, 8 native cases deliberately ignored by the ordinary command. |
+| Native audio | All 9 audio cases pass, including the 5 ignored output-device cases. |
+| GPU | All nine views, 64 switches, cover clearing, waveform alpha/color, particle bounds, cleanup and painted Cairo fallback pass on AMD Radeon. |
+| GUI | Production workflow case passes on GTK 4.22.4 and 4.6.9; each smoke driver checks registration before execution. |
+| Compositor | Real Hyprland waveform transparency, opaque spectrum, focus, 640×420 footer/list bounds and 60-track scrolling pass. Green background channel in the final run: waveform 200, spectrum 38. |
+| Minimum compiler/runtime API | Rust 1.92.0 all-target build and all 80 ordinary tests pass. Real GTK 4.6.9 player and GPU/fallback cases pass with the loader assertion enabled. |
+| Optimized delivery | Native release build and `--version` pass; isolated installer suite includes execution of the installed binary, desktop-file validation, upgrade and removal. |
+
+Together these run 88 distinct Rust cases (80 ordinary, 5 additional audio,
+and 3 GTK/GPU/compositor cases). The Python reference's 175 cases are a
+separate baseline, not added to the Rust count. Audio and GTK checks run in
+separate processes so GTK remains on its initializing thread.
+
+The independent reviewer inspected the baseline, spec, plan, parity reports,
+production modules, relevant tests and CI. It found no Critical issues, two
+Important issues and one sorting difference initially graded Minor. The first
+review attempt failed before inspection because its model hit an account usage
+limit; the available model performed the fresh-context review instead.
+
+All findings were reproduced as failures before correction:
+
+- EOF completion counted future silence and could discard scheduled final PCM.
+  `audio::output::tests::eof_waits_for_scheduled_last_pcm_in_partial_and_ahead_buffers`
+  now proves that completion waits for the final PCM playback timestamp, across
+  0/5/40/100-ms latency and several buffers requested ahead of playback.
+- A failed first installation could persist an executable before its ownership
+  marker, blocking retries. `failed_first_install_and_interrupted_copy_remain_retryable`
+  now proves safe retry after a desktop-icon write failure and a copy read failure,
+  preserving playlists and unrelated files. Validated ownership is established
+  before creating native installation artifacts; upgrades retain atomic copying.
+- ASCII-only number recognition changed Unicode filename order. This was
+  regraded Important because it affects required parity.
+  `natural_order_matches_unicode_decimal_tokens_and_stable_ties` now covers
+  Unicode decimal runs, mixed scripts, numeric/text boundaries and stable
+  case/leading-zero ties using compiled Unicode 16 data.
+
+The ordinary suite passes 80/80 after the fix pass; native audio passes 9/9.
+Strict Clippy and formatting pass. No second review is substituted for the
+regressions and full-suite checks. No review findings remain deferred.
+
+## Implementation decisions
+
+These decisions preserve the approved scope. Each lists the cost of changing
+it if later evidence shows it was wrong.
+
+- Work on the requested development checkout with incremental commits and retain the Python reference through retirement verification; moving the migration commits to another branch would be the correction.
+- Share bounded subprocess capture between ffprobe and artwork; splitting that module would be the correction.
+- Pass model generation and initial pause intent to `AudioPlayer::play`, sharing `TrackInfo` metadata; changing API call sites would be the correction.
+- Request supported 20-ms callback buffers after observing two-second backend defaults; device-specific buffer retuning would be the correction.
+- Pass frame, waveform, artwork, gallery and bounds in a shared rendering `Scene`; changing the two renderer signatures would be the correction.
+- Separate GTK canvas lifecycle and private GL tests into their own modules; moving two modules would be the correction.
+- Preserve the reference's text-only player with keyboard seeking/volume and transport displays; adding widgets would be the correction.
+- Keep ownership and atomic installer operations in Rust behind `--install`/`--uninstall`; removing two switches and splitting the module would be the correction.
+- Use dedicated folder scan/result/cancellation variants and an owned `FolderListing` so replacement and additions cannot interfere; changing those contracts at their consumers would be the correction.
+- Use the available reviewer after the preferred review model failed before inspection; another independent review before integration would be the correction if that review proves insufficient.
+- Regrade Unicode decimal ordering as Important and preserve reference behavior; the cost is modest sorting allocations on the filesystem worker.
+- Retain reference failure behavior for dangling symlinks and non-UTF-8 saved paths; defining a new recovery policy or persistence format would be the correction.
+- Retain the synchronous core playlist helper because production availability checks run on the bounded worker; removing the unused action would be the correction.
+- Retain the explicit GNOME/full-Ubuntu/hosted-CI validation limits rather than infer results from other environments; validation and possible platform fixes before wider distribution would be the correction.
