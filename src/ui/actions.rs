@@ -1,5 +1,15 @@
 use super::*;
 impl PlayerWindow {
+    pub(super) fn selected_visible(&self) -> Option<usize> {
+        let state = self.state.borrow();
+        state.model.selected.filter(|index| {
+            state
+                .model
+                .tracks
+                .get(*index)
+                .is_some_and(|path| library::matches(path, &state.model.query))
+        })
+    }
     pub fn handle_key(
         self: &Rc<Self>,
         key: gdk::Key,
@@ -17,8 +27,9 @@ impl PlayerWindow {
                 .is_some_and(|w| w == &self.folder_input || w.is_ancestor(&self.folder_input));
         if key == gdk::Key::Escape {
             if self.folder_prompt.is_visible() {
+                self.focus_player();
                 self.folder_prompt.set_visible(false);
-                self.dispatch(Action::CancelBrowser);
+                self.dispatch(Action::CancelFolderScan);
             } else if self.state.borrow().model.browser_folder.is_some() {
                 self.dispatch(Action::CancelBrowser);
             } else if in_search {
@@ -32,7 +43,16 @@ impl PlayerWindow {
             self.focus_player();
             return glib::Propagation::Stop;
         }
-        if in_search && matches!(key, gdk::Key::Up | gdk::Key::Down) {
+        if in_search
+            && matches!(key, gdk::Key::Up | gdk::Key::Down)
+            && !modifiers.intersects(
+                gdk::ModifierType::SHIFT_MASK
+                    | gdk::ModifierType::CONTROL_MASK
+                    | gdk::ModifierType::ALT_MASK
+                    | gdk::ModifierType::SUPER_MASK
+                    | gdk::ModifierType::META_MASK,
+            )
+        {
             self.dispatch(Action::MoveSelection(if key == gdk::Key::Down {
                 1
             } else {
@@ -135,6 +155,8 @@ impl PlayerWindow {
                     );
                     if mode != VisualMode::CoverGallery {
                         self.state.borrow_mut().gallery.hovered = None;
+                        self.overlay.set_cursor_from_name(None);
+                        self.overlay.set_tooltip_text(None);
                     }
                     self.visual_notice.set_text(mode.name());
                     self.notice_until
@@ -202,7 +224,12 @@ impl PlayerWindow {
             target = target.min((state.model.duration - 0.1).max(0.0));
         }
         if let Err(error) = state.audio.seek(target) {
-            state.model.status = format!("error: {error:#}");
+            state.audio.stop();
+            let generation = state.model.generation;
+            state.model.dispatch(Action::Failed {
+                generation,
+                message: format!("{error:#}"),
+            });
         }
         state.visual.reset();
         drop(state);
@@ -218,8 +245,16 @@ impl PlayerWindow {
         self.refresh();
     }
     fn prompt_folder(&self) {
-        self.folder_input
-            .set_text(&self.state.borrow().model.current_folder.to_string_lossy());
+        let folder = {
+            let state = self.state.borrow();
+            state
+                .model
+                .browser_folder
+                .as_ref()
+                .unwrap_or(&state.model.current_folder)
+                .clone()
+        };
+        self.folder_input.set_text(&folder.to_string_lossy());
         self.folder_prompt.set_visible(true);
         self.folder_label.set_visible(false);
         self.folder_input.grab_focus();
@@ -259,7 +294,7 @@ impl PlayerWindow {
                 self.dispatch(Action::ScanFolder(folder));
             }
             None => {
-                let index = self.state.borrow().model.selected;
+                let index = self.selected_visible();
                 if let Some(index) = index {
                     self.dispatch(Action::Play(index));
                 }

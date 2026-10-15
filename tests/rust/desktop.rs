@@ -43,3 +43,37 @@ fn unrelated_entries_and_icons_are_preserved() {
     assert!(!desktop.entry().exists());
     assert_eq!(fs::read_to_string(desktop.icon()).unwrap(), "Other icon");
 }
+
+#[test]
+fn configured_localized_music_is_recursive_and_missing_or_home_opens_empty() {
+    let root = tempfile::tempdir().unwrap();
+    let config = root.path().join("config");
+    fs::create_dir(&config).unwrap();
+    let music = root.path().join("Meine Musik");
+    fs::create_dir(&music).unwrap();
+    let directory_file = config.join("user-dirs.dirs");
+    for (setting, expected) in [
+        ("$HOME/Meine Musik", Some(music.clone())),
+        ("$HOME", None),
+        ("$HOME/missing", None),
+    ] {
+        fs::write(&directory_file, format!("XDG_MUSIC_DIR=\"{setting}\"\n")).unwrap();
+        let output = std::process::Command::new(env!("CARGO_BIN_EXE_player-smoke"))
+            .arg("--music-config")
+            .env("HOME", root.path())
+            .env("XDG_CONFIG_HOME", &config)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let (paths, empty, recursive, view): (Vec<std::path::PathBuf>, bool, bool, String) =
+            serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(paths, expected.clone().into_iter().collect::<Vec<_>>());
+        assert_eq!(empty, expected.is_none());
+        assert!(recursive);
+        assert_eq!(view, "Event Horizon");
+    }
+}

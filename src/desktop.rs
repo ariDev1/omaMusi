@@ -7,7 +7,13 @@ use std::{
 };
 
 pub const APP_ID: &str = "io.github.aridev1.omamusi";
-const ICON: &[u8] = include_bytes!("../omamusi/icon.svg");
+pub fn user_data_root() -> PathBuf {
+    std::env::var_os("XDG_DATA_HOME")
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .unwrap_or_else(|| gtk::glib::home_dir().join(".local/share"))
+}
+const ICON: &[u8] = include_bytes!("../assets/icon.svg");
 pub struct Desktop {
     data: PathBuf,
     executable: PathBuf,
@@ -17,10 +23,7 @@ impl Desktop {
         Self { data, executable }
     }
     pub fn current() -> Result<Self> {
-        Ok(Self::new(
-            gtk::glib::user_data_dir(),
-            std::env::current_exe()?,
-        ))
+        Ok(Self::new(user_data_root(), std::env::current_exe()?))
     }
     pub fn entry(&self) -> PathBuf {
         self.data.join(format!("applications/{APP_ID}.desktop"))
@@ -138,4 +141,68 @@ pub fn music_cli() -> crate::cli::Cli {
     let music = gtk::glib::user_special_dir(gtk::glib::UserDirectory::Music)
         .filter(|p| p.is_absolute() && *p != home && p.is_dir());
     crate::cli::Cli::for_music(music)
+}
+
+/// Run off the GTK thread; only a numeric PID and an owned window title enter IPC.
+pub(crate) fn focus_hyprland(program: &std::ffi::OsStr, pid: u32, title: &str) -> Result<()> {
+    use std::{process::Command, time::Duration};
+    let run = |arguments: &[&str], limit| {
+        let mut command = Command::new(program);
+        command.args(arguments);
+        crate::process::capture(command, Duration::from_secs(2), limit)
+    };
+    let mut target = format!("pid:{pid}");
+    if let Ok(output) = run(&["-j", "clients"], 4 * 1024 * 1024)
+        && let Ok(clients) = serde_json::from_slice::<Vec<serde_json::Value>>(&output.stdout)
+        && let Some(address) = clients
+            .iter()
+            .find(|client| {
+                client["pid"].as_u64() == Some(pid as u64)
+                    && client["title"].as_str() == Some(title)
+            })
+            .and_then(|client| client["address"].as_str())
+        && address.strip_prefix("0x").is_some_and(|suffix| {
+            !suffix.is_empty() && suffix.chars().all(|c| c.is_ascii_hexdigit())
+        })
+    {
+        target = format!("address:{address}");
+    }
+    if run(&["dispatch", "focuswindow", &target], 4096).is_ok() {
+        return Ok(());
+    }
+    // https://wiki.hypr.land/Configuring/Basics/Dispatchers/ (Hyprland 0.55 Lua).
+    let expression = format!(
+        "hl.dsp.focus({{window={}}})",
+        serde_json::to_string(&target)?
+    );
+    run(&["dispatch", &expression], 4096)?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+    #[test]
+    fn focus_assistance_selects_modal_window_and_handles_both_hyprland_syntaxes() {
+        for legacy in [true, false] {
+            let root = tempfile::tempdir().unwrap();
+            let program = root.path().join("hyprctl");
+            let log = root.path().join("commands");
+            fs::write(&program, format!(r#"#!/bin/sh
+if [ "$1" = "-j" ]; then
+  printf '%s' '[{{"pid":7,"title":"omaMusi","address":"0x111"}},{{"pid":7,"title":"Saved playlists","address":"0x222"}}]'
+  exit 0
+fi
+printf '%s\n' "$2" "$3" >> '{}'
+if [ "$2" = focuswindow ]; then exit {}; fi
+[ "$2" = 'hl.dsp.focus({{window="address:0x222"}})' ]
+"#, log.display(), if legacy {0} else {1})).unwrap();
+            fs::set_permissions(&program, fs::Permissions::from_mode(0o755)).unwrap();
+            focus_hyprland(program.as_os_str(), 7, "Saved playlists").unwrap();
+            let commands = fs::read_to_string(log).unwrap();
+            assert!(commands.contains("focuswindow\naddress:0x222"));
+            assert_eq!(commands.contains("hl.dsp.focus"), !legacy);
+        }
+    }
 }

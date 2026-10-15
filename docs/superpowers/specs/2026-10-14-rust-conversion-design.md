@@ -192,6 +192,6 @@ The sandbox-only attempt could not connect to PipeWire/PulseAudio and was
 interrupted; the successful run used approved unrestricted execution. This
 establishes the behavioral baseline, not Rust implementation or GPU validation.
 
-Approved by the user on 2026-10-14. Product implementation has not begun. An isolated
+Approved by the user on 2026-10-14. Implementation and verification are tracked in `docs/rust-parity.md`. An isolated
 Rust 1.99.0 toolchain was installed under `/tmp` with user approval to support
 subsequent builds; no shell setup or active player installation was changed.

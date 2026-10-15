@@ -1,3 +1,4 @@
+# Historical local validation environments are not part of the player.
 .venv/
 __pycache__/
 *.egg-info/

@@ -16,7 +16,7 @@ impl Installation {
         Self { home, data }
     }
     pub fn current() -> Self {
-        Self::new(gtk::glib::home_dir(), gtk::glib::user_data_dir())
+        Self::new(gtk::glib::home_dir(), crate::desktop::user_data_root())
     }
     pub fn directory(&self) -> PathBuf {
         self.data.join("omamusi")

@@ -2,6 +2,7 @@
 pub mod artwork;
 pub mod audio;
 pub mod background;
+mod casefold;
 pub mod cli;
 pub mod desktop;
 pub mod gallery;

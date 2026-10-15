@@ -26,7 +26,7 @@ _No response_
 
 ### Maintainer notes
 
-An Event Horizon bar icon launches the standalone omaMusi local music player. The widget does not install or download software on load. Explicit manual setup uses Python venv and pip to install the player and documented dependencies from the plugin checkout. Python 3.11+, FFmpeg/ffprobe, and desktop audio are required; full visuals require OpenGL 3.3+. The root README includes installation, update, and removal instructions. Code and the GPU-rendered Event Horizon logo are licensed under MIT. This listing requires manual player setup.
+An Event Horizon bar icon launches the standalone omaMusi local music player. The widget does not install or download software on load. Explicit manual setup builds and installs the native Rust/GTK player from the plugin checkout. Building requires Rust 1.92+, GTK 4 development libraries and audio development libraries. Runtime requires GTK 4.6+, FFmpeg/ffprobe and desktop audio; full visuals require OpenGL 3.3+. The root README includes installation, update, and removal instructions. Code and the GPU-rendered Event Horizon logo are licensed under MIT. This listing requires manual player setup.
 
 ### Submission checklist
 

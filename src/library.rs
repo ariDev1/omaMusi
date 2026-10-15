@@ -3,11 +3,9 @@ use anyhow::{Context, Result, bail};
 use std::{
     cmp::Ordering,
     collections::HashSet,
-    ffi::OsString,
     fs,
     path::{Component, Path, PathBuf},
 };
-use unicode_casefold::UnicodeCaseFold;
 
 const AUDIO_EXTENSIONS: &[&str] = &[
     "mp3", "flac", "wav", "ogg", "oga", "opus", "m4a", "aac", "aiff", "aif", "wma", "ape", "alac",
@@ -15,7 +13,7 @@ const AUDIO_EXTENSIONS: &[&str] = &[
 ];
 
 pub fn casefold(text: &str) -> String {
-    text.case_fold().collect()
+    crate::casefold::fold(text)
 }
 
 pub fn matches(path: &Path, query: &str) -> bool {
@@ -36,31 +34,22 @@ pub fn absolute(path: &Path) -> Result<PathBuf> {
     } else {
         std::env::current_dir()?.join(expanded)
     };
-    let mut normalized = PathBuf::new();
+    let mut resolved = PathBuf::new();
     for part in full.components() {
         match part {
             Component::ParentDir => {
-                normalized.pop();
+                resolved.pop();
             }
             Component::CurDir => {}
-            other => normalized.push(other.as_os_str()),
+            other => {
+                resolved.push(other.as_os_str());
+                if let Ok(canonical) = fs::canonicalize(&resolved) {
+                    resolved = canonical;
+                }
+            }
         }
     }
-    if let Ok(canonical) = fs::canonicalize(&normalized) {
-        return Ok(canonical);
-    }
-    let mut ancestor = normalized.clone();
-    let mut suffix: Vec<OsString> = Vec::new();
-    loop {
-        if let Ok(canonical) = fs::canonicalize(&ancestor) {
-            return Ok(suffix.iter().rev().fold(canonical, |p, s| p.join(s)));
-        }
-        match ancestor.file_name() {
-            Some(name) => suffix.push(name.to_owned()),
-            None => return Ok(normalized),
-        }
-        ancestor.pop();
-    }
+    Ok(resolved)
 }
 
 /// Natural comparison without converting arbitrary-size numeric components to integers.

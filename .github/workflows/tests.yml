@@ -46,6 +46,7 @@ jobs:
           cargo build --locked --release --bin omaMusi
           mkdir -p dist/omaMusi
           cp target/release/omaMusi LICENSE README.md dist/omaMusi/
+          cp assets/UNICODE-LICENSE.txt dist/omaMusi/
           tar -C dist -czf dist/omaMusi-${{ matrix.os }}-${{ matrix.rust }}.tar.gz omaMusi
       - uses: actions/upload-artifact@v7
         with:

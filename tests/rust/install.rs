@@ -199,3 +199,26 @@ fn removal_script_never_executes_an_unmanaged_binary() {
     assert!(!sentinel.exists());
     assert!(binary.exists());
 }
+
+#[test]
+fn relative_xdg_data_home_uses_standard_absolute_user_directory() {
+    let root = tempfile::tempdir().unwrap();
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_omaMusi"))
+        .arg("--install")
+        .current_dir(root.path())
+        .env("HOME", root.path())
+        .env("XDG_DATA_HOME", "relative-data")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        root.path()
+            .join(".local/share/omamusi/bin/omaMusi")
+            .is_file()
+    );
+    assert!(!root.path().join("relative-data").exists());
+}

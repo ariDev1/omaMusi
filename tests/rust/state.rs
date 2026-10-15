@@ -18,7 +18,41 @@ fn player() -> PlayerState {
 fn folder_navigation_scans_only_the_chosen_folder() {
     let mut state = player();
     let effects = state.dispatch(Action::ScanFolder(PathBuf::from("/music/Album")));
-    assert!(effects.iter().any(|effect| matches!(effect, Effect::Scan {requests,..} if requests.len() == 1 && !requests[0].recursive)));
+    assert!(effects.iter().any(|effect| matches!(effect, Effect::ScanFolder {folder,..} if folder == &PathBuf::from("/music/Album"))));
+}
+
+#[test]
+fn cancel_folder_prompt_keeps_browser_and_rejects_late_folder_results() {
+    use omamusi::player::FolderListing;
+    let mut state = player();
+    let tracks = state.tracks.clone();
+    state.dispatch(Action::Browse("/music".into()));
+    state.dispatch(Action::ScanFolder("/old-folder".into()));
+    let old = state.library_generation;
+    let effects = state.dispatch(Action::CancelFolderScan);
+    assert_eq!(state.browser_folder, Some(PathBuf::from("/music")));
+    assert!(effects.contains(&Effect::Invalidate("library")));
+    state.dispatch(Action::FolderReady {
+        generation: old,
+        result: Ok(FolderListing {
+            folder: "/old-folder".into(),
+            tracks: vec!["/old-folder/stale.flac".into()],
+            start: None,
+        }),
+    });
+    assert_eq!(state.tracks, tracks);
+    state.dispatch(Action::ScanFolder("/alias".into()));
+    state.dispatch(Action::FolderReady {
+        generation: state.library_generation,
+        result: Ok(FolderListing {
+            folder: "/canonical".into(),
+            tracks: vec!["/canonical/one.flac".into(), "/canonical/two.flac".into()],
+            start: Some("/canonical/two.flac".into()),
+        }),
+    });
+    assert_eq!(state.current_folder, PathBuf::from("/canonical"));
+    assert_eq!(state.library_root, PathBuf::from("/canonical"));
+    assert_eq!(state.current, Some(1));
 }
 
 #[test]
@@ -139,14 +173,14 @@ fn failed_scan_preserves_queue_and_cancelled_folder_does_not_replace_it() {
     let token = effects
         .iter()
         .find_map(|e| {
-            if let Effect::Scan { generation, .. } = e {
+            if let Effect::ScanFolder { generation, .. } = e {
                 Some(*generation)
             } else {
                 None
             }
         })
         .unwrap();
-    state.dispatch(Action::LibraryReady {
+    state.dispatch(Action::FolderReady {
         generation: token,
         result: Err("permission denied".into()),
     });
@@ -155,9 +189,13 @@ fn failed_scan_preserves_queue_and_cancelled_folder_does_not_replace_it() {
     state.dispatch(Action::ScanFolder("/other".into()));
     let token = state.library_generation;
     state.dispatch(Action::CancelBrowser);
-    state.dispatch(Action::LibraryReady {
+    state.dispatch(Action::FolderReady {
         generation: token,
-        result: Ok(vec!["/other/song.mp3".into()]),
+        result: Ok(omamusi::player::FolderListing {
+            folder: "/other".into(),
+            tracks: vec!["/other/song.mp3".into()],
+            start: None,
+        }),
     });
     assert_eq!(state.tracks, original);
     assert!(state.browser_folder.is_none());

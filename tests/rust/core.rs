@@ -59,6 +59,38 @@ fn discovery_preserves_unicode_metacharacters_and_non_utf8_paths() {
 }
 
 #[test]
+fn paths_resolve_symlinks_before_parent_components_even_for_missing_tracks() {
+    use std::os::unix::fs::symlink;
+    let root = tempdir().unwrap();
+    let real = root.path().join("real");
+    fs::create_dir_all(real.join("inner")).unwrap();
+    fs::write(real.join("song.flac"), "").unwrap();
+    symlink(real.join("inner"), root.path().join("shortcut")).unwrap();
+    let input = root.path().join("shortcut/../song.flac");
+    assert_eq!(
+        omamusi::library::absolute(&input).unwrap(),
+        real.join("song.flac")
+    );
+    assert_eq!(discover(&[input], false).unwrap(), [real.join("song.flac")]);
+    assert_eq!(
+        omamusi::library::absolute(&root.path().join("shortcut/../missing.flac")).unwrap(),
+        real.join("missing.flac")
+    );
+}
+
+#[test]
+fn casefold_matches_unicode_16_reference_including_newer_scripts() {
+    for (input, folded) in [
+        ("ᲐᲑᲒ", "აბგ"),
+        ("Straße İ ﬃ", "strasse i\u{307} ffi"),
+        ("Ꭰꭰ", "ᎠᎠ"),
+    ] {
+        assert_eq!(omamusi::library::casefold(input), folded);
+    }
+    assert!(matches(std::path::Path::new("/Music/ᲐᲑᲒ/song.flac"), "აბგ"));
+}
+
+#[test]
 fn discovery_does_not_follow_recursive_symlink_loops_and_reports_permissions() {
     use std::os::unix::fs::{PermissionsExt, symlink};
     let root = tempdir().unwrap();

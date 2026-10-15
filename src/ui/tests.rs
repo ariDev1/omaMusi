@@ -8,8 +8,14 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[test]
+fn transport_clock_preserves_hour_format() {
+    assert_eq!(clock(61.0), "1:01");
+    assert_eq!(clock(3661.0), "1:01:01");
+}
+
 #[track_caller]
-fn wait(mut predicate: impl FnMut() -> bool) {
+pub(super) fn wait(mut predicate: impl FnMut() -> bool) {
     let deadline = Instant::now() + Duration::from_secs(8);
     loop {
         while glib::MainContext::default().pending() {
@@ -25,7 +31,7 @@ fn wait(mut predicate: impl FnMut() -> bool) {
 fn key(window: &Rc<PlayerWindow>, key: gdk::Key) {
     window.handle_key(key, gdk::ModifierType::empty());
 }
-fn make_tone(path: &Path) {
+pub(super) fn make_tone(path: &Path) {
     assert!(
         Command::new("ffmpeg")
             .args([
@@ -69,6 +75,9 @@ fn desktop_workflows() {
     let two = album.join("02 two.wav");
     make_tone(&one);
     std::fs::copy(&one, &two).unwrap();
+    image::RgbaImage::from_pixel(32, 32, image::Rgba([180, 90, 30, 255]))
+        .save(album.join("cover.png"))
+        .unwrap();
     let app = gtk::Application::builder()
         .application_id(format!(
             "io.github.aridev1.omamusi.Test{}",
@@ -86,6 +95,7 @@ fn desktop_workflows() {
     .unwrap();
     player.state.borrow_mut().audio.set_volume(0.0);
     assert!(player.state.borrow().model.tracks.is_empty());
+    assert_eq!(player.title.text(), "Drop some music here.");
     let activations = Rc::new(Cell::new(0));
     let count = activations.clone();
     let existing = Rc::downgrade(&player);
@@ -109,6 +119,19 @@ fn desktop_workflows() {
         .unwrap()
         .join("player-smoke");
     let generation = player.state.borrow().audio.snapshot().generation;
+    let activation_background = gtk::ApplicationWindow::builder()
+        .application(&app)
+        .title("omaMusi activation test window")
+        .default_width(300)
+        .default_height(200)
+        .build();
+    activation_background.present();
+    if std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some() {
+        wait(|| {
+            super::compositor_tests::hypr_json("activewindow")["title"].as_str()
+                == Some("omaMusi activation test window")
+        });
+    }
     player.window.minimize();
     let mut remote = Command::new(&driver)
         .args(["--activate", app.application_id().unwrap().as_str()])
@@ -117,10 +140,64 @@ fn desktop_workflows() {
     wait(|| remote.try_wait().unwrap().is_some());
     assert!(remote.wait().unwrap().success());
     wait(|| activations.get() == 1);
+    if std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some() {
+        wait(|| {
+            super::compositor_tests::hypr_json("activewindow")["title"].as_str()
+                == player.window.title().as_deref()
+        });
+    }
+    activation_background.close();
     assert_eq!(
         player.state.borrow().audio.snapshot().generation,
         generation
     );
+    // Exercise the actual registered gallery click signal and tooltip.
+    player.drop_paths(vec![two.clone()]);
+    wait(|| player.state.borrow().model.tracks.len() == 2);
+    player.focus_player();
+    while player.state.borrow().visual.mode != VisualMode::CoverGallery {
+        key(&player, gdk::Key::v);
+    }
+    wait(|| {
+        let state = player.state.borrow();
+        !state.gallery.scanning
+            && state
+                .gallery
+                .covers
+                .values()
+                .any(|cover| cover.tracks.len() == 2)
+    });
+    let point = {
+        let mut state = player.state.borrow_mut();
+        let bounds = state.gallery_bounds;
+        state.gallery.layout(bounds)[0].center()
+    };
+    player.gallery_hover(Some(point));
+    assert!(
+        player
+            .overlay
+            .tooltip_text()
+            .is_some_and(|text| text.contains("2 tracks"))
+    );
+    let controllers = player.overlay.observe_controllers();
+    let click = (0..controllers.n_items())
+        .find_map(|index| {
+            controllers
+                .item(index)
+                .and_then(|item| item.downcast::<gtk::GestureClick>().ok())
+        })
+        .unwrap();
+    click.emit_by_name::<()>("pressed", &[&1i32, &point.0, &point.1]);
+    wait(|| !player.state.borrow().model.loading);
+    assert_eq!(
+        player.state.borrow().model.tracks[player.state.borrow().model.current.unwrap()],
+        two
+    );
+    player.gallery_hover(None);
+    assert!(player.overlay.tooltip_text().is_none());
+    while player.state.borrow().visual.mode != VisualMode::EventHorizon {
+        key(&player, gdk::Key::v);
+    }
     assert!(player.state.borrow().audio.snapshot().has_stream);
     let crash_id = format!("io.github.aridev1.omamusi.Crash{}", std::process::id());
     let ready = root.path().join("ready");
@@ -158,11 +235,26 @@ fn desktop_workflows() {
     key(&player, gdk::Key::slash);
     player.search.set_text("ALBUM");
     assert_eq!(player.state.borrow().model.visible_indices(), [0, 1]);
+    let selection = player.state.borrow().model.selected;
+    assert_eq!(
+        player.handle_key(gdk::Key::Down, gdk::ModifierType::SHIFT_MASK),
+        glib::Propagation::Proceed
+    );
+    assert_eq!(player.state.borrow().model.selected, selection);
+    assert!(player.state.borrow().model.search_focus);
     key(&player, gdk::Key::Down);
     assert!(!player.state.borrow().model.search_focus);
     key(&player, gdk::Key::slash);
     player.search.set_text("no matches");
     key(&player, gdk::Key::Down);
+    assert!(player.state.borrow().model.search_focus);
+    let no_match_generation = player.state.borrow().model.generation;
+    player.search.emit_activate();
+    assert_eq!(
+        player.state.borrow().model.generation,
+        no_match_generation,
+        "Search Enter played a hidden, nonmatching row"
+    );
     assert!(player.state.borrow().model.search_focus);
     let mode = player.state.borrow().visual.mode;
     assert_eq!(
@@ -202,6 +294,16 @@ fn desktop_workflows() {
     assert!(player.state.borrow().model.browser_folder.is_some());
     key(&player, gdk::Key::Left);
     wait(|| player.state.borrow().model.browser_folder.as_deref() == album.parent());
+    player.handle_key(gdk::Key::l, gdk::ModifierType::CONTROL_MASK);
+    assert_eq!(
+        player.folder_input.text().as_str(),
+        album.parent().unwrap().to_str().unwrap()
+    );
+    key(&player, gdk::Key::Escape);
+    assert_eq!(
+        player.state.borrow().model.browser_folder.as_deref(),
+        album.parent()
+    );
     key(&player, gdk::Key::Escape);
     assert!(player.state.borrow().model.browser_folder.is_none());
     player.handle_key(gdk::Key::l, gdk::ModifierType::CONTROL_MASK);
@@ -209,10 +311,24 @@ fn desktop_workflows() {
     player.folder_input.set_text("");
     player.folder_input.emit_activate();
     assert!(player.state.borrow().model.status.contains("enter a path"));
+    let generation_before_bad_folder = player.state.borrow().audio.snapshot().generation;
+    player.folder_input.set_text(one.to_str().unwrap());
+    player.folder_input.emit_activate();
+    wait(|| !player.state.borrow().jobs.contains_key("library"));
+    assert!(player.folder_prompt.is_visible());
+    assert!(player.state.borrow().model.status.contains("Not a folder"));
+    assert_eq!(
+        player.state.borrow().audio.snapshot().generation,
+        generation_before_bad_folder
+    );
     player.folder_input.set_text("..");
     player.folder_input.emit_activate();
     wait(|| !player.folder_prompt.is_visible());
     assert!(player.state.borrow().model.tracks.is_empty());
+    assert_eq!(
+        player.state.borrow().model.current_folder,
+        album.parent().unwrap()
+    );
     player.focus_player();
     player.handle_key(gdk::Key::l, gdk::ModifierType::CONTROL_MASK);
     player.folder_input.set_text(album.to_str().unwrap());
@@ -386,6 +502,111 @@ fn desktop_workflows() {
     player.window.close();
     assert!(!player.state.borrow().audio.snapshot().has_stream);
     assert!(player.state.borrow().closed);
+    let output = Command::new(&driver)
+        .arg("--startup-error")
+        .env("HOME", root.path().join("startup-home"))
+        .env("XDG_DATA_HOME", root.path().join("startup-data"))
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "Startup failure check: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    // A blocked theme file must not block construction or window shutdown.
+    let blocked_home = root.path().join("blocked-home");
+    let fifo = blocked_home.join(".local/state/omarchy/current/theme/colors.toml");
+    std::fs::create_dir_all(fifo.parent().unwrap()).unwrap();
+    assert!(
+        Command::new("mkfifo")
+            .arg(&fifo)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let writer = thread::spawn(move || {
+        use std::{io::Write, os::unix::fs::OpenOptionsExt};
+        thread::sleep(Duration::from_millis(700));
+        let deadline = Instant::now() + Duration::from_secs(3);
+        loop {
+            // Linux O_NONBLOCK lets the fixture time out if no reader starts.
+            if let Ok(mut file) = std::fs::OpenOptions::new()
+                .write(true)
+                .custom_flags(0x800)
+                .open(&fifo)
+            {
+                file.write_all(b"accent = '#ff0000'\n").unwrap();
+                break;
+            }
+            assert!(Instant::now() < deadline, "Theme reader did not start");
+            thread::sleep(Duration::from_millis(5));
+        }
+    });
+    let started = Instant::now();
+    let blocked = PlayerWindow::new(
+        &app,
+        &Cli::for_music(None),
+        root.path().join("blocked-data"),
+        blocked_home,
+    )
+    .unwrap();
+    let construction = started.elapsed();
+    let settling = Instant::now();
+    wait(|| settling.elapsed() > Duration::from_millis(80));
+    let closing = Instant::now();
+    blocked.close();
+    blocked.window.close();
+    let teardown = closing.elapsed();
+    writer.join().unwrap();
+    assert!(
+        construction < Duration::from_millis(400),
+        "Blocked theme stalled construction: {construction:?}"
+    );
+    assert!(
+        teardown < Duration::from_millis(200),
+        "Blocked theme stalled shutdown: {teardown:?}"
+    );
+    // A previously polled metadata result must not discard a replacement job.
+    let late = PlayerWindow::new(
+        &app,
+        &Cli::for_music(None),
+        root.path().join("late-data"),
+        root.path().join("home"),
+    )
+    .unwrap();
+    late.state.borrow_mut().audio.set_volume(0.0);
+    late.timer.borrow_mut().take().unwrap().remove();
+    late.dispatch(Action::ReplaceQueue(vec![one.clone(), two.clone()], None));
+    let mut previous = None;
+    wait(|| {
+        for result in late.state.borrow().background.poll() {
+            if result.category == "metadata" {
+                previous = Some(result);
+            }
+        }
+        previous.is_some()
+    });
+    late.dispatch(Action::Play(1));
+    late.apply_work_result(previous.unwrap());
+    wait(|| {
+        late.tick();
+        !late.state.borrow().model.loading
+    });
+    assert_eq!(late.state.borrow().model.current, Some(1));
+    assert!(late.state.borrow().audio.snapshot().has_stream);
+    late.effects(vec![Effect::Seek(f64::NAN)]);
+    assert!(
+        !late.state.borrow().model.has_stream,
+        "A failed seek left playback marked active"
+    );
+    assert!(!late.state.borrow().audio.snapshot().has_stream);
+    late.dispatch(Action::TogglePause);
+    wait(|| {
+        late.tick();
+        late.state.borrow().audio.snapshot().has_stream
+    });
+    late.close();
+    late.window.close();
     eprintln!(
         "GTK player: playback, view switches, search focus, keyboard transport, history/shuffle, folder browsing, drop paths, playlists, fullscreen and close passed"
     );

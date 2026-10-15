@@ -16,6 +16,12 @@ pub struct ScanRequest {
     pub paths: Vec<PathBuf>,
     pub recursive: bool,
 }
+#[derive(Debug)]
+pub struct FolderListing {
+    pub folder: PathBuf,
+    pub tracks: Vec<PathBuf>,
+    pub start: Option<PathBuf>,
+}
 pub fn discover_requests(requests: &[ScanRequest]) -> Result<Vec<PathBuf>> {
     let mut tracks = Vec::new();
     let mut seen = HashSet::new();
@@ -55,6 +61,11 @@ pub enum Action {
     ReplaceQueue(Vec<PathBuf>, Option<PathBuf>),
     AddPaths(Vec<PathBuf>, bool),
     ScanFolder(PathBuf),
+    FolderReady {
+        generation: u64,
+        result: std::result::Result<FolderListing, String>,
+    },
+    CancelFolderScan,
     LibraryReady {
         generation: u64,
         result: std::result::Result<Vec<PathBuf>, String>,
@@ -85,6 +96,10 @@ pub enum Effect {
     Scan {
         generation: u64,
         requests: Vec<ScanRequest>,
+    },
+    ScanFolder {
+        generation: u64,
+        folder: PathBuf,
     },
     Browse {
         generation: u64,
@@ -412,13 +427,39 @@ impl PlayerState {
                 self.library_generation += 1;
                 self.add_requests.clear();
                 self.scan_kind = Some(ScanKind::Replace(folder.clone()));
-                vec![Effect::Scan {
+                vec![Effect::ScanFolder {
                     generation: self.library_generation,
-                    requests: vec![ScanRequest {
-                        paths: vec![folder],
-                        recursive: false,
-                    }],
+                    folder,
                 }]
+            }
+            Action::FolderReady { generation, result } => {
+                if generation != self.library_generation
+                    || !matches!(self.scan_kind, Some(ScanKind::Replace(_)))
+                {
+                    return Vec::new();
+                }
+                self.scan_kind = None;
+                self.add_requests.clear();
+                match result {
+                    Ok(listing) => {
+                        self.current_folder = listing.folder.clone();
+                        self.library_root = listing.folder;
+                        self.replace(listing.tracks, listing.start)
+                    }
+                    Err(message) => {
+                        self.status = format!("error: {message}");
+                        Vec::new()
+                    }
+                }
+            }
+            Action::CancelFolderScan => {
+                if matches!(self.scan_kind, Some(ScanKind::Replace(_))) {
+                    self.library_generation += 1;
+                    self.scan_kind = None;
+                    vec![Effect::Invalidate("library")]
+                } else {
+                    Vec::new()
+                }
             }
             Action::LibraryReady { generation, result } => {
                 if generation != self.library_generation {

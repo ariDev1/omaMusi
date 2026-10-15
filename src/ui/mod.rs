@@ -6,11 +6,11 @@ use crate::visual::{VisualMode, VisualState};
 use crate::{
     artwork::{Artwork, load_artwork},
     audio::{AudioEvent, AudioPlayer, probe},
-    background::BackgroundTasks,
+    background::{BackgroundTasks, TaskResult},
     cli::Cli,
     gallery::{CoverGallery, Rect},
     library,
-    player::{Action, Effect, PlayerState, TrackInfo, discover_requests},
+    player::{Action, Effect, FolderListing, PlayerState, TrackInfo, discover_requests},
     render::{Scene, canvas::RenderCanvas, cpu::CpuRenderer},
     theme::Theme,
     version,
@@ -31,6 +31,7 @@ use std::{
 enum Work {
     Metadata(TrackInfo),
     Tracks(Vec<PathBuf>),
+    Folder(FolderListing),
     Browser(Vec<BrowserEntry>),
     Artwork(Option<Artwork>),
     Theme(Theme),
@@ -38,6 +39,7 @@ enum Work {
 enum JobKind {
     Metadata(u64, PathBuf),
     Library(u64),
+    Folder(u64),
     Browser(u64, PathBuf),
     Artwork(u64, PathBuf),
     Gallery(u64, PathBuf),
@@ -144,7 +146,16 @@ fn make_listing() -> gtk::ListBox {
 }
 fn clock(seconds: f64) -> String {
     let seconds = seconds.max(0.0) as u64;
-    format!("{}:{:02}", seconds / 60, seconds % 60)
+    if seconds >= 3600 {
+        format!(
+            "{}:{:02}:{:02}",
+            seconds / 3600,
+            (seconds / 60) % 60,
+            seconds % 60
+        )
+    } else {
+        format!("{}:{:02}", seconds / 60, seconds % 60)
+    }
 }
 
 impl PlayerWindow {
@@ -154,7 +165,7 @@ impl PlayerWindow {
         data_root: PathBuf,
         home: PathBuf,
     ) -> Result<Rc<Self>> {
-        let theme = Theme::load_from(&home);
+        let theme = Theme::default();
         let mut visual = VisualState::new();
         visual.mode = cli.view;
         visual.set_palette(theme.palette());
@@ -251,6 +262,11 @@ impl PlayerWindow {
         root.set_hexpand(true);
         root.set_vexpand(true);
         overlay.add_overlay(&root);
+        // GtkOverlay's default unconstrained preferred-size query can inflate
+        // wrapped footer height. Allocate the UI at the actual stage dimensions.
+        overlay.connect_get_child_position(|overlay, _| {
+            Some(gdk::Rectangle::new(0, 0, overlay.width(), overlay.height()))
+        });
         let header = gtk::Box::new(gtk::Orientation::Horizontal, 12);
         let logo = label("omaMusi", "omamusi-accent");
         header.append(&logo);
@@ -390,7 +406,18 @@ impl PlayerWindow {
             }
         });
         player.timer.replace(Some(timer));
-        let paths = cli.startup_paths(&std::env::current_dir()?);
+        let home = player.home.clone();
+        player
+            .state
+            .borrow_mut()
+            .submit("theme", JobKind::Theme, move || {
+                Ok(Work::Theme(Theme::load_from(&home)))
+            });
+        let paths = if cli.empty_start {
+            Vec::new()
+        } else {
+            cli.startup_paths(&std::env::current_dir()?)
+        };
         if !paths.is_empty() {
             player.dispatch(Action::AddPaths(paths, cli.scan_recursive()));
         }
@@ -424,11 +451,11 @@ impl PlayerWindow {
         let weak = Rc::downgrade(self);
         self.search.connect_activate(move |_| {
             if let Some(player) = weak.upgrade() {
-                let selected = player.state.borrow().model.selected;
+                let selected = player.selected_visible();
                 if let Some(index) = selected {
                     player.dispatch(Action::Play(index));
+                    player.focus_player();
                 }
-                player.focus_player();
             }
         });
         let weak = Rc::downgrade(self);
@@ -583,19 +610,19 @@ impl PlayerWindow {
         if let Some(dialog) = self.playlist_dialog.borrow().as_ref() {
             dialog.window.present();
         }
-        if std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some()
-            && let Ok(mut child) = std::process::Command::new("hyprctl")
-                .args([
-                    "dispatch",
-                    "focuswindow",
-                    &format!("pid:{}", std::process::id()),
-                ])
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .spawn()
-        {
+        if std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE").is_some() {
+            let title = self
+                .playlist_dialog
+                .borrow()
+                .as_ref()
+                .and_then(|dialog| dialog.window.title())
+                .or_else(|| self.window.title())
+                .unwrap_or_default()
+                .to_string();
+            let pid = std::process::id();
             std::thread::spawn(move || {
-                let _ = child.wait();
+                let _ =
+                    crate::desktop::focus_hyprland(std::ffi::OsStr::new("hyprctl"), pid, &title);
             });
         }
         self.interact();
@@ -619,7 +646,12 @@ impl PlayerWindow {
                 Effect::AudioTogglePause => state.audio.toggle_pause(),
                 Effect::Seek(seconds) => {
                     if let Err(error) = state.audio.seek(seconds) {
-                        state.model.status = format!("error: {error:#}");
+                        state.audio.stop();
+                        let generation = state.model.generation;
+                        state.model.dispatch(Action::Failed {
+                            generation,
+                            message: format!("{error:#}"),
+                        });
                     }
                 }
                 Effect::ResetVisual => state.visual.reset(),
@@ -686,6 +718,22 @@ impl PlayerWindow {
                 } => state.submit("library", JobKind::Library(generation), move || {
                     Ok(Work::Tracks(discover_requests(&requests)?))
                 }),
+                Effect::ScanFolder { generation, folder } => {
+                    let start = state.folder_start.take();
+                    state.submit("library", JobKind::Folder(generation), move || {
+                        let folder = library::absolute(&folder)?;
+                        if !std::fs::metadata(&folder)?.is_dir() {
+                            bail!("Not a folder: {}", folder.display());
+                        }
+                        let tracks = library::discover(std::slice::from_ref(&folder), false)?;
+                        let start = start.map(|path| library::absolute(&path)).transpose()?;
+                        Ok(Work::Folder(FolderListing {
+                            folder,
+                            tracks,
+                            start,
+                        }))
+                    });
+                }
                 Effect::Browse { generation, folder } => {
                     let source = folder.clone();
                     state.submit("browser", JobKind::Browser(generation, folder), move || {
@@ -698,103 +746,107 @@ impl PlayerWindow {
     fn poll(&self) {
         let results = self.state.borrow().background.poll();
         for result in results {
-            let action = {
-                let mut state = self.state.borrow_mut();
-                let Some(job) = state.jobs.remove(&result.category) else {
-                    continue;
-                };
-                if job.token != result.generation {
-                    continue;
-                }
-                match job.kind {
-                    JobKind::Metadata(generation, path) => {
-                        let result = match result.result {
-                            Ok(Work::Metadata(info)) => {
-                                state.metadata.insert(path, info.clone());
-                                Ok(info)
-                            }
-                            Ok(_) => Err("Invalid metadata result".into()),
-                            Err(e) => Err(format!("{e:#}")),
-                        };
-                        Some(Action::MetadataReady { generation, result })
-                    }
-                    JobKind::Library(generation) => {
-                        let result = match result.result {
-                            Ok(Work::Tracks(tracks)) => Ok(tracks),
-                            Ok(_) => Err("Invalid library result".into()),
-                            Err(e) => Err(format!("{e:#}")),
-                        };
-                        if generation == state.model.library_generation && result.is_ok() {
-                            self.folder_prompt.set_visible(false);
-                            if let Some(start) = state.folder_start.take() {
-                                if let Ok(tracks) = result {
-                                    state.model.current_folder =
-                                        start.parent().unwrap_or(Path::new("/")).to_owned();
-                                    state.model.library_root = state.model.current_folder.clone();
-                                    Some(Action::ReplaceQueue(tracks, Some(start)))
-                                } else {
-                                    unreachable!()
-                                }
-                            } else {
-                                Some(Action::LibraryReady { generation, result })
-                            }
-                        } else {
-                            Some(Action::LibraryReady { generation, result })
-                        }
-                    }
-                    JobKind::Browser(generation, folder) => {
-                        if generation == state.model.browser_generation {
-                            match result.result {
-                                Ok(Work::Browser(entries)) => {
-                                    state.browser_entries = entries;
-                                    state.browser_selected = 0;
-                                    state.browser_success = Some(folder.clone());
-                                    state.model.browser_folder = Some(folder);
-                                }
-                                Err(error) => {
-                                    state.model.browser_folder = state.browser_success.clone();
-                                    state.model.status = format!("error: {error:#}");
-                                }
-                                _ => {}
-                            }
-                        }
-                        None
-                    }
-                    JobKind::Artwork(generation, path) => {
-                        if generation == state.model.generation
-                            && state.artwork_path.as_ref() == Some(&path)
-                            && let Ok(Work::Artwork(art)) = result.result
-                        {
-                            state.cover = art.map(Arc::new);
-                        }
-                        None
-                    }
-                    JobKind::Gallery(generation, path) => {
-                        if generation == state.gallery_generation
-                            && let Ok(Work::Artwork(Some(art))) = result.result
-                        {
-                            state.gallery.add(path, art);
-                        }
-                        None
-                    }
-                    JobKind::Theme => {
-                        if let Ok(Work::Theme(theme)) = result.result
-                            && theme != state.theme
-                        {
-                            state.visual.set_palette(theme.palette());
-                            self.css.load_from_data(&theme.css());
-                            state.theme = theme;
-                        }
-                        None
-                    }
-                }
-            };
-            if let Some(action) = action {
-                self.dispatch(action);
-            }
+            self.apply_work_result(result);
         }
         self.ensure_artwork();
         self.ensure_gallery();
+    }
+    fn apply_work_result(&self, result: TaskResult<Work>) {
+        let mut folder_completed = false;
+        let action = {
+            let mut state = self.state.borrow_mut();
+            if state
+                .jobs
+                .get(&result.category)
+                .is_none_or(|job| job.token != result.generation)
+            {
+                return;
+            }
+            let job = state.jobs.remove(&result.category).unwrap();
+            match job.kind {
+                JobKind::Metadata(generation, path) => {
+                    let result = match result.result {
+                        Ok(Work::Metadata(info)) => {
+                            state.metadata.insert(path, info.clone());
+                            Ok(info)
+                        }
+                        Ok(_) => Err("Invalid metadata result".into()),
+                        Err(e) => Err(format!("{e:#}")),
+                    };
+                    Some(Action::MetadataReady { generation, result })
+                }
+                JobKind::Library(generation) => {
+                    let result = match result.result {
+                        Ok(Work::Tracks(tracks)) => Ok(tracks),
+                        Ok(_) => Err("Invalid library result".into()),
+                        Err(e) => Err(format!("{e:#}")),
+                    };
+                    Some(Action::LibraryReady { generation, result })
+                }
+                JobKind::Folder(generation) => {
+                    let result = match result.result {
+                        Ok(Work::Folder(listing)) => Ok(listing),
+                        Ok(_) => Err("Invalid folder result".into()),
+                        Err(e) => Err(format!("{e:#}")),
+                    };
+                    folder_completed =
+                        generation == state.model.library_generation && result.is_ok();
+                    Some(Action::FolderReady { generation, result })
+                }
+                JobKind::Browser(generation, folder) => {
+                    if generation == state.model.browser_generation {
+                        match result.result {
+                            Ok(Work::Browser(entries)) => {
+                                state.browser_entries = entries;
+                                state.browser_selected = 0;
+                                state.browser_success = Some(folder.clone());
+                                state.model.browser_folder = Some(folder);
+                            }
+                            Err(error) => {
+                                state.model.browser_folder = state.browser_success.clone();
+                                state.model.status = format!("error: {error:#}");
+                            }
+                            _ => {}
+                        }
+                    }
+                    None
+                }
+                JobKind::Artwork(generation, path) => {
+                    if generation == state.model.generation
+                        && state.artwork_path.as_ref() == Some(&path)
+                        && let Ok(Work::Artwork(art)) = result.result
+                    {
+                        state.cover = art.map(Arc::new);
+                    }
+                    None
+                }
+                JobKind::Gallery(generation, path) => {
+                    if generation == state.gallery_generation
+                        && let Ok(Work::Artwork(Some(art))) = result.result
+                    {
+                        state.gallery.add(path, art);
+                    }
+                    None
+                }
+                JobKind::Theme => {
+                    if let Ok(Work::Theme(theme)) = result.result
+                        && theme != state.theme
+                    {
+                        state.visual.set_palette(theme.palette());
+                        self.css.load_from_data(&theme.css());
+                        state.theme = theme;
+                    }
+                    None
+                }
+            }
+        };
+        if let Some(action) = action {
+            if folder_completed {
+                self.focus_player();
+                self.folder_prompt.set_visible(false);
+            }
+            self.dispatch(action);
+        }
     }
     fn ensure_artwork(&self) {
         let mut state = self.state.borrow_mut();
@@ -850,17 +902,34 @@ impl PlayerWindow {
         }
     }
     fn gallery_hover(&self, point: Option<(f64, f64)>) {
-        let hovered = {
+        let (hovered, tooltip) = {
             let mut state = self.state.borrow_mut();
             if state.visual.mode != VisualMode::CoverGallery {
                 return;
             }
             let bounds = state.gallery_bounds;
             state.gallery.hover(point, bounds);
-            state.gallery.hovered
+            let hovered = state.gallery.hovered;
+            let tooltip = hovered
+                .and_then(|index| state.gallery.covers.get(&state.gallery.tiles[index].key))
+                .map(|cover| {
+                    format!(
+                        "{} tracks\n{}",
+                        cover.tracks.len(),
+                        cover
+                            .tracks
+                            .iter()
+                            .take(3)
+                            .map(|path| path.file_stem().unwrap_or_default().to_string_lossy())
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    )
+                });
+            (hovered, tooltip)
         };
         self.overlay
             .set_cursor_from_name(hovered.map(|_| "pointer"));
+        self.overlay.set_tooltip_text(tooltip.as_deref());
         self.canvas.queue_draw();
     }
     fn tick(&self) {
@@ -998,19 +1067,18 @@ impl PlayerWindow {
             } else {
                 model.visible_indices().len()
             };
-            self.scroller.set_size_request(
-                -1,
-                (visible as i32 * 26 + 2)
-                    .max(28)
-                    .min((self.overlay.height() - 230).max(28)),
-            );
+            let desired_list_height = (visible as i32 * 26 + 2).max(28);
             self.panel.set_visible(
                 !self.panel_hidden.get()
                     && (browsing
                         || model.tracks.len() > 1
                         || gtk::prelude::WidgetExt::is_visible(&self.search)),
             );
-            self.title.set_text(&model.title);
+            self.title.set_text(if model.current.is_none() {
+                "Drop some music here."
+            } else {
+                &model.title
+            });
             let subtitle = [model.artist.as_str(), model.album.as_str()]
                 .into_iter()
                 .filter(|s| !s.is_empty())
@@ -1022,8 +1090,11 @@ impl PlayerWindow {
                 .set_text(&model.status.chars().take(220).collect::<String>());
             self.status.set_tooltip_text(Some(&model.status));
             self.status.set_visible(!model.status.is_empty());
-            self.window
-                .set_title(Some(&format!("{} — omaMusi", model.title)));
+            self.window.set_title(Some(&if model.current.is_none() {
+                "omaMusi".into()
+            } else {
+                format!("{} — omaMusi", model.title)
+            }));
             self.transport.set_text(&format!(
                 "{}{} / {}",
                 if snapshot.paused { "paused · " } else { "" },
@@ -1038,6 +1109,14 @@ impl PlayerWindow {
             self.visual_notice
                 .set_visible(Instant::now() < self.notice_until.get());
             self.hint.set_text(&format!("playback: space play/pause · n next · p previous · r random {} · +/= louder · − quieter\n{}\nmusic: / search files & folders · c folders · o/ctrl+o add files · ctrl+l folder path\nplaylists: a add track · b saved playlists\nview: v/shift+v next/previous visual · f fullscreen · tab playlist · esc back · q quit",if model.shuffle{"on"}else{"off"},if browsing{"browse: ↑↓ select (k/j) · →/enter open/play · ←/backspace parent · l play folder"}else{"select: ↑↓ select (k/j) · enter play · ←/→ seek 5s"}));
+            let root = self.logo.parent().unwrap().parent().unwrap();
+            let minimum = root
+                .measure(gtk::Orientation::Vertical, self.overlay.width().max(640))
+                .0;
+            let reserved = minimum - self.scroller.height_request().max(28);
+            let available = (self.overlay.height() - reserved).max(28);
+            self.scroller
+                .set_size_request(-1, desired_list_height.min(available));
             let age = self.last_interaction.get().elapsed().as_secs_f64();
             let opacity = if model.current.is_none() || age < 4.0 {
                 1.0
@@ -1104,9 +1183,11 @@ pub fn run(cli: Cli) -> Result<()> {
 }
 pub fn run_app(app: &gtk::Application, cli: Cli) -> Result<()> {
     let player: Rc<RefCell<Option<Rc<PlayerWindow>>>> = Rc::new(RefCell::new(None));
+    let startup_error = Rc::new(RefCell::new(None));
+    let failure = startup_error.clone();
     let stored = player.clone();
     let home = glib::home_dir();
-    let data_root = glib::user_data_dir();
+    let data_root = crate::desktop::user_data_root();
     app.connect_activate(move |app| {
         if let Some(player) = stored.borrow().as_ref() {
             player.activate();
@@ -1118,7 +1199,7 @@ pub fn run_app(app: &gtk::Application, cli: Cli) -> Result<()> {
                 stored.replace(Some(window));
             }
             Err(error) => {
-                eprintln!("omaMusi: {error:#}");
+                failure.replace(Some(format!("{error:#}")));
                 app.quit();
             }
         }
@@ -1130,11 +1211,16 @@ pub fn run_app(app: &gtk::Application, cli: Cli) -> Result<()> {
         }
     });
     let result = app.run_with_args::<&str>(&[]);
+    if let Some(message) = startup_error.borrow_mut().take() {
+        bail!("{message}");
+    }
     if i32::from(result) != 0 {
         bail!("Player exited with {}", i32::from(result));
     }
     Ok(())
 }
 
+#[cfg(test)]
+mod compositor_tests;
 #[cfg(test)]
 mod tests;

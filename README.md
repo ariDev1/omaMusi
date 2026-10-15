@@ -43,6 +43,12 @@ saved playlists, including those from the previously managed Python player.
 It refuses unrelated launchers, icons and unmanaged installation directories.
 The source checkout is not needed to run the installed executable.
 
+For an unmanaged standalone installation, first remove its menu entry with
+its original installer, then move its `~/.local/bin/omaMusi` launcher aside
+before running setup. Keep `omamusi/playlists.json` in your user data directory;
+the native player reads that same file. Setup will not replace the unmanaged
+installation or execute its Python environment.
+
 Open **omaMusi** from your application menu to load your configured Music
 folder recursively. If that folder is unavailable, an empty player opens.
 If your terminal cannot find the command, use `~/.local/bin/omaMusi`.

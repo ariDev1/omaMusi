@@ -2,6 +2,15 @@
 fn main() -> std::process::ExitCode {
     use gtk::prelude::*;
     let arguments: Vec<String> = std::env::args().collect();
+    if arguments.get(1).is_some_and(|arg| arg == "--music-config") {
+        let cli = omamusi::desktop::music_cli();
+        println!(
+            "{}",
+            serde_json::to_string(&(cli.paths, cli.empty_start, cli.recursive, cli.view.name()))
+                .unwrap()
+        );
+        return std::process::ExitCode::SUCCESS;
+    }
     if arguments.get(1).is_some_and(|arg| arg == "--activate") {
         let app = gtk::Application::builder()
             .application_id(&arguments[2])
@@ -24,6 +33,23 @@ fn main() -> std::process::ExitCode {
         app.connect_activate(|_| {});
         std::fs::write(&arguments[3], "ready").unwrap();
         app.run_with_args::<&str>(&[]);
+        return std::process::ExitCode::SUCCESS;
+    }
+    if arguments.get(1).is_some_and(|arg| arg == "--startup-error") {
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_current_dir(directory.path()).unwrap();
+        std::fs::remove_dir(directory.path()).unwrap();
+        let app = gtk::Application::builder()
+            .application_id(format!(
+                "io.github.aridev1.omamusi.StartupError{}",
+                std::process::id()
+            ))
+            .build();
+        let cli = omamusi::cli::Cli::parse_from(["omaMusi"]).unwrap();
+        assert!(
+            omamusi::ui::run_app(&app, cli).is_err(),
+            "Startup failure incorrectly reported success"
+        );
         return std::process::ExitCode::SUCCESS;
     }
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| std::ffi::OsString::from("cargo"));
