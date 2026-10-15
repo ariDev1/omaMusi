@@ -105,6 +105,7 @@ pub struct PlayerWindow {
     transport: gtk::Label,
     volume_notice: gtk::Label,
     hint: gtk::Label,
+    footer: gtk::Box,
     version_label: gtk::Label,
     track_rows: RefCell<Vec<gtk::ListBoxRow>>,
     shown_tracks: RefCell<Vec<PathBuf>>,
@@ -374,6 +375,7 @@ impl PlayerWindow {
             transport,
             volume_notice,
             hint,
+            footer,
             version_label,
             track_rows: RefCell::new(Vec::new()),
             shown_tracks: RefCell::new(Vec::new()),
@@ -514,9 +516,15 @@ impl PlayerWindow {
         });
         let motion = gtk::EventControllerMotion::new();
         let weak = Rc::downgrade(self);
+        let last_pointer = Cell::new(None);
         motion.connect_motion(move |_, x, y| {
             if let Some(player) = weak.upgrade() {
-                player.interact();
+                // Reallocation can replay motion at the stationary pointer.
+                // Only a changed position counts as activity; otherwise hiding
+                // the footer would immediately bring it back.
+                if last_pointer.replace(Some((x, y))) != Some((x, y)) {
+                    player.interact();
+                }
                 player.gallery_hover(Some((x, y)));
             }
         });
@@ -1109,14 +1117,6 @@ impl PlayerWindow {
             self.visual_notice
                 .set_visible(Instant::now() < self.notice_until.get());
             self.hint.set_text(&format!("playback: space play/pause · n next · p previous · r random {} · +/= louder · − quieter\n{}\nmusic: / search files & folders · c folders · o/ctrl+o add files · ctrl+l folder path\nplaylists: a add track · b saved playlists\nview: v/shift+v next/previous visual · f fullscreen · tab playlist · esc back · q quit",if model.shuffle{"on"}else{"off"},if browsing{"browse: ↑↓ select (k/j) · →/enter open/play · ←/backspace parent · l play folder"}else{"select: ↑↓ select (k/j) · enter play · ←/→ seek 5s"}));
-            let root = self.logo.parent().unwrap().parent().unwrap();
-            let minimum = root
-                .measure(gtk::Orientation::Vertical, self.overlay.width().max(640))
-                .0;
-            let reserved = minimum - self.scroller.height_request().max(28);
-            let available = (self.overlay.height() - reserved).max(28);
-            self.scroller
-                .set_size_request(-1, desired_list_height.min(available));
             let age = self.last_interaction.get().elapsed().as_secs_f64();
             let opacity = if model.current.is_none() || age < 4.0 {
                 1.0
@@ -1140,6 +1140,19 @@ impl PlayerWindow {
                 widget.set_opacity(opacity);
             }
             self.panel.set_can_target(opacity > 0.05);
+            // Faded hints must release their height so the remaining track
+            // information sits at the bottom inset. Restore it on interaction.
+            self.footer.set_visible(opacity > 0.0);
+            self.status
+                .set_visible(opacity > 0.0 && !model.status.is_empty());
+            let root = self.logo.parent().unwrap().parent().unwrap();
+            let minimum = root
+                .measure(gtk::Orientation::Vertical, self.overlay.width().max(640))
+                .0;
+            let reserved = minimum - self.scroller.height_request().max(28);
+            let available = (self.overlay.height() - reserved).max(28);
+            self.scroller
+                .set_size_request(-1, desired_list_height.min(available));
         }
         let width = self.overlay.width() as f64;
         let height = self.overlay.height() as f64;

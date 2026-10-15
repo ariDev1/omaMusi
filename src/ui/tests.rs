@@ -482,6 +482,38 @@ fn desktop_workflows() {
         player.state.borrow().audio.snapshot().generation,
         generation
     );
+    // Faded navigation must release its layout space, keeping the remaining
+    // track information at the bottom. Interaction restores the footer space.
+    player.focus_player();
+    wait(|| !player.state.borrow().model.loading);
+    let settle = Instant::now();
+    wait(|| settle.elapsed() > Duration::from_millis(200));
+    player
+        .last_interaction
+        .set(Instant::now() - Duration::from_secs(6));
+    player.refresh();
+    wait(|| player.hint.opacity() == 0.0);
+    let settle = Instant::now();
+    wait(|| settle.elapsed() > Duration::from_millis(100));
+    let compact_transport = player.transport.compute_bounds(&player.overlay).unwrap();
+    let bottom_gap =
+        player.overlay.height() as f32 - compact_transport.y() - compact_transport.height();
+    assert!(
+        (20.0..=32.0).contains(&bottom_gap),
+        "idle metadata should sit at the bottom inset, gap was {bottom_gap}"
+    );
+    assert!(player.title.is_visible());
+    assert!(player.transport.is_visible());
+    player.interact();
+    player.refresh();
+    wait(|| player.hint.opacity() == 1.0);
+    let settle = Instant::now();
+    wait(|| settle.elapsed() > Duration::from_millis(100));
+    let full_transport = player.transport.compute_bounds(&player.overlay).unwrap();
+    assert!(
+        full_transport.y() < compact_transport.y() - 40.0,
+        "interaction must restore the hint area below metadata"
+    );
     // Default size applies before mapping; the Wayland compositor owns mapped sizing.
     let small = PlayerWindow::new(
         &app,

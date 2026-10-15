@@ -216,3 +216,16 @@ ring separately. Existing maximum-input, no-white-out, isolated-dot-size and
 all-nine-mode GPU/fallback checks continue to pass. The ordinary 80-test suite,
 strict Clippy and release build pass. Optional GPU PNG artifacts use
 `OMAMUSI_RENDER_ARTIFACTS`, shared with the software image checks.
+
+## Compact now-playing layout follow-up
+
+When navigation faded, the invisible footer still reserved its height, leaving
+playback information 149 pixels above the bottom in the GUI regression.
+The faded footer and status now release their layout space; title, optional
+artist/album and playback time sit above the normal 24-pixel bottom inset.
+Interaction restores the footer and the full layout. Stationary-pointer motion
+replayed during GTK reallocation does not count as activity, preventing the
+compact layout from immediately reopening itself. The production GUI regression
+failed before the fix and passes afterward, including restoration. A real
+Hyprland capture and geometry check verifies the compact layout at 640×420 with
+60 tracks; ordinary tests and strict Clippy pass.

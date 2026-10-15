@@ -289,6 +289,26 @@ fn waveform_composes_with_desktop() {
     settle();
     assert_eq!(player.state.borrow().model.selected, Some(59));
     assert!(player.scroller.vadjustment().value() > 0.0);
+    player
+        .last_interaction
+        .set(Instant::now() - Duration::from_secs(6));
+    player.refresh();
+    settle();
+    let transport = player.transport.compute_bounds(&player.overlay).unwrap();
+    let gap = player.overlay.height() as f32 - transport.y() - transport.height();
+    assert!(
+        (20.0..=32.0).contains(&gap),
+        "idle metadata not bottom aligned at 640x420: {gap}"
+    );
+    assert!(!player.footer.is_visible());
+    capture(
+        &player,
+        Path::new("/tmp/omamusi-rust-compositor/idle-layout.png"),
+    );
+    player.interact();
+    player.refresh();
+    settle();
+    assert!(player.footer.is_visible());
     eprintln!(
         "Real Hyprland composition passed: background visible through waveform ({wave:.0}), opaque spectrum ({opaque:.0}); player focused"
     );
