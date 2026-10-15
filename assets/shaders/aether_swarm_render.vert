@@ -88,7 +88,9 @@ void main() {
     float brightness = clamp(0.72 + energy*0.08 + min(speed,2.0)*0.06
                              + nearGlow*0.10 + drive*0.12 + wave*0.03, 0.65, 0.96);
     tint = base * brightness;
-    opacity = clamp(0.10 + min(speed,2.0)*0.04 + drive*0.04, 0.10, 0.24);
+    // Tiny sprites need enough source-over coverage to remain readable at
+    // native desktop resolution. Keep dot size and bounded color unchanged.
+    opacity = clamp(0.36 + min(speed,2.0)*0.08 + drive*0.10, 0.36, 0.62);
     // Debug canary (OMA_PARTICLE_CANARY=1): unmistakable giant red dots.
     // Proves the live shader is on screen. No-op when canary is 0.
     gl_PointSize = max(gl_PointSize, canary*26.0*pixelRatio);

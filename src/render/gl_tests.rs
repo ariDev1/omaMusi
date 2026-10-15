@@ -228,8 +228,9 @@ fn hardware_rendering() {
     frame.aether_density = 1.0;
     frame.aether_beat_confidence = 1.0;
     frame.bands.fill(1.0);
+    frame.phi_velocity = 2.6;
     for index in 0..240 {
-        frame.time = 12.0 + index as f64 / 30.0 * 0.65;
+        frame.time = 12.0 + index as f64 / 30.0 * 4.5;
         frame.aether_world_turn = index as f64 / 30.0 * 0.12;
         frame.aether_beat_phase = (index as f64 / 30.0 * 1.8) % 1.0;
         let mut scene = Scene {
@@ -248,6 +249,7 @@ fn hardware_rendering() {
             .unwrap();
     }
     let settled = read();
+    save_particle_artifact("ParticleDance-gpu-maximum.png", &settled, width, height);
     let gold: Vec<_> = settled
         .as_chunks::<4>()
         .0
@@ -285,6 +287,66 @@ fn hardware_rendering() {
             / (width * height) as f64)
             < 0.001,
         "sustained white-out"
+    );
+    // Exercise production analyzer uniforms after sustained energetic input.
+    // Pixel coverage above a readable blue threshold catches near-invisible
+    // streams that a nonblack-pixel or gold-only assertion would miss.
+    visual.mode = VisualMode::ParticleDance;
+    for index in 0..600 {
+        visual.feed(&PcmSnapshot {
+            samples: std::array::from_fn(|i| (0.65 * (i as f64 * 0.12).sin()) as f32),
+            sample_rate: 48000,
+            revision: index + 3,
+            generation: 1,
+        });
+        visual.tick(1.0 / 30.0, true);
+        let mut scene = Scene {
+            frame: visual.frame(),
+            wave: &visual.waveform,
+            cover: None,
+            gallery: &mut gallery,
+            gallery_bounds: Rect {
+                x: 250.0,
+                y: 40.0,
+                width: 360.0,
+                height: 280.0,
+            },
+        };
+        gpu.draw(&mut scene, width, height, 1.0, 1.0 / 30.0)
+            .unwrap();
+    }
+    let live = read();
+    save_particle_artifact("ParticleDance-gpu-analyzed.png", &live, width, height);
+    let gold_outside_core = live
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .enumerate()
+        .filter(|(i, p)| {
+            let x = (*i % width as usize) as f64 - width as f64 / 2.0;
+            let y = (*i / width as usize) as f64 - height as f64 / 2.0;
+            x.hypot(y) > height as f64 * 0.18
+                && p[0] > 30
+                && p[0] as f64 > p[1] as f64 * 1.25
+                && p[0] as f64 > p[2] as f64 * 1.8
+        })
+        .count();
+    let visible_stream = live
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|p| p[2] > 70 && p[2] as f64 > p[0] as f64 * 1.5)
+        .count();
+    eprintln!(
+        "Particle Dance: {visible_stream} readable stream pixels, {gold_outside_core} gold pixels outside center"
+    );
+    assert!(
+        visible_stream > (width * height) as usize / 50,
+        "blue/violet particle streams are too faint: {visible_stream} visible pixels (need 2% of stage)"
+    );
+    assert!(
+        gold_outside_core > 500,
+        "music-driven Particle Dance ring collapsed or became too faint: {gold_outside_core}"
     );
     // Isolate one production particle using its existing resource ownership,
     // rather than adding test-only methods to the renderer.
@@ -383,4 +445,18 @@ fn hardware_rendering() {
     eprintln!(
         "All nine GPU visuals, 64 switches, cover clearing, waveform alpha/color, particle size and context-safe cleanup passed"
     );
+}
+
+fn save_particle_artifact(name: &str, pixels: &[u8], width: i32, height: i32) {
+    if let Some(directory) = std::env::var_os("OMAMUSI_RENDER_ARTIFACTS") {
+        std::fs::create_dir_all(&directory).unwrap();
+        image::save_buffer(
+            std::path::PathBuf::from(directory).join(name),
+            pixels,
+            width as u32,
+            height as u32,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+    }
 }

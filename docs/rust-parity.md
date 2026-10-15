@@ -202,3 +202,17 @@ it if later evidence shows it was wrong.
 - Retain reference failure behavior for dangling symlinks and non-UTF-8 saved paths; defining a new recovery policy or persistence format would be the correction.
 - Retain the synchronous core playlist helper because production availability checks run on the bounded worker; removing the unused action would be the correction.
 - Retain the explicit GNOME/full-Ubuntu/hosted-CI validation limits rather than infer results from other environments; validation and possible platform fixes before wider distribution would be the correction.
+
+## Particle Dance visibility follow-up
+
+The reported faint stream reproduced with production analyzer uniforms: only
+1,007 blue/violet pixels exceeded the readable-color threshold at 640×420.
+The shader's 0.10–0.24 opacity range suppressed most tiny sprite fragments.
+Increasing source-over opacity makes 5,895 stream pixels readable in the same
+GPU case, while retaining 2.6-pixel sprites, the palette and bounded blending.
+The regression fails against the old shader and passes against the fix. It
+also exercises realistic accelerated phase/velocity and checks the broad gold
+ring separately. Existing maximum-input, no-white-out, isolated-dot-size and
+all-nine-mode GPU/fallback checks continue to pass. The ordinary 80-test suite,
+strict Clippy and release build pass. Optional GPU PNG artifacts use
+`OMAMUSI_RENDER_ARTIFACTS`, shared with the software image checks.

@@ -4,6 +4,7 @@
 
 - Replaced the Python player with a native Rust/GTK application, retaining the text-first interface, keyboard workflows, saved-playlist schema and all nine visuals.
 - Added native audio streaming, bounded background workers, OpenGL rendering and Cairo fallback.
+- Increased Particle Dance stream contrast so its small blue/violet dots and gold ring remain readable at desktop resolution.
 - Replaced Python packaging with a native installer, recognized managed-install migration and Rust CI.
 
 
