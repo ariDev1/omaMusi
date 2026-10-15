@@ -29,13 +29,22 @@ On Ubuntu, install the system build dependencies:
 sudo apt-get install build-essential pkg-config libgtk-4-dev libasound2-dev libpulse-dev libepoxy-dev ffmpeg git desktop-file-utils
 ```
 
-Install a current [Rust toolchain](https://rustup.rs), then build and install:
+Install a current [Rust toolchain](https://rustup.rs) (1.92 or newer;
+Ubuntu's `apt` Rust is too old, so use rustup). A fresh terminal picks the
+toolchain up automatically; if you just installed Rust in this terminal, load
+it first and check the version. Then build and install:
 
 ```bash
+source "$HOME/.cargo/env" # or open a fresh terminal after installing Rust
+cargo --version            # must print 1.92 or newer
 git clone https://github.com/ariDev1/omaMusi.git
 cd omaMusi
 bash scripts/setup-player.sh
 ```
+
+If setup reports `Missing cargo`, your shell has not picked up the Rust
+toolchain yet — source the env file above or restart your terminal and try
+again.
 
 The installer copies the executable into your user data directory and adds
 `~/.local/bin/omaMusi` and an application-menu entry. It preserves music and
@@ -45,7 +54,18 @@ The source checkout is not needed to run the installed executable.
 
 For an unmanaged standalone installation, first remove its menu entry with
 its original installer, then move its `~/.local/bin/omaMusi` launcher aside
-before running setup. Keep `omamusi/playlists.json` in your user data directory;
+before running setup. Setup refuses to overwrite anything it does not own and
+fails with `Another executable already owns ~/.local/bin/omaMusi` or
+`Another launcher already exists at ...`. If the original installer is no
+longer available (for example a half-removed Python install), remove the
+leftovers manually — this keeps your playlists:
+
+```bash
+mv ~/.local/bin/omaMusi ~/.local/bin/omaMusi.bak
+rm ~/.local/share/applications/io.github.aridev1.omamusi.desktop
+```
+
+Keep `omamusi/playlists.json` in your user data directory;
 the native player reads that same file. Setup will not replace the unmanaged
 installation or execute its Python environment.
 
