@@ -10,7 +10,7 @@ use std::{
     sync::OnceLock,
 };
 
-const SWARM_COUNT: i32 = 25840;
+const SWARM_COUNT: i32 = 32000;
 const QUAD: usize = 0;
 const PARTICLES: usize = 1;
 const HORIZON: usize = 2;
@@ -362,12 +362,24 @@ impl GlRenderer {
                     std::ptr::null(),
                 );
             }
-            let seeds: Vec<f32> = include_bytes!("../../assets/swarm-seeds.bin")
+            let mut seeds: Vec<f32> = include_bytes!("../../assets/swarm-seeds.bin")
                 .as_chunks::<4>()
                 .0
                 .iter()
                 .map(|p| f32::from_le_bytes(*p))
                 .collect();
+            // Higher particle rate (same small dot size): tile the baked
+            // seeds up to SWARM_COUNT. Duplicated positions still diverge
+            // because the update shader keys behavior off gl_VertexID.
+            let needed = SWARM_COUNT as usize * 6;
+            if seeds.len() < needed {
+                let base = seeds.clone();
+                while seeds.len() < needed {
+                    let take = (needed - seeds.len()).min(base.len());
+                    seeds.extend_from_slice(&base[..take]);
+                }
+            }
+            seeds.truncate(needed);
             api::GenBuffers(2, renderer.swarm_buffers.as_mut_ptr());
             api::GenVertexArrays(2, renderer.swarm_vaos.as_mut_ptr());
             for (vao, buffer) in renderer.swarm_vaos.iter().zip(renderer.swarm_buffers) {

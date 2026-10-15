@@ -250,21 +250,23 @@ fn hardware_rendering() {
     }
     let settled = read();
     save_particle_artifact("ParticleDance-gpu-maximum.png", &settled, width, height);
-    let gold: Vec<_> = settled
+    let saturated: Vec<_> = settled
         .as_chunks::<4>()
         .0
         .iter()
         .enumerate()
         .filter(|(_, p)| {
-            p[0] > 15 && p[0] as f64 > p[1] as f64 * 1.25 && p[0] as f64 > p[2] as f64 * 1.8
+            let max = *[p[0], p[1], p[2]].iter().max().unwrap();
+            let min = *[p[0], p[1], p[2]].iter().min().unwrap();
+            max > 15 && max - min > 12
         })
         .map(|(index, _)| (index % width as usize, index / width as usize))
         .collect();
     assert!(
-        gold.len() as f64 / (width * height) as f64 > 0.001,
-        "gold ring disappeared"
+        saturated.len() as f64 / (width * height) as f64 > 0.01,
+        "particle streams disappeared"
     );
-    let edges = gold
+    let edges = saturated
         .iter()
         .filter(|(x, y)| {
             *x < width as usize / 20
@@ -274,8 +276,8 @@ fn hardware_rendering() {
         })
         .count();
     assert!(
-        (edges as f64 / gold.len() as f64) > 0.05,
-        "oversized ring does not reach the frame edges"
+        (edges as f64 / saturated.len() as f64) > 0.05,
+        "streams do not reach the frame edges"
     );
     assert!(
         (settled
@@ -289,26 +291,32 @@ fn hardware_rendering() {
         "sustained white-out"
     );
     // Exercise production analyzer uniforms after sustained energetic input.
-    // Pixel coverage above a readable blue threshold catches near-invisible
-    // streams that a nonblack-pixel or gold-only assertion would miss.
+    // Pixel coverage above a readable saturation threshold catches near-invisible
+    // streams that a nonblack-pixel assertion would miss.
     // Reset the swarm to its deterministic initial seeds so this run does
-    // not inherit the maximum run's end positions.
-    let seeds = include_bytes!("../../assets/swarm-seeds.bin");
+    // not inherit the maximum run's end positions. Tile up to the live
+    // swarm count like the renderer does.
+    let raw = include_bytes!("../../assets/swarm-seeds.bin");
+    let mut tiled: Vec<u8> = Vec::with_capacity(gpu.swarm_count as usize * 24);
+    while tiled.len() < gpu.swarm_count as usize * 24 {
+        let take = (gpu.swarm_count as usize * 24 - tiled.len()).min(raw.len());
+        tiled.extend_from_slice(&raw[..take]);
+    }
     for buffer in gpu.swarm_buffers {
         unsafe {
             api::BindBuffer(api::ARRAY_BUFFER, buffer);
             api::BufferData(
                 api::ARRAY_BUFFER,
-                seeds.len() as isize,
-                seeds.as_ptr().cast(),
+                tiled.len() as isize,
+                tiled.as_ptr().cast(),
                 api::DYNAMIC_COPY,
             );
         }
     }
     visual.mode = VisualMode::ParticleDance;
-    // Sample gold presence through the run: the oversized arc must stay in
-    // view the whole time, not just in the final frame.
-    let mut fewest_gold = usize::MAX;
+    // Sample stream presence through the run: dense multicolor streams must
+    // stay in view the whole time, not just in the final frame.
+    let mut fewest_stream = usize::MAX;
     for index in 0..600 {
         visual.feed(&PcmSnapshot {
             samples: std::array::from_fn(|i| (0.65 * (i as f64 * 0.12).sin()) as f32),
@@ -338,20 +346,22 @@ fn hardware_rendering() {
                 .0
                 .iter()
                 .filter(|p| {
-                    p[0] > 30 && p[0] as f64 > p[1] as f64 * 1.25 && p[0] as f64 > p[2] as f64 * 1.8
+                    let max = *[p[0], p[1], p[2]].iter().max().unwrap();
+                    let min = *[p[0], p[1], p[2]].iter().min().unwrap();
+                    max > 30 && max - min > 20
                 })
                 .count();
-            eprintln!("Particle Dance live frame {index}: {count} gold pixels");
-            fewest_gold = fewest_gold.min(count);
+            eprintln!("Particle Dance live frame {index}: {count} stream pixels");
+            fewest_stream = fewest_stream.min(count);
         }
     }
     let live = read();
     save_particle_artifact("ParticleDance-gpu-analyzed.png", &live, width, height);
     assert!(
-        fewest_gold > 200,
-        "oversized gold arc left the frame mid-run: {fewest_gold}"
+        fewest_stream > 200,
+        "particle streams left the frame mid-run: {fewest_stream}"
     );
-    let gold_outside_core = live
+    let saturated_outside_core = live
         .as_chunks::<4>()
         .0
         .iter()
@@ -359,28 +369,37 @@ fn hardware_rendering() {
         .filter(|(i, p)| {
             let x = (*i % width as usize) as f64 - width as f64 / 2.0;
             let y = (*i / width as usize) as f64 - height as f64 / 2.0;
-            x.hypot(y) > height as f64 * 0.18
-                && p[0] > 30
-                && p[0] as f64 > p[1] as f64 * 1.25
-                && p[0] as f64 > p[2] as f64 * 1.8
+            let max = *[p[0], p[1], p[2]].iter().max().unwrap();
+            let min = *[p[0], p[1], p[2]].iter().min().unwrap();
+            x.hypot(y) > height as f64 * 0.18 && max > 30 && max - min > 20
         })
         .count();
-    let visible_stream = live
+    let cool = live
         .as_chunks::<4>()
         .0
         .iter()
-        .filter(|p| p[2] > 70 && p[2] as f64 > p[0] as f64 * 1.5)
+        .filter(|p| p[1] > 60 && p[2] > 60)
+        .count();
+    let warm = live
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|p| p[0] > 70 && p[1] > 45 && p[1] > p[0].saturating_sub(20) && p[1] > p[2])
         .count();
     eprintln!(
-        "Particle Dance: {visible_stream} readable stream pixels, {gold_outside_core} gold pixels outside center"
+        "Particle Dance: {saturated_outside_core} stream pixels outside center, {cool} cool, {warm} warm"
     );
     assert!(
-        visible_stream > (width * height) as usize / 50,
-        "blue/violet particle streams are too faint: {visible_stream} visible pixels (need 2% of stage)"
+        saturated_outside_core > (width * height) as usize / 50,
+        "particle streams are too faint: {saturated_outside_core} visible pixels (need 2% of stage)"
     );
     assert!(
-        gold_outside_core > 100,
-        "music-driven Particle Dance arc collapsed or became too faint: {gold_outside_core}"
+        cool > 100,
+        "music-driven Particle Dance lost its cool hues: {cool}"
+    );
+    assert!(
+        warm > 100,
+        "music-driven Particle Dance lost its warm hues: {warm}"
     );
     // Isolate one production particle using its existing resource ownership,
     // rather than adding test-only methods to the renderer.

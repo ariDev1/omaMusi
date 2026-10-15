@@ -191,10 +191,10 @@ fn gallery_midpoint_crossfade_preserves_brightness_and_size() {
 }
 
 #[test]
-fn particle_dance_sweeps_a_huge_gold_arc_across_the_frame_without_whiteout() {
-    // The oversized torus (10x) is displaced so its near arc sweeps through
-    // the frame instead of enclosing it far outside. Feed sustained hot input
-    // first: a fresh quiet frame leaves the spread-out arc too dim to read.
+fn particle_dance_renders_dense_multicolor_streams_without_whiteout() {
+    // No torus/ring: the visual is a free-flowing multicolor stream field.
+    // Feed sustained hot input first: a fresh quiet frame leaves the
+    // spread-out streams too dim to read.
     let mut visual = VisualState::new();
     visual.mode = VisualMode::ParticleDance;
     for index in 0..300 {
@@ -208,25 +208,51 @@ fn particle_dance_sweeps_a_huge_gold_arc_across_the_frame_without_whiteout() {
     }
     let mut gallery = CoverGallery::new();
     let pixels = draw(&visual, None, &mut gallery, 960, 640);
-    let gold: Vec<_> = pixels
+    let saturated: Vec<(usize, &[u8; 4])> = pixels
         .iter()
         .enumerate()
         .filter(|(_, p)| {
-            p[0] > 30 && p[0] as f64 > p[1] as f64 * 1.25 && p[0] as f64 > p[2] as f64 * 1.8
+            let max = *[p[0], p[1], p[2]].iter().max().unwrap();
+            let min = *[p[0], p[1], p[2]].iter().min().unwrap();
+            max > 30 && max - min > 25
         })
-        .map(|(i, _)| (i % 960, i / 960))
         .collect();
-    assert!(gold.len() > 30, "oversized gold arc disappeared");
-    let min = gold.iter().map(|p| p.0).min().unwrap();
-    let max = gold.iter().map(|p| p.0).max().unwrap();
-    assert!(max - min > 600, "gold arc does not sweep the frame");
-    let edges = gold
+    let cool = saturated
         .iter()
-        .filter(|(x, y)| *x < 960 / 20 || *x > 960 * 19 / 20 || *y < 640 / 20 || *y > 640 * 19 / 20)
+        .filter(|(_, p)| p[1] > 20 && p[2] > 20)
         .count();
+    let warm = saturated
+        .iter()
+        .filter(|(_, p)| p[0] > 25 && p[1] > 15 && p[1] > p[2])
+        .count();
+    let violet = saturated
+        .iter()
+        .filter(|(_, p)| p[0] > 15 && p[2] > 25 && p[1] < p[2])
+        .count();
+    eprintln!(
+        "streams: total={} cool={cool} warm={warm} violet={violet}",
+        saturated.len()
+    );
     assert!(
-        edges as f64 / gold.len() as f64 > 0.05,
-        "oversized ring does not reach the frame edges"
+        saturated.len() > 4000,
+        "particle streams too faint: {} visible pixels",
+        saturated.len()
+    );
+    // Color flow: no single hue dominates. Cool, warm amber, and
+    // violet/magenta families must all be present.
+    assert!(cool > 1000, "cool stream colors missing: {cool}");
+    assert!(warm > 300, "warm stream colors missing: {warm}");
+    assert!(
+        violet > 1000,
+        "violet/magenta stream colors missing: {violet}"
+    );
+    let min_x = saturated.iter().map(|(i, _)| i % 960).min().unwrap();
+    let max_x = saturated.iter().map(|(i, _)| i % 960).max().unwrap();
+    let min_y = saturated.iter().map(|(i, _)| i / 960).min().unwrap();
+    let max_y = saturated.iter().map(|(i, _)| i / 960).max().unwrap();
+    assert!(
+        max_x - min_x > 250 && max_y - min_y > 200,
+        "streams collapsed instead of filling the center"
     );
     assert!(
         pixels
@@ -274,7 +300,7 @@ fn software_particle_geometry_keeps_small_dots_under_maximum_input() {
     frame.aether_density = 1.0;
     frame.bands.fill(1.0);
     let loud = particle_points(&frame, 960.0, 640.0);
-    assert_eq!(quiet.len(), 1500);
+    assert_eq!(quiet.len(), 2400);
     assert_eq!(
         quiet.iter().map(|p| p.radius).collect::<Vec<_>>(),
         loud.iter().map(|p| p.radius).collect::<Vec<_>>()

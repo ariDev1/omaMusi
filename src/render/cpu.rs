@@ -9,10 +9,28 @@ use anyhow::{Result, bail};
 use cairo::{Context, Format, ImageSurface, LinearGradient, Operator, RadialGradient};
 use std::f64::consts::TAU;
 
-// Oversized torus, matching the GPU swarm shader: the gold ring is 3x
-// larger than the surrounding swarm, so its arcs sweep across and beyond
-// the frame instead of sitting as a small ring in the middle.
-const TORUS_SCALE: f64 = 3.0;
+// Pure particle stream (no torus/ring anchor): every particle follows the
+// same flock motion so the CPU preview matches the GPU swarm.
+fn stream_palette(t: f32) -> [f32; 3] {
+    let stops = [
+        [0.15, 0.80, 0.95],
+        [0.25, 0.90, 0.45],
+        [1.00, 0.72, 0.25],
+        [1.00, 0.30, 0.60],
+        [0.55, 0.40, 1.00],
+        [0.15, 0.80, 0.95],
+    ];
+    let x = t.clamp(0.0, 1.0) * 5.0;
+    let i = (x.floor() as usize).min(4);
+    let f = x - i as f32;
+    let a = stops[i];
+    let b = stops[i + 1];
+    [
+        a[0] + (b[0] - a[0]) * f,
+        a[1] + (b[1] - a[1]) * f,
+        a[2] + (b[2] - a[2]) * f,
+    ]
+}
 
 pub struct CpuRenderer;
 impl CpuRenderer {
@@ -580,7 +598,10 @@ pub fn particle_points(f: &VisualFrame, w: f64, h: f64) -> Vec<ParticlePoint> {
         f.aether_beat_pulse * 1.4 + f.aether_onset * 1.2 + f.phi_impulse * 1.6 + f.phi_event * 1.8;
     let drive = 1.0 - (-boom * 0.9).exp();
     let scale = w.min(h) * 0.42 / (1.0 + 0.20 * f.energy.clamp(0.0, 1.0));
-    (0..1500)
+    // Denser stream (same small dot size): higher particle rate fills the
+    // gaps left by the removed ring without growing overlaps.
+    let hue_flow = dance * 0.02 + f.aether_world_turn * 0.05 + f.aether_beat_phase * 0.15;
+    (0..2400)
         .map(|i| {
             let group = (i % 13) as f64;
             let seed = (i as f64 * 0.61803398875) % 1.0;
@@ -598,58 +619,19 @@ pub fn particle_points(f: &VisualFrame, w: f64, h: f64) -> Vec<ParticlePoint> {
                 * (1.0 + drive * 0.50 * per);
             let jiggle =
                 (0.10 + 0.22 * (dance * 0.7 + i as f64 * 0.031 + boom).sin()) * scale * 0.08;
-            let mut x =
-                w * 0.5 + cx + angle.cos() * radius * 0.35 + jiggle * (i as f64 * 1.7).sin();
-            let mut y =
-                h * 0.5 + cy + angle.sin() * radius * 0.35 + jiggle * (i as f64 * 2.3).cos();
+            let x = w * 0.5 + cx + angle.cos() * radius * 0.35 + jiggle * (i as f64 * 1.7).sin();
+            let y = h * 0.5 + cy + angle.sin() * radius * 0.35 + jiggle * (i as f64 * 2.3).cos();
             let band = 1.0 - (-f.bands[(i * 13) % 96] * 2.5).exp();
             let alpha = (52.0 + band * 18.0 + drive * 16.0)
                 .floor()
                 .clamp(10.0, 170.0)
                 / 255.0;
-            let rider = i % 10 < 3;
-            if rider {
-                let u = seed * TAU
-                    + dance * 0.38 * (0.7 + drive * 0.6 + f.phi_velocity * 0.2)
-                    + beat * 0.1;
-                let v = ((seed * 7.77) % 1.0) * TAU * 3.0 + dance * 1.2;
-                let ring = scale * 0.86 * TORUS_SCALE * (1.0 + drive * 0.14);
-                let tube = scale * 0.075 * TORUS_SCALE * (1.0 + drive * 0.45);
-                let tilt = 0.42 + 0.16 * (dance * 0.09 + 1.0).sin();
-                let lx = (ring + tube * v.cos()) * u.cos();
-                let ly = (ring + tube * v.cos()) * u.sin();
-                let lz = tube * v.sin();
-                // Displaced giant ring (matching the GPU shader): the ring
-                // circle passes near the frame instead of enclosing it far
-                // outside, so its near arc sweeps through the view. Screen y
-                // grows downward, mirroring the shader's downward bias. The
-                // direction is normalized so the offset stays at 0.92x the
-                // ring radius in quiet and loud passages alike.
-                let arc_mag = ring * 0.92;
-                let arc_dx = (dance * 0.05 + 0.7).sin();
-                let arc_dy = 0.9 - 0.2 * (dance * 0.043 + 2.0).sin();
-                let arc_len = (arc_dx * arc_dx + arc_dy * arc_dy).sqrt().max(0.001);
-                let arc_ox = arc_mag * arc_dx / arc_len;
-                let arc_oy = arc_mag * arc_dy / arc_len;
-                x = w * 0.5
-                    + scale * 0.05 * (dance * 0.11 + f.aether_world_turn * 0.4).sin()
-                    + arc_ox
-                    + lx;
-                y = h * 0.5
-                    + scale * 0.04 * (dance * 0.083 + 1.2).cos()
-                    + arc_oy
-                    + (ly * tilt.cos() - lz * tilt.sin()) * 0.9;
-            }
-            let color = if rider {
-                [1.0, 0.68, 0.20]
-            } else {
-                let shade = group as f32 / 13.0;
-                [
-                    0.12 + 0.30 * shade,
-                    0.56 - 0.34 * shade,
-                    0.94 - 0.16 * shade,
-                ]
-            };
+            // Flowing stream color: neighbours sit on different hues, the
+            // field cycles with time/beat, loud bands push toward warmer
+            // stops. Mirrors the GPU streamPalette.
+            let hue = (group / 13.0 + hue_flow + band * 0.35) % 1.0;
+            let hue = if hue < 0.0 { hue + 1.0 } else { hue };
+            let color = stream_palette(hue as f32);
             ParticlePoint {
                 x,
                 y,

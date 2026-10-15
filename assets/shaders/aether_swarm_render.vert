@@ -26,6 +26,22 @@ out float streakMix;
 
 const float PHI = 1.618033988749895;
 
+// Flowing multi-color stream palette: cyan -> green -> amber -> magenta
+// -> violet -> cyan. Keeps every hue saturated so overlaps never wash out.
+vec3 streamPalette(float t) {
+    vec3 c1 = vec3(0.15, 0.80, 0.95);
+    vec3 c2 = vec3(0.25, 0.90, 0.45);
+    vec3 c3 = vec3(1.00, 0.72, 0.25);
+    vec3 c4 = vec3(1.00, 0.30, 0.60);
+    vec3 c5 = vec3(0.55, 0.40, 1.00);
+    float x = clamp(t, 0.0, 1.0) * 5.0;
+    if (x < 1.0) return mix(c1, c2, x);
+    if (x < 2.0) return mix(c2, c3, x - 1.0);
+    if (x < 3.0) return mix(c3, c4, x - 2.0);
+    if (x < 4.0) return mix(c4, c5, x - 3.0);
+    return mix(c5, c1, x - 4.0);
+}
+
 void main() {
     vec3 p = inPosition;
     vec3 vel = inVelocity;
@@ -76,11 +92,13 @@ void main() {
     streakMix = clamp(speed*1.4 + aetherBeatPulse*0.9 + aetherOnset*0.45 + phiImpulse*0.6 + phiEvent*0.5 + band*0.5, 0.0, 1.0);
 
     float id = float(gl_VertexID);
-    float torusSeed = id*0.37 + 5.0;
-    float torusMask = step(fract(sin(torusSeed*12.9898 + 78.233)*43758.5453), 0.30);
-    float groupShade = mod(id,13.0)/13.0;
-    vec3 surroundingColor = mix(vec3(0.12,0.56,0.94), vec3(0.42,0.22,0.78), groupShade);
-    vec3 base = mix(surroundingColor, vec3(1.00,0.68,0.20), torusMask);
+    float groupShade = mod(id, 13.0) / 13.0;
+    // Continuous color flow: neighbours sit on different hues, the whole
+    // field slowly cycles with time/beat, and loud spectrum bands push
+    // particles toward warmer stops. No single hue dominates.
+    float hueFlow = phase * 0.02 + aetherBeatPhase * 0.15 + aetherWorldTurn * 0.05;
+    float huePos = fract(groupShade + hueFlow + band * 0.35);
+    vec3 base = streamPalette(huePos);
 
     float nearGlow = clamp(1.6/safeDepth, 0.0, 1.0);
     // Bounded light output adds depth and a gentle musical shimmer while
