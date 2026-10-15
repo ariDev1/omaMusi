@@ -48,7 +48,7 @@ void main() {
     projected.x /= resolution.x / resolution.y;
 
     // Ease the framing back slightly during energetic passages so the
-    // ring can bend without crowding the edges. Dots keep their size.
+    // sweeping arc keeps bending room. Dots keep their size.
     float framing = 2.45/(1.0 + 0.20*clamp(energy, 0.0, 1.0));
     gl_Position = vec4(projected*framing, 0.0, 1.0);
 

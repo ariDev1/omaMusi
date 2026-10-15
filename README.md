@@ -212,7 +212,7 @@ the player.
 Press **V** to cycle through nine visuals, or **Shift+V** to go back:
 
 - **Event Horizon:** a black hole with a glowing disk.
-- **Particle Dance:** a broad gold ring turning among blue and violet particles. The dots stay small while the music moves the shapes.
+- **Particle Dance:** a huge gold arc sweeping across and beyond the frame among blue and violet particles. The dots stay small while the music moves the shapes.
 - **Phi Cathedral:** changing geometric patterns.
 - **Warp:** a flight through colored stars.
 - **Spectrum:** frequency bars.

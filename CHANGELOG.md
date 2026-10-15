@@ -2,6 +2,7 @@
 
 ## 0.11.0 (development)
 
+- Enlarged the Particle Dance gold torus threefold; its arcs now sweep across and beyond the frame in both the OpenGL and software renderers.
 - Replaced the Python player with a native Rust/GTK application, retaining the text-first interface, keyboard workflows, saved-playlist schema and all nine visuals.
 - Added native audio streaming, bounded background workers, OpenGL rendering and Cairo fallback.
 - Increased Particle Dance stream contrast so its small blue/violet dots and gold ring remain readable at desktop resolution.

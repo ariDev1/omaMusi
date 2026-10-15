@@ -22,6 +22,10 @@ out vec3 outVelocity;
 
 const float PHI = 1.618033988749895;
 const float TAU = 6.283185307179586;
+// Oversized torus: the gold ring is deliberately 3x larger than the
+// surrounding swarm, so its arcs sweep across and beyond the frame
+// instead of sitting as a small ring in the middle.
+const float TORUS_SCALE = 3.0;
 
 float hash1(float n) {
     return fract(sin(n*12.9898 + 78.233) * 43758.5453);
@@ -125,31 +129,32 @@ void main() {
     float torusMask = step(hash1(id*0.37 + 5.0), 0.30);
     float uT = seed*TAU + phase*(0.38*(0.7 + drive*0.6 + phiVelocity*0.20)) + beatCycle*groove*0.10;
     float vT = fract(seed*7.77)*TAU*3.0 + phase*(1.10 + drive*0.80) + g*2.20;
-    float ringR = 1.90*(1.0 + drive*0.14 + beatCycle*groove*0.05);
-    float tubeR = 0.16*(1.0 + drive*0.45);
+    float ringR = 1.90*TORUS_SCALE*(1.0 + drive*0.14 + beatCycle*groove*0.05);
+    float tubeR = 0.16*TORUS_SCALE*(1.0 + drive*0.45);
     float cuT = cos(uT), suT = sin(uT), cvT = cos(vT), svT = sin(vT);
-    vec3 torusLocal = vec3((ringR + tubeR*cvT)*cuT, (ringR + tubeR*cvT)*suT, tubeR*svT);
-    float tiltT = 0.42 + 0.16*sin(phase*0.09 + 1.0);
+    // The oversized ring lives in a nearly screen-parallel plane and its
+    // center is displaced within that plane, so the near arc always sweeps
+    // through the frame: the circle passes near the origin instead of
+    // enclosing it far outside (a centered 3x ring would be fully
+    // invisible). Riders stay in front of the camera this way; a tumbling
+    // plane would throw them behind it into mirrored scatter.
+    vec2 arcFlow = vec2(sin(phase*0.05 + 0.7), -0.9 + 0.2*sin(phase*0.043 + 2.0));
+    vec3 arcDir = vec3(arcFlow / max(length(arcFlow), 0.001), 0.0);
+    vec3 torusCenter = arcDir*(ringR*0.92)
+        + vec3(0.15*sin(phase*0.11 + aetherWorldTurn*0.40),
+               0.12*cos(phase*0.083 + 1.2) + drive*0.15*sin(phase*0.9),
+               0.12*sin(phase*0.067 + 2.1) + drive*0.20*sin(phase*1.1));
+    // Fixed gentle tilt for depth; the Z extent stays near the camera plane.
+    float tiltT = 0.15;
     float cTilt = cos(tiltT), sTilt = sin(tiltT);
-    vec3 torusTilt = vec3(torusLocal.x, torusLocal.y*cTilt - torusLocal.z*sTilt,
-                          torusLocal.y*sTilt + torusLocal.z*cTilt);
-    float yawT = aetherWorldTurn*0.6 + phase*0.06;
-    float cYaw = cos(yawT), sYaw = sin(yawT);
-    // Restrained drift leaves the ring near the center and makes its
-    // music-driven bend readable instead of wandering out of view.
-    vec3 torusCenter = vec3(0.15*sin(phase*0.11 + aetherWorldTurn*0.40),
-                            0.12*cos(phase*0.083 + 1.2) + drive*0.15*sin(phase*0.9),
-                            0.12*sin(phase*0.067 + 2.1) + drive*0.20*sin(phase*1.1));
-    vec3 torusTarget = vec3(torusTilt.x*cYaw - torusTilt.y*sYaw,
-                            torusTilt.x*sYaw + torusTilt.y*cYaw,
-                            torusTilt.z)
-                     + torusCenter;
-    vec3 torusTanLocal = vec3(-suT, cuT, 0.15*sin(vT*2.0 + phase*1.3));
-    vec3 torusTanTilt = vec3(torusTanLocal.x, torusTanLocal.y*cTilt - torusTanLocal.z*sTilt,
-                             torusTanLocal.y*sTilt + torusTanLocal.z*cTilt);
-    vec3 torusTangent = normalize(vec3(torusTanTilt.x*cYaw - torusTanTilt.y*sYaw,
-                                       torusTanTilt.x*sYaw + torusTanTilt.y*cYaw,
-                                       torusTanTilt.z) + vec3(0.0001));
+    vec3 torusAxX = vec3(1.0, 0.0, 0.0);
+    vec3 torusAxY = vec3(0.0, cTilt, sTilt);
+    vec3 torusAxN = vec3(0.0, -sTilt, cTilt);
+    vec3 torusTarget = torusCenter
+        + (ringR + tubeR*cvT)*(cuT*torusAxX + suT*torusAxY)
+        + tubeR*svT*torusAxN;
+    vec3 torusTangent = normalize(-suT*torusAxX + cuT*torusAxY
+        + torusAxN*(0.15*sin(vT*2.0 + phase*1.3)) + vec3(0.0001));
     vec3 torusAccel = (torusTarget - p)*3.8 + torusTangent*(1.10 + drive*1.20 + phiVelocity*0.40);
     accel = mix(flockAccel, torusAccel + shellForce*0.25 + curl*0.5, torusMask);
 
@@ -162,7 +167,9 @@ void main() {
     v *= exp(-dt * ((1.35 + (1.0 - clamp(dance, 0.0, 1.5))*0.55) * (1.0 - blastEase*0.55)));
 
     float speed = length(v);
-    float maxSpeed = 1.60 + energy*1.20 + drive*2.20;
+    // Gold riders need a higher cap to ride the oversized ring; the flock
+    // keeps the original cap so its blasts stay framed.
+    float maxSpeed = (1.60 + energy*1.20 + drive*2.20) * mix(1.0, 3.5, torusMask);
     if (speed > maxSpeed) {
         v *= maxSpeed / speed;
     }
@@ -170,8 +177,12 @@ void main() {
     p += v * dt;
 
     float radius = length(p);
-    if (radius > 4.9) {
-        v -= normalize(p) * (radius - 4.9) * dt * 3.8;
+    // Per-group containment: the flock keeps its original close wall (its
+    // wall-piled blasts feed the visible blue core), while gold riders get
+    // clearance to ride the oversized torus.
+    float wall = mix(4.9, 30.0, torusMask);
+    if (radius > wall) {
+        v -= normalize(p) * (radius - wall) * dt * 3.8;
     }
 
     outPosition = p;

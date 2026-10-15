@@ -191,28 +191,43 @@ fn gallery_midpoint_crossfade_preserves_brightness_and_size() {
 }
 
 #[test]
-fn particle_dance_has_a_wide_centered_gold_ring_without_whiteout() {
+fn particle_dance_sweeps_a_huge_gold_arc_across_the_frame_without_whiteout() {
+    // The oversized torus (10x) is displaced so its near arc sweeps through
+    // the frame instead of enclosing it far outside. Feed sustained hot input
+    // first: a fresh quiet frame leaves the spread-out arc too dim to read.
     let mut visual = VisualState::new();
     visual.mode = VisualMode::ParticleDance;
-    visual.tick(0.016, false);
+    for index in 0..300 {
+        visual.feed(&PcmSnapshot {
+            samples: std::array::from_fn(|i| (0.65 * (i as f64 * 0.12).sin()) as f32),
+            sample_rate: 48000,
+            revision: index + 1,
+            generation: 1,
+        });
+        visual.tick(1.0 / 30.0, true);
+    }
     let mut gallery = CoverGallery::new();
     let pixels = draw(&visual, None, &mut gallery, 960, 640);
     let gold: Vec<_> = pixels
         .iter()
         .enumerate()
         .filter(|(_, p)| {
-            p[0] > 60
-                && p[1] as f64 / p[0] as f64 > 0.5
-                && (p[1] as f64 / p[0] as f64) < 0.85
-                && (p[2] as f64 / p[0] as f64) < 0.4
+            p[0] > 30 && p[0] as f64 > p[1] as f64 * 1.25 && p[0] as f64 > p[2] as f64 * 1.8
         })
         .map(|(i, _)| (i % 960, i / 960))
         .collect();
-    assert!(gold.len() > 100);
+    assert!(gold.len() > 30, "oversized gold arc disappeared");
     let min = gold.iter().map(|p| p.0).min().unwrap();
     let max = gold.iter().map(|p| p.0).max().unwrap();
-    assert!(max - min > 350);
-    assert!((((min + max) / 2) as i32 - 480).abs() < 48);
+    assert!(max - min > 600, "gold arc does not sweep the frame");
+    let edges = gold
+        .iter()
+        .filter(|(x, y)| *x < 960 / 20 || *x > 960 * 19 / 20 || *y < 640 / 20 || *y > 640 * 19 / 20)
+        .count();
+    assert!(
+        edges as f64 / gold.len() as f64 > 0.05,
+        "oversized ring does not reach the frame edges"
+    );
     assert!(
         pixels
             .iter()

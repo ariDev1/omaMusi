@@ -9,6 +9,11 @@ use anyhow::{Result, bail};
 use cairo::{Context, Format, ImageSurface, LinearGradient, Operator, RadialGradient};
 use std::f64::consts::TAU;
 
+// Oversized torus, matching the GPU swarm shader: the gold ring is 3x
+// larger than the surrounding swarm, so its arcs sweep across and beyond
+// the frame instead of sitting as a small ring in the middle.
+const TORUS_SCALE: f64 = 3.0;
+
 pub struct CpuRenderer;
 impl CpuRenderer {
     pub fn surface(scene: &mut Scene<'_>, width: i32, height: i32) -> Result<ImageSurface> {
@@ -608,15 +613,31 @@ pub fn particle_points(f: &VisualFrame, w: f64, h: f64) -> Vec<ParticlePoint> {
                     + dance * 0.38 * (0.7 + drive * 0.6 + f.phi_velocity * 0.2)
                     + beat * 0.1;
                 let v = ((seed * 7.77) % 1.0) * TAU * 3.0 + dance * 1.2;
-                let ring = scale * 0.86 * (1.0 + drive * 0.14);
-                let tube = scale * 0.075 * (1.0 + drive * 0.45);
+                let ring = scale * 0.86 * TORUS_SCALE * (1.0 + drive * 0.14);
+                let tube = scale * 0.075 * TORUS_SCALE * (1.0 + drive * 0.45);
                 let tilt = 0.42 + 0.16 * (dance * 0.09 + 1.0).sin();
                 let lx = (ring + tube * v.cos()) * u.cos();
                 let ly = (ring + tube * v.cos()) * u.sin();
                 let lz = tube * v.sin();
-                x = w * 0.5 + scale * 0.05 * (dance * 0.11 + f.aether_world_turn * 0.4).sin() + lx;
+                // Displaced giant ring (matching the GPU shader): the ring
+                // circle passes near the frame instead of enclosing it far
+                // outside, so its near arc sweeps through the view. Screen y
+                // grows downward, mirroring the shader's downward bias. The
+                // direction is normalized so the offset stays at 0.92x the
+                // ring radius in quiet and loud passages alike.
+                let arc_mag = ring * 0.92;
+                let arc_dx = (dance * 0.05 + 0.7).sin();
+                let arc_dy = 0.9 - 0.2 * (dance * 0.043 + 2.0).sin();
+                let arc_len = (arc_dx * arc_dx + arc_dy * arc_dy).sqrt().max(0.001);
+                let arc_ox = arc_mag * arc_dx / arc_len;
+                let arc_oy = arc_mag * arc_dy / arc_len;
+                x = w * 0.5
+                    + scale * 0.05 * (dance * 0.11 + f.aether_world_turn * 0.4).sin()
+                    + arc_ox
+                    + lx;
                 y = h * 0.5
                     + scale * 0.04 * (dance * 0.083 + 1.2).cos()
+                    + arc_oy
                     + (ly * tilt.cos() - lz * tilt.sin()) * 0.9;
             }
             let color = if rider {

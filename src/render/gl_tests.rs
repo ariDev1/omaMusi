@@ -274,8 +274,8 @@ fn hardware_rendering() {
         })
         .count();
     assert!(
-        (edges as f64 / gold.len() as f64) < 0.10,
-        "ring crowds edges"
+        (edges as f64 / gold.len() as f64) > 0.05,
+        "oversized ring does not reach the frame edges"
     );
     assert!(
         (settled
@@ -291,7 +291,24 @@ fn hardware_rendering() {
     // Exercise production analyzer uniforms after sustained energetic input.
     // Pixel coverage above a readable blue threshold catches near-invisible
     // streams that a nonblack-pixel or gold-only assertion would miss.
+    // Reset the swarm to its deterministic initial seeds so this run does
+    // not inherit the maximum run's end positions.
+    let seeds = include_bytes!("../../assets/swarm-seeds.bin");
+    for buffer in gpu.swarm_buffers {
+        unsafe {
+            api::BindBuffer(api::ARRAY_BUFFER, buffer);
+            api::BufferData(
+                api::ARRAY_BUFFER,
+                seeds.len() as isize,
+                seeds.as_ptr().cast(),
+                api::DYNAMIC_COPY,
+            );
+        }
+    }
     visual.mode = VisualMode::ParticleDance;
+    // Sample gold presence through the run: the oversized arc must stay in
+    // view the whole time, not just in the final frame.
+    let mut fewest_gold = usize::MAX;
     for index in 0..600 {
         visual.feed(&PcmSnapshot {
             samples: std::array::from_fn(|i| (0.65 * (i as f64 * 0.12).sin()) as f32),
@@ -314,9 +331,26 @@ fn hardware_rendering() {
         };
         gpu.draw(&mut scene, width, height, 1.0, 1.0 / 30.0)
             .unwrap();
+        if index % 100 == 99 {
+            let sample = read();
+            let count = sample
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .filter(|p| {
+                    p[0] > 30 && p[0] as f64 > p[1] as f64 * 1.25 && p[0] as f64 > p[2] as f64 * 1.8
+                })
+                .count();
+            eprintln!("Particle Dance live frame {index}: {count} gold pixels");
+            fewest_gold = fewest_gold.min(count);
+        }
     }
     let live = read();
     save_particle_artifact("ParticleDance-gpu-analyzed.png", &live, width, height);
+    assert!(
+        fewest_gold > 200,
+        "oversized gold arc left the frame mid-run: {fewest_gold}"
+    );
     let gold_outside_core = live
         .as_chunks::<4>()
         .0
@@ -345,8 +379,8 @@ fn hardware_rendering() {
         "blue/violet particle streams are too faint: {visible_stream} visible pixels (need 2% of stage)"
     );
     assert!(
-        gold_outside_core > 500,
-        "music-driven Particle Dance ring collapsed or became too faint: {gold_outside_core}"
+        gold_outside_core > 100,
+        "music-driven Particle Dance arc collapsed or became too faint: {gold_outside_core}"
     );
     // Isolate one production particle using its existing resource ownership,
     // rather than adding test-only methods to the renderer.
