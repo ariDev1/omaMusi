@@ -2,7 +2,7 @@ name: Rust verification
 
 on:
   push:
-    branches: [development, main]
+    branches: [development, main, rust-conversion]
   pull_request:
   workflow_dispatch:
 
