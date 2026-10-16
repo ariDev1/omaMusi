@@ -528,7 +528,9 @@ impl GlRenderer {
                 api::ActiveTexture(api::TEXTURE1);
                 api::BindTexture(api::TEXTURE_2D, self.textures[1]);
             }
-            if f.mode == VisualMode::Spectrogram && self.history_revision != f.history_revision {
+            if matches!(f.mode, VisualMode::Spectrogram | VisualMode::TimeTunnel)
+                && self.history_revision != f.history_revision
+            {
                 unsafe {
                     api::TexSubImage2D(
                         api::TEXTURE_2D,

@@ -74,6 +74,8 @@ impl CpuRenderer {
                 VisualMode::ParticleDance => particle_dance(ctx, frame, width, height)?,
                 VisualMode::CoverArt => cover(ctx, scene, width, height)?,
                 VisualMode::CoverGallery => gallery(ctx, scene, width, height)?,
+                VisualMode::CosmicWeb => cosmic_web(ctx, frame, width, height)?,
+                VisualMode::TimeTunnel => time_tunnel(ctx, frame, width, height)?,
             }
             Ok(())
         })();
@@ -461,6 +463,177 @@ fn spectrogram(ctx: &Context, f: &VisualFrame, w: f64, h: f64) -> Result<()> {
         },
         0.85,
     )
+}
+
+fn mix_rgb(a: [f32; 3], b: [f32; 3], t: f64) -> [f32; 3] {
+    let t = t.clamp(0.0, 1.0) as f32;
+    [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+    ]
+}
+
+fn cosmic_web(ctx: &Context, f: &VisualFrame, w: f64, h: f64) -> Result<()> {
+    color(ctx, f.colors[0], 1.0);
+    ctx.paint()?;
+
+    const COUNT: usize = 34;
+    let min_side = w.min(h);
+    let pulse = f.aether_beat_pulse * 0.8 + f.aether_onset * 0.35;
+    let nodes: [(f64, f64, f64, f64); COUNT] = std::array::from_fn(|i| {
+        let band = (i * 11 + 7) % 96;
+        let level = f.bands[band];
+        let fi = i as f64;
+        let z = 0.30 + 0.70 * (0.5 + 0.5 * (fi * 1.618_033_988_75 + f.time * 0.11).sin());
+        let orbit = fi * 2.399_963_229_73 + f.time * (0.05 + 0.035 * z);
+        let drift_x = (fi * 0.73 + f.time * 0.17).sin() * 0.12;
+        let drift_y = (fi * 1.13 - f.time * 0.13).cos() * 0.10;
+        let spread = 0.19 + z * 0.34 + f.aether_density * 0.08;
+        let x = w * (0.5 + orbit.cos() * spread + drift_x);
+        let y = h * (0.5 + orbit.sin() * spread * 0.68 + drift_y);
+        let radius = min_side * (0.0028 + level * 0.006 + pulse * 0.003) * (0.65 + z);
+        (x, y, radius.max(1.0), level)
+    });
+
+    ctx.save()?;
+    ctx.set_operator(Operator::Add);
+    for i in 0..COUNT {
+        for offset in [3usize, 7usize] {
+            let j = (i + offset) % COUNT;
+            let a = nodes[i];
+            let b = nodes[j];
+            let dx = a.0 - b.0;
+            let dy = a.1 - b.1;
+            let distance = (dx * dx + dy * dy).sqrt();
+            let reach = min_side * (0.34 + f.aether_density * 0.12);
+            if distance < reach {
+                let strength =
+                    (1.0 - distance / reach) * (0.12 + (a.3 + b.3) * 0.30 + pulse * 0.25);
+                let tint = mix_rgb(
+                    f.colors[2],
+                    f.magenta,
+                    ((i + offset) as f64 * 0.17 + f.time * 0.03).sin() * 0.5 + 0.5,
+                );
+                line(
+                    ctx,
+                    (a.0, a.1),
+                    (b.0, b.1),
+                    0.55 + strength * 2.2,
+                    tint,
+                    strength.clamp(0.025, 0.52),
+                )?;
+            }
+        }
+    }
+
+    for (i, (x, y, radius, level)) in nodes.iter().copied().enumerate() {
+        let tint = mix_rgb(
+            f.colors[2],
+            f.colors[1],
+            (i as f64 * 0.31 + f.time * 0.07).sin() * 0.5 + 0.5,
+        );
+        circle(ctx, x, y, radius * 4.2, tint, 0.035 + level * 0.055)?;
+        circle(
+            ctx,
+            x,
+            y,
+            radius * 1.65,
+            tint,
+            (0.22 + level * 0.35 + pulse * 0.20).clamp(0.0, 0.82),
+        )?;
+        circle(
+            ctx,
+            x,
+            y,
+            radius * 0.55,
+            f.colors[3],
+            (0.34 + level * 0.50).clamp(0.0, 0.95),
+        )?;
+    }
+    ctx.restore()?;
+    Ok(())
+}
+
+fn time_tunnel(ctx: &Context, f: &VisualFrame, w: f64, h: f64) -> Result<()> {
+    color(ctx, f.colors[0], 1.0);
+    ctx.paint()?;
+
+    let min_side = w.min(h);
+    let center_x = w * (0.50 + (f.time * 0.23).sin() * 0.045);
+    let center_y = h * (0.50 + (f.time * 0.19 + 1.2).cos() * 0.040);
+    let pulse = f.aether_beat_pulse * 0.75 + f.aether_onset * 0.30;
+
+    ctx.save()?;
+    ctx.set_operator(Operator::Add);
+    for ring in (0..74usize).rev() {
+        let depth = ring as f64 / 73.0;
+        let history_x = ((1.0 - depth) * 359.0).round() as usize;
+        let mut spectral = 0.0;
+        for row in (0..96usize).step_by(8) {
+            let index = (row * 360 + history_x.min(359)) * 3;
+            let r = f.history[index] as f64;
+            let g = f.history[index + 1] as f64;
+            let b = f.history[index + 2] as f64;
+            spectral += (r.max(g).max(b)) / 255.0;
+        }
+        spectral /= 12.0;
+
+        let travel = (depth + f.time * (0.055 + f.energy * 0.018)).fract();
+        let perspective = travel * travel;
+        let radius = min_side * (0.035 + perspective * 0.74);
+        let twist = f.time * 0.18 + depth * 8.0;
+        let x = center_x + twist.sin() * min_side * 0.055 * perspective;
+        let y = center_y + twist.cos() * min_side * 0.035 * perspective;
+        let rx = radius * (1.0 + 0.05 * (twist * 1.7).sin());
+        let ry = radius * (0.72 + 0.04 * (twist * 1.3).cos());
+        let beat_ring = (-((travel - 0.64).abs()) * 34.0).exp() * pulse;
+        let alpha = (0.035 + spectral * 0.23 + beat_ring * 0.30) * (0.30 + perspective * 0.95);
+        let tint = mix_rgb(f.colors[2], f.magenta, depth * 0.72 + 0.14 * twist.sin());
+        color(ctx, tint, alpha.clamp(0.015, 0.66));
+        ctx.set_line_width(0.65 + perspective * 2.0 + spectral * 1.2);
+        ellipse(ctx, x, y, rx, ry)?;
+        ctx.stroke()?;
+
+        if ring % 6 == 0 {
+            for spoke in 0..12 {
+                let angle = spoke as f64 * TAU / 12.0 + twist * 0.18;
+                let inner = radius * 0.32;
+                let outer = radius;
+                line(
+                    ctx,
+                    (x + angle.cos() * inner, y + angle.sin() * inner * 0.72),
+                    (x + angle.cos() * outer, y + angle.sin() * outer * 0.72),
+                    0.45 + perspective,
+                    tint,
+                    (alpha * 0.34).clamp(0.01, 0.16),
+                )?;
+            }
+        }
+    }
+
+    let glow = RadialGradient::new(center_x, center_y, 0.0, center_x, center_y, min_side * 0.18);
+    let bright = f.colors[3];
+    glow.add_color_stop_rgba(
+        0.0,
+        bright[0] as f64,
+        bright[1] as f64,
+        bright[2] as f64,
+        0.78,
+    );
+    glow.add_color_stop_rgba(
+        0.18,
+        f.colors[2][0] as f64,
+        f.colors[2][1] as f64,
+        f.colors[2][2] as f64,
+        0.25 + pulse * 0.20,
+    );
+    glow.add_color_stop_rgba(1.0, 0.0, 0.0, 0.0, 0.0);
+    ctx.set_source(&glow)?;
+    ellipse(ctx, center_x, center_y, min_side * 0.18, min_side * 0.18)?;
+    ctx.fill()?;
+    ctx.restore()?;
+    Ok(())
 }
 
 fn horizon(ctx: &Context, f: &VisualFrame, w: f64, h: f64) -> Result<()> {

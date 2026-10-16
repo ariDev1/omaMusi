@@ -216,7 +216,7 @@ fn repeated_audio_revisions_do_not_deposit_and_visual_cycles_preserve_stars() {
     visual.tick(1.0 / 60.0, true);
     let after: f64 = visual.waveform.density.iter().map(|v| *v as f64).sum();
     assert!(after < before);
-    for _ in 0..9 {
+    for _ in 0..VisualMode::ALL.len() {
         visual.cycle(1);
     }
     assert_eq!(visual.mode, VisualMode::Waveform);

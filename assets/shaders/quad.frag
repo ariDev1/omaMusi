@@ -4,10 +4,24 @@ out vec4 frag;
 uniform int mode;
 uniform vec2 resolution;
 uniform vec3 background, accent, cyan, bright;
-uniform float energy, phase, bass;
+uniform float energy, phase, bass, treble;
 uniform sampler2D audioData, historyData, waveDensity;
 uniform float waveAlpha;
+uniform float aetherOnset, aetherDensity, aetherBeatPulse;
 float datum(int i) { return texelFetch(audioData, ivec2(i, 0), 0).r; }
+float segdist(vec2 p, vec2 a, vec2 b) {
+    vec2 pa = p-a, ba = b-a;
+    float h = clamp(dot(pa,ba)/max(dot(ba,ba),0.00001),0.0,1.0);
+    return length(pa-ba*h);
+}
+vec2 webNode(int i) {
+    float fi=float(i);
+    float z=0.5+0.5*sin(fi*1.61803398875+phase*0.11);
+    float a=fi*2.39996322973+phase*(0.05+z*0.035);
+    vec2 drift=vec2(sin(fi*0.73+phase*0.17),cos(fi*1.13-phase*0.13))*vec2(0.12,0.10);
+    float spread=0.24+z*0.32+aetherDensity*0.07;
+    return vec2(cos(a)*spread,sin(a)*spread*0.72)+drift;
+}
 void main() {
     vec3 color = background;
     if (mode == 0) {
@@ -65,6 +79,51 @@ void main() {
         color = heat.rgb * heat.a * (1.0-line) + vec3(0.92, 0.99, 1.0) * line;
         frag = vec4(color, alpha);
         return;
+    } else if (mode == 9) {
+        vec2 p=(uv-0.5)*vec2(resolution.x/resolution.y,1.0);
+        vec3 web=background*0.28;
+        float pulse=aetherBeatPulse*0.85+aetherOnset*0.30;
+        for(int i=0;i<18;i++){
+            vec2 a=webNode(i);
+            float level=datum((i*11+7)%96);
+            float d=length(p-a);
+            float halo=exp(-d*(55.0-18.0*level));
+            vec3 tint=mix(cyan,accent,0.5+0.5*sin(float(i)*0.73+phase*0.08));
+            web+=tint*halo*(0.12+level*0.62+pulse*0.35);
+            web+=bright*exp(-d*180.0)*(0.18+level*0.72);
+            for(int k=1;k<=2;k++){
+                int j=(i+(k==1?3:7))%18;
+                vec2 b=webNode(j);
+                float ld=segdist(p,a,b);
+                float reach=length(a-b);
+                float gate=1.0-smoothstep(0.34+0.12*aetherDensity,0.58+0.12*aetherDensity,reach);
+                float filament=exp(-ld*(165.0-35.0*energy))*gate;
+                web+=tint*filament*(0.035+0.13*level+0.09*pulse);
+            }
+        }
+        color=web;
+    } else if (mode == 10) {
+        vec2 center=vec2(0.5+sin(phase*0.23)*0.045,0.5+cos(phase*0.19+1.2)*0.040);
+        vec2 p=(uv-center)*vec2(resolution.x/resolution.y,1.0);
+        float r=length(p);
+        float angle=atan(p.y,p.x);
+        float travel=fract(r*6.8-phase*(0.42+energy*0.24));
+        float ring=pow(max(0.0,1.0-abs(travel-0.5)*2.0),16.0);
+        float spoke=pow(max(0.0,0.5+0.5*cos(angle*12.0+phase*0.65-r*18.0)),18.0);
+        float historyX=clamp(1.0-r*1.28,0.0,1.0);
+        float historyY=fract(angle/6.28318530718+0.5);
+        vec3 memory=texture(historyData,vec2(historyX,historyY)).rgb;
+        float memoryPower=max(memory.r,max(memory.g,memory.b));
+        vec3 tint=mix(cyan,accent,0.5+0.5*sin(angle*2.0+r*8.0+phase*0.12));
+        float beat=exp(-abs(travel-0.53)*28.0)*aetherBeatPulse;
+        float fade=smoothstep(0.78,0.03,r);
+        color=background*0.24;
+        color+=memory*(0.42+memoryPower*0.85)*fade;
+        color+=tint*ring*(0.12+memoryPower*0.85+energy*0.22)*fade;
+        color+=mix(accent,bright,0.55)*beat*(0.22+bass*0.45)*fade;
+        color+=tint*spoke*ring*(0.03+treble*0.08)*fade;
+        float core=exp(-r*r*260.0);
+        color+=mix(cyan,bright,0.72)*core*(0.65+aetherOnset*0.5);
     } else {
         color = mix(background, texture(historyData, vec2(uv.x, 1.0-uv.y)).rgb, 0.85);
     }
