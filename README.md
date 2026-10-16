@@ -86,9 +86,17 @@ saved playlists are kept. Manage only the menu entry with
 
 ### Omarchy
 
-The optional bar widget opens the same native player. Install Rust, GTK 4,
-ALSA/PulseAudio development libraries, pkg-config and FFmpeg through your
-distribution, then install the widget and build the player:
+The optional bar widget opens the same native player. On Omarchy, install the
+build tools and native dependencies with pacman:
+
+```bash
+sudo pacman -S --needed base-devel rust gtk4 alsa-lib libpulse pkgconf ffmpeg git desktop-file-utils
+rustc --version # omaMusi requires Rust 1.92 or newer
+```
+
+If `rustc` is older than 1.92, install a current toolchain with
+[rustup](https://rustup.rs) before continuing. Then install the widget and
+build the player:
 
 ```bash
 omarchy plugin add https://github.com/ariDev1/omaMusi.git --enable
