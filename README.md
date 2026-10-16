@@ -134,6 +134,10 @@ You can also open individual files:
 omaMusi "song.flac" "another song.mp3"
 ```
 
+Large libraries are still indexed and searchable in full. To keep the player
+responsive, the song list displays up to 500 matching tracks at a time; use
+**/** to narrow the list and find tracks anywhere in your library.
+
 Inside the player, press **O** to add files, press **C** to browse folders,
 or drag files and folders into the window. Launching omaMusi again brings
 the existing window back.
@@ -176,8 +180,9 @@ The footer shows the shortcuts, grouped by what they do.
 
 While browsing folders, **Right** or **Enter** opens your selection,
 **Left** or **Backspace** goes up one folder, and **L** plays the current
-folder. **Up/Down** and **K/J** select items. Press **Escape** to return to
-the song list.
+folder. **Up/Down** and **K/J** select items, and the highlighted row stays
+in view as you move through the list. Press **Escape** to return to the song
+list.
 
 Random playback starts off. Press **R** to turn it on; **N** then picks a
 random song. **P** goes back through your listening history, or restarts
@@ -264,6 +269,10 @@ is available when hardware rendering cannot be used. Native dependencies are lis
 Saved playlists are stored in `~/.local/share/omamusi/playlists.json`, or
 under `$XDG_DATA_HOME` if you have set it. They refer to your music files,
 so moving a file can leave a missing entry in a playlist.
+
+Track titles, artists and albums are read from embedded tags. UTF-8 text is
+preserved, and common legacy Windows-1252 punctuation bytes (such as the
+curly apostrophe in older MP3 tags) are converted to readable Unicode.
 
 The footer includes the version and Git revision. `+dirty` means local
 changes have not been committed; `unknown` means Git information is

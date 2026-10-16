@@ -28,6 +28,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+const MAX_TRACK_ROWS: usize = 500;
+
 enum Work {
     Metadata(TrackInfo),
     Tracks(Vec<PathBuf>),
@@ -108,7 +110,11 @@ pub struct PlayerWindow {
     footer: gtk::Box,
     version_label: gtk::Label,
     track_rows: RefCell<Vec<gtk::ListBoxRow>>,
-    shown_tracks: RefCell<Vec<PathBuf>>,
+    displayed_track_indices: RefCell<Vec<usize>>,
+    shown_tracks_revision: Cell<u64>,
+    shown_current: Cell<Option<usize>>,
+    shown_query: RefCell<String>,
+    visible_tracks: Cell<usize>,
     shown_browser: RefCell<Vec<String>>,
     playlist_dialog: RefCell<Option<Rc<PlaylistDialog>>>,
     timer: RefCell<Option<glib::SourceId>>,
@@ -378,7 +384,11 @@ impl PlayerWindow {
             footer,
             version_label,
             track_rows: RefCell::new(Vec::new()),
-            shown_tracks: RefCell::new(Vec::new()),
+            displayed_track_indices: RefCell::new(Vec::new()),
+            shown_tracks_revision: Cell::new(u64::MAX),
+            shown_current: Cell::new(None),
+            shown_query: RefCell::new(String::new()),
+            visible_tracks: Cell::new(0),
             shown_browser: RefCell::new(Vec::new()),
             playlist_dialog: RefCell::new(None),
             timer: RefCell::new(None),
@@ -489,14 +499,25 @@ impl PlayerWindow {
             if let Some(player) = weak.upgrade()
                 && !player.updating.get()
                 && let Some(row) = row
+                && let Some(index) = player
+                    .displayed_track_indices
+                    .borrow()
+                    .get(row.index() as usize)
+                    .copied()
             {
-                player.dispatch(Action::Select(row.index() as usize));
+                player.dispatch(Action::Select(index));
             }
         });
         let weak = Rc::downgrade(self);
         self.listing.connect_row_activated(move |_, row| {
-            if let Some(player) = weak.upgrade() {
-                player.dispatch(Action::Play(row.index() as usize));
+            if let Some(player) = weak.upgrade()
+                && let Some(index) = player
+                    .displayed_track_indices
+                    .borrow()
+                    .get(row.index() as usize)
+                    .copied()
+            {
+                player.dispatch(Action::Play(index));
             }
         });
         let weak = Rc::downgrade(self);
@@ -986,48 +1007,97 @@ impl PlayerWindow {
             let state = self.state.borrow();
             let model = &state.model;
             let snapshot = state.audio.snapshot();
-            if *self.shown_tracks.borrow() != model.tracks {
+            let tracks_changed = self.shown_tracks_revision.get() != model.tracks_revision;
+            let query_changed = *self.shown_query.borrow() != model.query;
+            if tracks_changed || query_changed {
                 while let Some(child) = self.listing.first_child() {
                     self.listing.remove(&child);
                 }
                 let mut rows = Vec::new();
-                for path in &model.tracks {
+                let mut indices = Vec::new();
+                for (index, path) in model
+                    .tracks
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, path)| library::matches(path, &model.query))
+                    .take(MAX_TRACK_ROWS)
+                {
+                    let relative = path
+                        .strip_prefix(&model.library_root)
+                        .unwrap_or(path)
+                        .with_extension("");
                     let row = gtk::ListBoxRow::new();
-                    let text = label(&path.to_string_lossy(), "");
+                    let text = label(
+                        &format!(
+                            "{}{}",
+                            if model.current == Some(index) {
+                                "› "
+                            } else {
+                                "  "
+                            },
+                            relative.display()
+                        ),
+                        "",
+                    );
                     text.set_ellipsize(gtk::pango::EllipsizeMode::End);
                     row.set_child(Some(&text));
                     row.set_tooltip_text(Some(&path.to_string_lossy()));
                     self.listing.append(&row);
                     rows.push(row);
+                    indices.push(index);
                 }
                 self.track_rows.replace(rows);
-                self.shown_tracks.replace(model.tracks.clone());
+                self.displayed_track_indices.replace(indices);
+                self.shown_tracks_revision.set(model.tracks_revision);
+                self.shown_query.replace(model.query.clone());
+                self.visible_tracks.set(
+                    model
+                        .tracks
+                        .iter()
+                        .filter(|path| library::matches(path, &model.query))
+                        .count(),
+                );
             }
-            for (i, (path, row)) in model
-                .tracks
-                .iter()
-                .zip(self.track_rows.borrow().iter())
-                .enumerate()
-            {
-                let relative = path
-                    .strip_prefix(&model.library_root)
-                    .unwrap_or(path)
-                    .with_extension("");
-                if let Some(text) = row
-                    .child()
-                    .and_then(|child| child.downcast::<gtk::Label>().ok())
-                {
-                    text.set_text(&format!(
-                        "{}{}",
-                        if model.current == Some(i) {
-                            "› "
-                        } else {
-                            "  "
-                        },
-                        relative.display()
-                    ));
+            if tracks_changed || query_changed || self.shown_current.get() != model.current {
+                if !tracks_changed && !query_changed {
+                    let rows = self.track_rows.borrow();
+                    for index in [self.shown_current.get(), model.current]
+                        .into_iter()
+                        .flatten()
+                    {
+                        let Some(position) = self
+                            .displayed_track_indices
+                            .borrow()
+                            .iter()
+                            .position(|displayed| *displayed == index)
+                        else {
+                            continue;
+                        };
+                        let (Some(path), Some(row)) = (model.tracks.get(index), rows.get(position))
+                        else {
+                            continue;
+                        };
+                        let relative = path
+                            .strip_prefix(&model.library_root)
+                            .unwrap_or(path)
+                            .with_extension("");
+                        if let Some(text) = row
+                            .child()
+                            .and_then(|child| child.downcast::<gtk::Label>().ok())
+                        {
+                            text.set_text(&format!(
+                                "{}{}",
+                                if model.current == Some(index) {
+                                    "› "
+                                } else {
+                                    "  "
+                                },
+                                relative.display()
+                            ));
+                        }
+                    }
                 }
-                row.set_visible(library::matches(path, &model.query));
+                self.shown_current.set(model.current);
             }
             if let Some(index) = model.selected
                 && let Some(row) = self.track_rows.borrow().get(index)
@@ -1064,6 +1134,16 @@ impl PlayerWindow {
                 self.count
                     .set_text(&format!("browse · {} entries", state.browser_entries.len()));
             }
+            if !browsing {
+                self.count
+                    .set_visible(self.visible_tracks.get() > MAX_TRACK_ROWS);
+                if self.visible_tracks.get() > MAX_TRACK_ROWS {
+                    self.count.set_text(&format!(
+                        "showing first {MAX_TRACK_ROWS} of {} matches · use / to search",
+                        self.visible_tracks.get()
+                    ));
+                }
+            }
             if self.search.text().as_str() != model.query {
                 self.search.set_text(&model.query);
             }
@@ -1073,7 +1153,7 @@ impl PlayerWindow {
             let visible = if browsing {
                 state.browser_entries.len()
             } else {
-                model.visible_indices().len()
+                self.visible_tracks.get()
             };
             let desired_list_height = (visible as i32 * 26 + 2).max(28);
             self.panel.set_visible(

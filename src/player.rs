@@ -114,6 +114,7 @@ enum ScanKind {
 
 pub struct PlayerState {
     pub tracks: Vec<PathBuf>,
+    pub tracks_revision: u64,
     pub current: Option<usize>,
     pub selected: Option<usize>,
     pub history: Vec<usize>,
@@ -149,6 +150,7 @@ impl Default for PlayerState {
             | 1;
         Self {
             tracks: Vec::new(),
+            tracks_revision: 0,
             current: None,
             selected: None,
             history: Vec::new(),
@@ -225,6 +227,7 @@ impl PlayerState {
         self.library_generation += 1;
         self.browser_generation += 1;
         self.generation += 1;
+        self.tracks_revision = self.tracks_revision.wrapping_add(1);
         self.tracks = tracks;
         self.current = None;
         self.selected = None;
@@ -485,6 +488,9 @@ impl PlayerState {
                                 if seen.insert(path.clone()) {
                                     self.tracks.push(path);
                                 }
+                            }
+                            if self.tracks.len() > start {
+                                self.tracks_revision = self.tracks_revision.wrapping_add(1);
                             }
                             if self.tracks.len() > start && !self.has_stream && !self.loading {
                                 self.play(start, true)

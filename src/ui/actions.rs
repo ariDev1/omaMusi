@@ -191,6 +191,7 @@ impl PlayerWindow {
                 }
                 drop(state);
                 self.refresh();
+                self.scroll_browser_selection();
                 return;
             }
         }
@@ -200,8 +201,28 @@ impl PlayerWindow {
     fn scroll_selection(&self) {
         let selected = self.state.borrow().model.selected;
         if let Some(index) = selected
-            && let Some(row) = self.track_rows.borrow().get(index)
+            && let Some(position) = self
+                .displayed_track_indices
+                .borrow()
+                .iter()
+                .position(|displayed| *displayed == index)
+            && let Some(row) = self.track_rows.borrow().get(position)
             && let Some(bounds) = row.compute_bounds(&self.listing)
+        {
+            let adjustment = self.scroller.vadjustment();
+            let top = bounds.y() as f64;
+            let bottom = top + bounds.height() as f64;
+            if top < adjustment.value() {
+                adjustment.set_value(top);
+            } else if bottom > adjustment.value() + adjustment.page_size() {
+                adjustment.set_value(bottom - adjustment.page_size());
+            }
+        }
+    }
+    fn scroll_browser_selection(&self) {
+        let selected = self.state.borrow().browser_selected;
+        if let Some(row) = self.folder_list.row_at_index(selected as i32)
+            && let Some(bounds) = row.compute_bounds(&self.folder_list)
         {
             let adjustment = self.scroller.vadjustment();
             let top = bounds.y() as f64;

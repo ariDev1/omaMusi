@@ -12,6 +12,27 @@ use std::{
     sync::{Arc, atomic::Ordering},
 };
 
+fn normalize_tag(value: &str) -> String {
+    const WINDOWS_1252_C1: [char; 32] = [
+        '\u{20ac}', '\u{fffd}', '\u{201a}', '\u{0192}', '\u{201e}', '\u{2026}', '\u{2020}',
+        '\u{2021}', '\u{02c6}', '\u{2030}', '\u{0160}', '\u{2039}', '\u{0152}', '\u{fffd}',
+        '\u{017d}', '\u{fffd}', '\u{fffd}', '\u{2018}', '\u{2019}', '\u{201c}', '\u{201d}',
+        '\u{2022}', '\u{2013}', '\u{2014}', '\u{02dc}', '\u{2122}', '\u{0161}', '\u{203a}',
+        '\u{0153}', '\u{fffd}', '\u{017e}', '\u{0178}',
+    ];
+    value
+        .chars()
+        .map(|character| {
+            let code = character as u32;
+            if (0x80..=0x9f).contains(&code) {
+                WINDOWS_1252_C1[(code - 0x80) as usize]
+            } else {
+                character
+            }
+        })
+        .collect()
+}
+
 pub fn probe(path: &Path) -> Result<TrackInfo> {
     if !path.is_file() {
         bail!("Audio file is unavailable: {}", path.display());
@@ -22,7 +43,7 @@ pub fn probe(path: &Path) -> Result<TrackInfo> {
         .as_object()
         .map(|tags| {
             tags.iter()
-                .map(|(k, v)| (k.to_lowercase(), v.as_str().unwrap_or("").to_owned()))
+                .map(|(k, v)| (k.to_lowercase(), normalize_tag(v.as_str().unwrap_or(""))))
                 .collect::<std::collections::HashMap<_, _>>()
         })
         .unwrap_or_default();
@@ -51,6 +72,18 @@ pub fn probe(path: &Path) -> Result<TrackInfo> {
         artist: tags.get("artist").cloned().unwrap_or_default(),
         album: tags.get("album").cloned().unwrap_or_default(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_tag;
+
+    #[test]
+    fn legacy_windows_1252_quotes_in_tags_are_displayed_as_unicode() {
+        assert_eq!(normalize_tag("Don\u{0092}t"), "Don’t");
+        assert_eq!(normalize_tag("caf\u{008e}"), "cafŽ");
+        assert_eq!(normalize_tag("Unicode: naïve 東京"), "Unicode: naïve 東京");
+    }
 }
 #[derive(Clone, Debug)]
 pub struct PlaybackSnapshot {
