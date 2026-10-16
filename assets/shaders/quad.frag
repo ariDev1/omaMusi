@@ -79,29 +79,85 @@ void main() {
         color = heat.rgb * heat.a * (1.0-line) + vec3(0.92, 0.99, 1.0) * line;
         frag = vec4(color, alpha);
         return;
-    } else if (mode == 9) {
+                } else if (mode == 9) {
         vec2 p=(uv-0.5)*vec2(resolution.x/resolution.y,1.0);
-        vec3 web=background*0.28;
-        float pulse=aetherBeatPulse*0.85+aetherOnset*0.30;
-        for(int i=0;i<18;i++){
+
+        const vec3 C_CYAN    = vec3(0.02,0.70,1.00);
+        const vec3 C_BLUE    = vec3(0.05,0.18,1.00);
+        const vec3 C_VIOLET  = vec3(0.42,0.06,1.00);
+        const vec3 C_MAGENTA = vec3(1.00,0.02,0.68);
+        const vec3 C_PINK    = vec3(1.00,0.10,0.38);
+        const vec3 C_ORANGE  = vec3(1.00,0.30,0.02);
+        const vec3 C_GOLD    = vec3(1.00,0.72,0.10);
+        const vec3 C_WHITE   = vec3(1.00,0.92,0.78);
+
+        vec3 web=background*0.025;
+        float pulse=clamp(aetherBeatPulse*0.95+aetherOnset*0.50,0.0,1.0);
+        vec2 hubs[4];
+
+        for(int i=0;i<4;i++){
+            float fi=float(i);
+            float a=phase*0.18+fi*1.57079632679+sin(phase*0.09+fi*0.9)*0.30;
+            float orbit=0.11+0.05*fi+aetherDensity*0.04;
+            hubs[i]=vec2(cos(a)*orbit,sin(a)*orbit*0.72);
+            float hd=length(p-hubs[i]);
+
+            vec3 outer=mix(C_VIOLET,C_MAGENTA,0.25+0.20*fi);
+            vec3 mid=mix(C_MAGENTA,C_ORANGE,0.20+0.18*fi);
+            web+=outer*exp(-hd*8.0)*(0.40+0.34*pulse);
+            web+=mid*exp(-hd*22.0)*(0.32+0.30*pulse);
+            web+=C_GOLD*exp(-hd*48.0)*(0.22+0.26*pulse);
+            web+=C_WHITE*exp(-hd*100.0)*(0.16+0.22*pulse);
+        }
+
+        for(int i=0;i<60;i++){
             vec2 a=webNode(i);
-            float level=datum((i*11+7)%96);
-            float d=length(p-a);
-            float halo=exp(-d*(55.0-18.0*level));
-            vec3 tint=mix(cyan,accent,0.5+0.5*sin(float(i)*0.73+phase*0.08));
-            web+=tint*halo*(0.12+level*0.62+pulse*0.35);
-            web+=bright*exp(-d*180.0)*(0.18+level*0.72);
-            for(int k=1;k<=2;k++){
-                int j=(i+(k==1?3:7))%18;
+            float level=datum((i*7+13)%96);
+            int hub=i%4;
+            vec2 h=hubs[hub];
+
+            float chroma=0.5+0.5*sin(float(i)*0.37+phase*0.10+level*2.4);
+            vec3 cool=mix(C_CYAN,C_VIOLET,chroma);
+            vec3 hot=mix(C_MAGENTA,C_ORANGE,clamp(level*0.85+pulse*0.18,0.0,1.0));
+            vec3 tint=mix(cool,hot,clamp(0.18+level*0.58+pulse*0.20,0.0,1.0));
+
+            float ad=length(p-a);
+            web+=tint*exp(-ad*(20.0-5.0*level))*(0.12+0.30*level+0.12*pulse);
+            web+=mix(tint,C_WHITE,0.62)*exp(-ad*100.0)*(0.06+0.30*level);
+
+            float hd=segdist(p,a,h);
+            float reach=length(a-h);
+            float trunk=exp(-hd*(78.0-12.0*energy))*(1.0-smoothstep(0.10,0.62+0.14*aetherDensity,reach));
+            web+=tint*trunk*(0.24+0.38*level+0.20*pulse);
+            web+=mix(tint,C_WHITE,0.52)*pow(trunk,1.7)*(0.10+0.15*pulse);
+
+            float t=fract(phase*(0.22+0.05*level)+float(i)*0.071);
+            vec2 pkt=mix(h,a,t);
+            float pd=length(p-pkt);
+            web+=mix(C_GOLD,C_WHITE,0.55)*exp(-pd*95.0)*(0.20+0.28*pulse);
+
+            for(int k=0;k<2;k++){
+                int j=(i+(k==0?5:17))%60;
                 vec2 b=webNode(j);
-                float ld=segdist(p,a,b);
-                float reach=length(a-b);
-                float gate=1.0-smoothstep(0.34+0.12*aetherDensity,0.58+0.12*aetherDensity,reach);
-                float filament=exp(-ld*(165.0-35.0*energy))*gate;
-                web+=tint*filament*(0.035+0.13*level+0.09*pulse);
+                float reach2=length(a-b);
+                float gate=1.0-smoothstep(0.08,0.46+0.24*aetherDensity,reach2);
+                if(gate>0.001){
+                    float ld=segdist(p,a,b);
+                    float filament=exp(-ld*(102.0-14.0*energy))*gate;
+                    vec3 fc=mix(tint,mix(C_MAGENTA,C_ORANGE,0.35),0.18+0.28*level);
+                    web+=fc*filament*(0.18+0.36*level+0.16*pulse);
+                    web+=mix(fc,C_WHITE,0.56)*pow(filament,1.8)*(0.06+0.08*pulse);
+
+                    float tp=fract(phase*(0.14+0.03*float(k))+float(i)*0.043+float(k)*0.27);
+                    vec2 mover=mix(a,b,tp);
+                    float md=length(p-mover);
+                    web+=mix(C_CYAN,C_WHITE,0.65)*exp(-md*125.0)*(0.10+0.18*pulse);
+                }
             }
         }
-        color=web;
+
+        float vignette=smoothstep(1.25,0.18,length(p));
+        color=web*vignette;
     } else if (mode == 10) {
         vec2 center=vec2(0.5+sin(phase*0.23)*0.045,0.5+cos(phase*0.19+1.2)*0.040);
         vec2 p=(uv-center)*vec2(resolution.x/resolution.y,1.0);

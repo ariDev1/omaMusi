@@ -478,79 +478,223 @@ fn cosmic_web(ctx: &Context, f: &VisualFrame, w: f64, h: f64) -> Result<()> {
     color(ctx, f.colors[0], 1.0);
     ctx.paint()?;
 
-    const COUNT: usize = 34;
+    const HUBS: usize = 4;
+    const COUNT: usize = 104;
     let min_side = w.min(h);
-    let pulse = f.aether_beat_pulse * 0.8 + f.aether_onset * 0.35;
-    let nodes: [(f64, f64, f64, f64); COUNT] = std::array::from_fn(|i| {
-        let band = (i * 11 + 7) % 96;
-        let level = f.bands[band];
+    let pulse = (f.aether_beat_pulse * 0.95 + f.aether_onset * 0.45).clamp(0.0, 1.0);
+    let density = f.aether_density.clamp(0.0, 1.0);
+    let turn = f.aether_world_turn * TAU * 0.14 + f.time * 0.08;
+    let hubs: [(f64, f64, f64); HUBS] = std::array::from_fn(|i| {
         let fi = i as f64;
-        let z = 0.30 + 0.70 * (0.5 + 0.5 * (fi * 1.618_033_988_75 + f.time * 0.11).sin());
-        let orbit = fi * 2.399_963_229_73 + f.time * (0.05 + 0.035 * z);
-        let drift_x = (fi * 0.73 + f.time * 0.17).sin() * 0.12;
-        let drift_y = (fi * 1.13 - f.time * 0.13).cos() * 0.10;
-        let spread = 0.19 + z * 0.34 + f.aether_density * 0.08;
-        let x = w * (0.5 + orbit.cos() * spread + drift_x);
-        let y = h * (0.5 + orbit.sin() * spread * 0.68 + drift_y);
-        let radius = min_side * (0.0028 + level * 0.006 + pulse * 0.003) * (0.65 + z);
-        (x, y, radius.max(1.0), level)
+        let angle = turn + fi * TAU / HUBS as f64 + (f.time * 0.10 + fi * 0.9).sin() * 0.30;
+        let orbit = min_side * (0.12 + 0.05 * fi + density * 0.04);
+        let x = w * 0.5 + angle.cos() * orbit;
+        let y = h * 0.5 + angle.sin() * orbit * 0.72;
+        let strength = 0.50 + 0.12 * fi + f.bass * 0.40 + pulse * 0.32;
+        (x, y, strength)
+    });
+    let nodes: [(f64, f64, f64, f64, usize, f64); COUNT] = std::array::from_fn(|i| {
+        let fi = i as f64;
+        let hub = i % HUBS;
+        let band = (i * 7 + hub * 13) % 96;
+        let level = f.bands[band];
+        let depth = 0.20 + 0.80 * (0.5 + 0.5 * (fi * 1.618_033_988_75 + turn * 2.4).sin());
+        let orbit = fi * 2.399_963_229_73 + turn * (0.9 + depth * 0.7);
+        let spoke = min_side * (0.07 + depth * 0.36 + density * 0.08 + level * 0.06);
+        let swirl = (f.time * (0.18 + depth * 0.09) + fi * 0.12).sin() * min_side * 0.018;
+        let x = hubs[hub].0
+            + orbit.cos() * spoke
+            + (fi * 0.37 + turn * 1.7).sin() * min_side * 0.012
+            + swirl;
+        let y = hubs[hub].1
+            + orbit.sin() * spoke * (0.56 + depth * 0.28)
+            + (fi * 0.51 - turn * 1.3).cos() * min_side * 0.010
+            - swirl * 0.55;
+        let radius = (1.2 + depth * 2.9 + level * 3.8 + pulse * 2.0).max(1.0);
+        (x, y, radius, level, hub, depth)
     });
 
     ctx.save()?;
     ctx.set_operator(Operator::Add);
+
+    for (hub_index, (hx, hy, strength)) in hubs.iter().copied().enumerate() {
+        let plasma_cyan = [0.05, 0.70, 1.00];
+        let plasma_violet = [0.40, 0.12, 1.00];
+        let plasma_magenta = [1.00, 0.06, 0.72];
+        let plasma_orange = [1.00, 0.34, 0.04];
+        let warm = mix_rgb(
+            plasma_magenta,
+            plasma_orange,
+            0.30 + 0.16 * hub_index as f64,
+        );
+        let cool = mix_rgb(plasma_cyan, plasma_violet, 0.28 + 0.14 * hub_index as f64);
+        circle(
+            ctx,
+            hx,
+            hy,
+            min_side * (0.11 + strength * 0.05),
+            cool,
+            (0.045 + pulse * 0.025).clamp(0.0, 0.14),
+        )?;
+        circle(
+            ctx,
+            hx,
+            hy,
+            min_side * (0.060 + strength * 0.030),
+            warm,
+            (0.090 + pulse * 0.050).clamp(0.0, 0.24),
+        )?;
+        circle(
+            ctx,
+            hx,
+            hy,
+            min_side * (0.018 + strength * 0.020),
+            [1.0, 0.82, 0.56],
+            (0.62 + pulse * 0.22).clamp(0.0, 0.98),
+        )?;
+    }
+
+    for (x, y, radius, level, _hub, depth) in nodes.iter().copied() {
+        let plasma_cyan = [0.02, 0.72, 1.00];
+        let plasma_violet = [0.42, 0.08, 1.00];
+        let plasma_magenta = [1.00, 0.04, 0.70];
+        let plasma_orange = [1.00, 0.30, 0.03];
+        let cool = mix_rgb(
+            plasma_cyan,
+            plasma_violet,
+            0.45 + 0.35 * (depth * 2.7).sin(),
+        );
+        let hot = mix_rgb(
+            plasma_magenta,
+            plasma_orange,
+            (level * 0.75 + pulse * 0.20).clamp(0.0, 1.0),
+        );
+        let tint = mix_rgb(
+            cool,
+            hot,
+            (0.24 + level * 0.48 + pulse * 0.18).clamp(0.0, 1.0),
+        );
+        circle(
+            ctx,
+            x,
+            y,
+            radius * (6.2 + depth * 1.8),
+            tint,
+            (0.012 + level * 0.030 + pulse * 0.018).clamp(0.0, 0.11),
+        )?;
+        circle(
+            ctx,
+            x,
+            y,
+            radius * 1.20,
+            mix_rgb(tint, f.colors[3], 0.45),
+            (0.18 + level * 0.22).clamp(0.0, 0.42),
+        )?;
+    }
+
     for i in 0..COUNT {
-        for offset in [3usize, 7usize] {
-            let j = (i + offset) % COUNT;
-            let a = nodes[i];
-            let b = nodes[j];
+        let a = nodes[i];
+        let neighbors = [1usize, 5usize, 17usize];
+        for offset in neighbors {
+            let b = nodes[(i + offset) % COUNT];
+            let same_hub = a.4 == b.4;
             let dx = a.0 - b.0;
             let dy = a.1 - b.1;
             let distance = (dx * dx + dy * dy).sqrt();
-            let reach = min_side * (0.34 + f.aether_density * 0.12);
-            if distance < reach {
-                let strength =
-                    (1.0 - distance / reach) * (0.12 + (a.3 + b.3) * 0.30 + pulse * 0.25);
-                let tint = mix_rgb(
+            let reach = if same_hub {
+                min_side * (0.22 + density * 0.10)
+            } else {
+                min_side * (0.34 + density * 0.18)
+            };
+            if distance > reach {
+                continue;
+            }
+            let tint = mix_rgb(
+                mix_rgb(
                     f.colors[2],
                     f.magenta,
-                    ((i + offset) as f64 * 0.17 + f.time * 0.03).sin() * 0.5 + 0.5,
-                );
-                line(
-                    ctx,
-                    (a.0, a.1),
-                    (b.0, b.1),
-                    0.55 + strength * 2.2,
-                    tint,
-                    strength.clamp(0.025, 0.52),
-                )?;
+                    0.55 + 0.20 * (i as f64 * 0.05).sin(),
+                ),
+                f.colors[1],
+                0.10 + a.3 * 0.22 + pulse * 0.18,
+            );
+            let strength = (1.0 - distance / reach)
+                * (0.05 + (a.3 + b.3) * 0.16 + pulse * 0.11 + if same_hub { 0.05 } else { 0.0 });
+            let mx = (a.0 + b.0) * 0.5;
+            let my = (a.1 + b.1) * 0.5;
+            let nx = -(b.1 - a.1) / distance.max(1.0);
+            let ny = (b.0 - a.0) / distance.max(1.0);
+            let bend = distance * if same_hub { 0.14 } else { 0.20 };
+            let direction = if (i + offset) % 2 == 0 { 1.0 } else { -1.0 };
+            let c1 = (
+                a.0 * 0.68 + mx * 0.32 + nx * bend * direction,
+                a.1 * 0.68 + my * 0.32 + ny * bend * direction,
+            );
+            let c2 = (
+                b.0 * 0.68 + mx * 0.32 + nx * bend * direction,
+                b.1 * 0.68 + my * 0.32 + ny * bend * direction,
+            );
+            for layer in 0..3 {
+                let scale = 1.0 + layer as f64 * 0.45;
+                let alpha = (strength * (0.55 - layer as f64 * 0.12)).clamp(0.015, 0.24);
+                ctx.new_path();
+                ctx.move_to(a.0, a.1);
+                ctx.curve_to(c1.0, c1.1, c2.0, c2.1, b.0, b.1);
+                color(ctx, tint, alpha);
+                ctx.set_line_width((0.9 + a.5 * 1.6 + strength * 4.0) * scale);
+                ctx.stroke()?;
             }
+            let t = (f.time * (0.14 + a.5 * 0.05) + i as f64 * 0.041).fract();
+            let pulse_x = (1.0 - t).powi(3) * a.0
+                + 3.0 * (1.0 - t).powi(2) * t * c1.0
+                + 3.0 * (1.0 - t) * t * t * c2.0
+                + t.powi(3) * b.0;
+            let pulse_y = (1.0 - t).powi(3) * a.1
+                + 3.0 * (1.0 - t).powi(2) * t * c1.1
+                + 3.0 * (1.0 - t) * t * t * c2.1
+                + t.powi(3) * b.1;
+            circle(
+                ctx,
+                pulse_x,
+                pulse_y,
+                2.0 + pulse * 2.8 + a.5 * 1.4,
+                mix_rgb(tint, [1.0, 0.92, 0.72], 0.68),
+                (0.12 + pulse * 0.14).clamp(0.0, 0.36),
+            )?;
         }
     }
 
-    for (i, (x, y, radius, level)) in nodes.iter().copied().enumerate() {
-        let tint = mix_rgb(
-            f.colors[2],
-            f.colors[1],
-            (i as f64 * 0.31 + f.time * 0.07).sin() * 0.5 + 0.5,
+    for i in 0..HUBS {
+        let a = hubs[i];
+        let b = hubs[(i + 1) % HUBS];
+        let dx = a.0 - b.0;
+        let dy = a.1 - b.1;
+        let distance = (dx * dx + dy * dy).sqrt().max(1.0);
+        let nx = -(b.1 - a.1) / distance;
+        let ny = (b.0 - a.0) / distance;
+        let curve = min_side * 0.10 * if i % 2 == 0 { 1.0 } else { -1.0 };
+        let c1 = (
+            a.0 * 0.70 + b.0 * 0.30 + nx * curve,
+            a.1 * 0.70 + b.1 * 0.30 + ny * curve,
         );
-        circle(ctx, x, y, radius * 4.2, tint, 0.035 + level * 0.055)?;
-        circle(
-            ctx,
-            x,
-            y,
-            radius * 1.65,
-            tint,
-            (0.22 + level * 0.35 + pulse * 0.20).clamp(0.0, 0.82),
-        )?;
-        circle(
-            ctx,
-            x,
-            y,
-            radius * 0.55,
-            f.colors[3],
-            (0.34 + level * 0.50).clamp(0.0, 0.95),
-        )?;
+        let c2 = (
+            a.0 * 0.30 + b.0 * 0.70 + nx * curve,
+            a.1 * 0.30 + b.1 * 0.70 + ny * curve,
+        );
+        for layer in 0..2 {
+            ctx.new_path();
+            ctx.move_to(a.0, a.1);
+            ctx.curve_to(c1.0, c1.1, c2.0, c2.1, b.0, b.1);
+            color(
+                ctx,
+                mix_rgb([1.0, 0.05, 0.70], [1.0, 0.32, 0.02], 0.28 + i as f64 * 0.12),
+                0.040 + pulse * 0.020 - layer as f64 * 0.010,
+            );
+            ctx.set_line_width((4.6 - layer as f64 * 1.6) + pulse * 2.2);
+            ctx.stroke()?;
+        }
     }
+
     ctx.restore()?;
     Ok(())
 }
