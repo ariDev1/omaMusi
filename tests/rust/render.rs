@@ -67,7 +67,7 @@ fn draw(
 }
 
 #[test]
-fn all_eleven_software_visuals_render_distinct_frames_without_mutating_audio() {
+fn all_software_visuals_render_distinct_frames_without_mutating_audio() {
     let mut visual = VisualState::new();
     visual.mode = VisualMode::Waveform;
     let snapshot = PcmSnapshot {
@@ -100,7 +100,7 @@ fn all_eleven_software_visuals_render_distinct_frames_without_mutating_audio() {
             assert!(pixels.iter().all(|p| p[3] == 255), "{} alpha", mode.name());
         }
     }
-    assert_eq!(hashes.len(), 11);
+    assert_eq!(hashes.len(), VisualMode::ALL.len());
     assert_eq!(snapshot.samples, original);
 }
 

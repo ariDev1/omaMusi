@@ -1,4 +1,4 @@
-//! Shared audio-reactive state for all eleven visuals.
+//! Shared audio-reactive state for all visuals.
 pub mod analysis;
 pub mod director;
 pub mod horizon;
@@ -25,9 +25,10 @@ pub enum VisualMode {
     CoverGallery,
     CosmicWeb,
     TimeTunnel,
+    GpuLab,
 }
 impl VisualMode {
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 12] = [
         Self::Warp,
         Self::Spectrum,
         Self::Waveform,
@@ -39,6 +40,7 @@ impl VisualMode {
         Self::CoverGallery,
         Self::CosmicWeb,
         Self::TimeTunnel,
+        Self::GpuLab,
     ];
     pub fn name(self) -> &'static str {
         match self {
@@ -53,6 +55,7 @@ impl VisualMode {
             Self::CoverGallery => "Cover Gallery",
             Self::CosmicWeb => "Cosmic Web",
             Self::TimeTunnel => "Time Tunnel",
+            Self::GpuLab => "GPU Lab",
         }
     }
     pub fn parse(value: &str) -> Option<Self> {

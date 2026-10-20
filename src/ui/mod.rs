@@ -1,6 +1,7 @@
 //! Keyboard-first GTK player; filesystem workers never contain GTK objects.
 mod actions;
 mod browser;
+mod gpu_stats;
 mod playlists;
 use crate::visual::{VisualMode, VisualState};
 use crate::{
@@ -92,6 +93,12 @@ pub struct PlayerWindow {
     canvas: RenderCanvas,
     logo: gtk::Label,
     visual_notice: gtk::Label,
+    gpu_readout: gtk::Label,
+    gpu_frames: Rc<Cell<u64>>,
+    gpu_sample: Cell<(Instant, u64)>,
+    gpu_poll: Cell<Instant>,
+    gpu_stats: RefCell<gpu_stats::Telemetry>,
+    gpu_active: Cell<bool>,
     folder_label: gtk::Label,
     folder_prompt: gtk::Box,
     folder_input: gtk::Entry,
@@ -211,6 +218,8 @@ impl PlayerWindow {
         }));
         let cpu = state.clone();
         let gpu = state.clone();
+        let gpu_frames = Rc::new(Cell::new(0u64));
+        let frames = gpu_frames.clone();
         let canvas = RenderCanvas::new(
             move |ctx, w, h| {
                 let mut state = cpu.borrow_mut();
@@ -240,7 +249,9 @@ impl PlayerWindow {
                     gallery: &mut state.gallery,
                     gallery_bounds: state.gallery_bounds,
                 };
-                backend.draw(&mut scene, w, h, ratio, dt)
+                backend.draw(&mut scene, w, h, ratio, dt)?;
+                frames.set(frames.get().wrapping_add(1));
+                Ok(())
             },
         );
         canvas.widget.set_focusable(true);
@@ -303,6 +314,14 @@ impl PlayerWindow {
         let middle = gtk::Box::new(gtk::Orientation::Vertical, 0);
         middle.set_vexpand(true);
         middle.set_margin_top(10);
+        let gpu_readout = label("", "omamusi-gpu-readout");
+        gpu_readout.set_halign(gtk::Align::End);
+        gpu_readout.set_valign(gtk::Align::Start);
+        gpu_readout.set_justify(gtk::Justification::Right);
+        gpu_readout.set_max_width_chars(76);
+        gpu_readout.set_wrap(true);
+        gpu_readout.set_visible(false);
+        middle.append(&gpu_readout);
         let panel = gtk::Box::new(gtk::Orientation::Vertical, 6);
         panel.set_halign(gtk::Align::Start);
         panel.set_valign(gtk::Align::Start);
@@ -372,6 +391,12 @@ impl PlayerWindow {
             canvas,
             logo,
             visual_notice,
+            gpu_readout,
+            gpu_frames,
+            gpu_sample: Cell::new((now, 0)),
+            gpu_poll: Cell::new(now),
+            gpu_stats: RefCell::new(gpu_stats::Telemetry::new()),
+            gpu_active: Cell::new(false),
             folder_label,
             folder_prompt,
             folder_input,
@@ -995,6 +1020,46 @@ impl PlayerWindow {
             if state.visual.mode == VisualMode::CoverGallery {
                 state.gallery.tick(elapsed);
             }
+        }
+        let gpu_lab = self.state.borrow().visual.mode == VisualMode::GpuLab;
+        self.gpu_readout.set_visible(gpu_lab);
+        if gpu_lab && !self.gpu_active.replace(true) {
+            self.gpu_sample.set((now, self.gpu_frames.get()));
+            self.gpu_poll.set(now);
+            self.gpu_stats.borrow_mut().reset();
+            self.gpu_readout.set_text("GPU Lab · measuring…");
+        } else if !gpu_lab {
+            self.gpu_active.set(false);
+        }
+        if gpu_lab && now.duration_since(self.gpu_poll.get()) >= Duration::from_millis(200) {
+            self.gpu_poll.set(now);
+            self.gpu_stats.borrow_mut().sample();
+        }
+        if gpu_lab && now.duration_since(self.gpu_sample.get().0) >= Duration::from_secs(1) {
+            let (previous, count) = self.gpu_sample.replace((now, self.gpu_frames.get()));
+            let backend = self.canvas.description();
+            let renderer = backend
+                .strip_prefix("gpu (")
+                .and_then(|name| name.split(" (").next())
+                .and_then(|name| name.split(" / ").next())
+                .unwrap_or(if self.canvas.is_cpu() {
+                    "Software renderer"
+                } else {
+                    "Initializing GPU"
+                });
+            let rate = if self.canvas.is_cpu() {
+                "software fallback".into()
+            } else {
+                format!(
+                    "{:.0} render calls/s",
+                    (self.gpu_frames.get() - count) as f64
+                        / now.duration_since(previous).as_secs_f64()
+                )
+            };
+            self.gpu_readout.set_text(&format!(
+                "GPU LAB · {renderer} · {rate}\n{}",
+                self.gpu_stats.borrow_mut().report()
+            ));
         }
         if now.duration_since(self.last_theme.get()) >= Duration::from_secs(2) {
             self.last_theme.set(now);

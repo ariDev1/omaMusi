@@ -158,6 +158,29 @@ void main() {
 
         float vignette=smoothstep(1.25,0.18,length(p));
         color=web*vignette;
+    } else if (mode == 11) {
+        // Layered refractive lattice: fixed work per pixel keeps comparisons
+        // repeatable while audio changes only color and motion.
+        vec2 p = (uv-0.5)*vec2(resolution.x/resolution.y, 1.0);
+        vec3 sum = vec3(0.0);
+        float beat = 0.15 + bass*0.5 + aetherBeatPulse*0.35;
+        for (int i=0; i<28; ++i) {
+            float depth = float(i)/28.0;
+            float scale = 1.0 + depth*7.0;
+            float angle = phase*0.09 + depth*3.8;
+            mat2 turn = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+            vec2 q = turn*p*scale;
+            q += vec2(sin(phase*0.17+depth*8.0), cos(phase*0.13-depth*9.0))*0.34;
+            vec2 grid = abs(fract(q)-0.5);
+            float wire = exp(-min(grid.x,grid.y)*scale*18.0);
+            float node = exp(-length(grid)*scale*15.0);
+            float band = datum((i*13)%96);
+            vec3 hue = 0.5+0.5*cos(vec3(0.0,2.1,4.2)+depth*7.0+phase*0.13);
+            sum += mix(cyan, hue, 0.72)*(wire*0.022+node*0.07)*(0.5+band*0.8+beat);
+        }
+        float core = exp(-dot(p,p)*12.0);
+        color = background*0.07 + sum + mix(accent,bright,0.65)*core*(0.14+energy*0.25);
+        color *= 1.0-smoothstep(0.55,1.1,length(p))*0.7;
     } else if (mode == 10) {
         vec2 center=vec2(0.5+sin(phase*0.23)*0.045,0.5+cos(phase*0.19+1.2)*0.040);
         vec2 p=(uv-center)*vec2(resolution.x/resolution.y,1.0);

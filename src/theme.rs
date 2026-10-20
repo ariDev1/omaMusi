@@ -90,6 +90,7 @@ impl Theme {
             .omamusi-entry {{ padding: 0; color: {}; }}
             .omamusi-accent {{ color: {}; }} .omamusi-muted {{ color: {}; }}
             .omamusi-hint {{ color: {}; font-size: 11px; }}
+            .omamusi-gpu-readout {{ color: #c0caf5; font-size: 12px; }}
             .omamusi-title {{ font-size: 23px; color: {}; }}
             .omamusi-caption {{ font-size: 11px; }}
             .omamusi-header {{ background: {}; }}

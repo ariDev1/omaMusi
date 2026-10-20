@@ -76,6 +76,7 @@ impl CpuRenderer {
                 VisualMode::CoverGallery => gallery(ctx, scene, width, height)?,
                 VisualMode::CosmicWeb => cosmic_web(ctx, frame, width, height)?,
                 VisualMode::TimeTunnel => time_tunnel(ctx, frame, width, height)?,
+                VisualMode::GpuLab => gpu_lab(ctx, frame, width, height)?,
             }
             Ok(())
         })();
@@ -84,6 +85,40 @@ impl CpuRenderer {
         restore?;
         Ok(())
     }
+}
+
+fn gpu_lab(ctx: &Context, f: &VisualFrame, w: f64, h: f64) -> Result<()> {
+    let center = (w * 0.5, h * 0.5);
+    let size = w.min(h);
+    for layer in (1..=28).rev() {
+        let depth = layer as f64 / 28.0;
+        let radius = size * (0.04 + depth * 0.65);
+        let angle = f.time * 0.09 + depth * 3.8;
+        let (s, c) = angle.sin_cos();
+        let tint = [
+            (0.5 + 0.5 * (depth * 7.0 + f.time * 0.13).cos()) as f32,
+            (0.5 + 0.5 * (depth * 7.0 + f.time * 0.13 + 2.1).cos()) as f32,
+            (0.5 + 0.5 * (depth * 7.0 + f.time * 0.13 + 4.2).cos()) as f32,
+        ];
+        color(ctx, tint, 0.22 + f.bass * 0.14);
+        ctx.set_line_width(1.0 + depth * 2.0);
+        for side in 0..4 {
+            let a = side as f64 * TAU / 4.0;
+            let b = (side + 1) as f64 * TAU / 4.0;
+            let point = |t: f64| {
+                (
+                    center.0 + radius * (t.cos() * c - t.sin() * s),
+                    center.1 + radius * (t.cos() * s + t.sin() * c),
+                )
+            };
+            let (x, y) = point(a);
+            let (xx, yy) = point(b);
+            ctx.move_to(x, y);
+            ctx.line_to(xx, yy);
+        }
+        ctx.stroke()?;
+    }
+    Ok(())
 }
 
 fn color(ctx: &Context, rgb: [f32; 3], alpha: f64) {

@@ -118,7 +118,7 @@ fn hardware_rendering() {
         );
         seen.insert(pixels);
     }
-    assert_eq!(seen.len(), 9);
+    assert_eq!(seen.len(), VisualMode::ALL.len());
     frame.mode = VisualMode::Warp;
     let mut scene = Scene {
         frame: &frame,
@@ -135,7 +135,7 @@ fn hardware_rendering() {
     gpu.draw(&mut scene, width, height, 1.0, 0.016).unwrap();
     let original = read();
     for index in 0..64 {
-        frame.mode = VisualMode::ALL[index % 9];
+        frame.mode = VisualMode::ALL[index % VisualMode::ALL.len()];
         let mut scene = Scene {
             frame: &frame,
             wave: &visual.waveform,
@@ -496,7 +496,8 @@ fn hardware_rendering() {
         gtk::glib::MainContext::default().iteration(false);
     }
     eprintln!(
-        "All nine GPU visuals, 64 switches, cover clearing, waveform alpha/color, particle size and context-safe cleanup passed"
+        "All {} GPU visuals, 64 switches, cover clearing, waveform alpha/color, particle size and context-safe cleanup passed",
+        VisualMode::ALL.len()
     );
 }
 

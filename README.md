@@ -222,7 +222,7 @@ the player.
 
 ## Choose a visual
 
-Press **V** to cycle through nine visuals, or **Shift+V** to go back:
+Press **V** to cycle through twelve visuals, or **Shift+V** to go back:
 
 - **Event Horizon:** a black hole with a glowing disk.
 - **Particle Dance:** dense multicolor particle streams (cyan, green, amber, magenta, violet) flowing with the music. The dots stay small while a higher particle rate keeps the streams full.
@@ -233,6 +233,19 @@ Press **V** to cycle through nine visuals, or **Shift+V** to go back:
 - **Spectrogram:** a scrolling view of the sound's frequencies.
 - **Cover Art:** your album cover, gently pulsing on a black background.
 - **Cover Gallery:** a changing mosaic of album covers. Click one to play a song.
+- **Cosmic Web:** colorful, audio-reactive filaments and glowing nodes.
+- **Time Tunnel:** an animated tunnel built from sound history.
+- **GPU Lab:** an animated OpenGL lattice with live GPU, CPU, memory and rendering telemetry.
+
+GPU Lab works without music. Start it with `omaMusi --view "GPU Lab"`, or cycle
+to it with **V**. The text-only readout shows render calls per second, sampled
+GPU core and memory activity (average and peak), VRAM use, clocks, temperature,
+power and fan speed where the driver provides them. It also shows CPU load,
+frequency and temperature, system RAM and the player's memory footprint.
+Unavailable sensors are labelled `n/a`. The sampled GPU busy percentage may
+still be 0% for light workloads; render rate is limited by display refresh and
+GTK scheduling, so neither value is a standardized GPU benchmark score.
+The software fallback is identified in the readout if OpenGL cannot start.
 
 To start with a particular visual:
 
