@@ -14,6 +14,19 @@ fn transport_clock_preserves_hour_format() {
     assert_eq!(clock(3661.0), "1:01:01");
 }
 
+#[test]
+fn track_list_width_tracks_the_window() {
+    assert_eq!(list_width(640.0), 406);
+    assert_eq!(list_width(1060.0), 700);
+    // No fixed cap: larger stages continue to provide more room for paths.
+    assert!(list_width(3840.0) > list_width(1920.0));
+    for stage in [0.0, 320.0, 640.0, 900.0, 1526.0, 3840.0] {
+        let width = list_width(stage) as f64;
+        assert!(width >= 0.0);
+        assert!(width <= (stage - 60.0).max(0.0));
+    }
+}
+
 #[track_caller]
 pub(super) fn wait(mut predicate: impl FnMut() -> bool) {
     let deadline = Instant::now() + Duration::from_secs(8);

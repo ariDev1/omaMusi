@@ -61,7 +61,7 @@ fn all_view_names_and_legacy_aliases_parse() {
 fn version_help_and_desktop_actions_do_not_require_a_display() {
     let version = Cli::parse_from(["omaMusi", "--version"]).unwrap_err();
     assert_eq!(version.kind(), clap::error::ErrorKind::DisplayVersion);
-    assert!(version.to_string().contains("omaMusi 0.11.0"));
+    assert!(version.to_string().contains("omaMusi 0.11.1"));
     assert_eq!(
         Cli::parse_from(["omaMusi", "--help"]).unwrap_err().kind(),
         clap::error::ErrorKind::DisplayHelp

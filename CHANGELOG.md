@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.1
+
+- Expanded the song list to 70% of the available window width, resizing responsively without a fixed-width cap while preserving automatic fade-out.
+
 ## 0.11.0 (development)
 
 - Enlarged the Particle Dance gold torus threefold; its arcs now sweep across and beyond the frame in both the OpenGL and software renderers.

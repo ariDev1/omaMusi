@@ -8,7 +8,7 @@ keyboard, click a song, or drag music files into the window.
 
 ![omaMusi playing music with the Event Horizon visualization](event-horizon.png)
 
-Version **0.11.0** · [MIT license](LICENSE)
+Version **0.11.1** · [MIT license](LICENSE)
 
 Player and search use have been tested on **Omarchy and Ubuntu**. On
 Omarchy, the player follows your theme. On GNOME, it uses a normal window

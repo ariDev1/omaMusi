@@ -96,6 +96,7 @@ pub struct PlayerWindow {
     folder_prompt: gtk::Box,
     folder_input: gtk::Entry,
     panel: gtk::Box,
+    panel_width: Cell<i32>,
     count: gtk::Label,
     search: gtk::Entry,
     listing: gtk::ListBox,
@@ -150,6 +151,11 @@ fn make_listing() -> gtk::ListBox {
     list.set_activate_on_single_click(true);
     list.add_css_class("omamusi-list");
     list
+}
+/// Sidebar width for the track list: a responsive share of the stage that
+/// leaves room for the visualization, instead of one fixed column.
+fn list_width(stage_width: f64) -> i32 {
+    ((stage_width - 60.0).max(0.0) * 0.70) as i32
 }
 fn clock(seconds: f64) -> String {
     let seconds = seconds.max(0.0) as u64;
@@ -370,6 +376,7 @@ impl PlayerWindow {
             folder_prompt,
             folder_input,
             panel,
+            panel_width: Cell::new(0),
             count,
             search,
             listing,
@@ -1003,6 +1010,7 @@ impl PlayerWindow {
     }
     fn refresh(&self) {
         self.updating.set(true);
+        let stage_width = self.overlay.width() as f64;
         {
             let state = self.state.borrow();
             let model = &state.model;
@@ -1156,6 +1164,14 @@ impl PlayerWindow {
                 self.visible_tracks.get()
             };
             let desired_list_height = (visible as i32 * 26 + 2).max(28);
+            // The list fades out on idle, so let it claim a generous share of
+            // the stage while leaving room for the visualization. This tracks
+            // the real window width instead of pinning a fixed column.
+            let target = list_width(stage_width);
+            if self.panel_width.get() != target {
+                self.panel_width.set(target);
+                self.panel.set_size_request(target, -1);
+            }
             self.panel.set_visible(
                 !self.panel_hidden.get()
                     && (browsing
@@ -1234,20 +1250,17 @@ impl PlayerWindow {
             self.scroller
                 .set_size_request(-1, desired_list_height.min(available));
         }
-        let width = self.overlay.width() as f64;
-        let height = self.overlay.height() as f64;
         let left = if self.panel.is_visible() {
             30.0 + self.panel.width() as f64 + 24.0
         } else {
             30.0
         };
-        let bounds = Rect {
+        self.state.borrow_mut().gallery_bounds = Rect {
             x: left,
             y: 64.0,
-            width: (width - left - 30.0).max(0.0),
-            height: (height - 250.0).max(0.0),
+            width: (stage_width - left - 30.0).max(0.0),
+            height: (self.overlay.height() as f64 - 250.0).max(0.0),
         };
-        self.state.borrow_mut().gallery_bounds = bounds;
         self.updating.set(false);
     }
     pub fn close(&self) {

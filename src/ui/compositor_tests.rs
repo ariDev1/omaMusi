@@ -279,7 +279,7 @@ fn waveform_composes_with_desktop() {
         player.overlay.height()
     );
     assert!(
-        player.panel.width() <= 340,
+        (player.panel.width() - list_width(player.overlay.width() as f64)).abs() <= 2,
         "Long filenames expanded the sidebar to {}",
         player.panel.width()
     );
